@@ -41,7 +41,7 @@
 
         <p class="command-subtitle">
             {% if is_manager %}
-                Today's checklist progress, opening integrity, and store task visibility.
+                Today's checklist progress, weekly focus, and store task visibility.
             {% elif is_maintenance %}
                 Open maintenance workload, task visibility, and fast access to repair tracking.
             {% else %}
@@ -235,14 +235,45 @@
     {% if is_manager %}
     <section class="panel premium-panel">
         <div class="panel-head">
+            <h3>Weekly Focus</h3>
+            <span class="summary-pill">From Latest SVR</span>
+        </div>
+
+        <div id="manager-weekly-focus-list">
+            {% if manager_weekly_focus %}
+                <div class="admin-task-list">
+                    {% for item in manager_weekly_focus %}
+                    <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
+                        <label class="checklist-checkbox-row">
+                            <input
+                                type="checkbox"
+                                class="manager-weekly-focus-box"
+                                data-item-id="{{ item.id }}"
+                            >
+                            <span>{{ item.item_text }}</span>
+                        </label>
+                        <div class="task-meta" style="margin-top: 10px;">
+                            {{ item.item_type|title }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="summary-pill">All weekly focus items complete.</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="panel premium-panel">
+        <div class="panel-head">
             <h3>Today's Focus</h3>
             <span class="summary-pill">Manager View</span>
         </div>
         <ul class="clean-list">
             <li>Complete opening section early.</li>
             <li>Keep integrity above threshold.</li>
+            <li>Work through weekly focus from the latest SVR.</li>
             <li>Review open maintenance items for your store.</li>
-            <li>Use Checklist to track live completion.</li>
         </ul>
     </section>
     {% endif %}
@@ -440,6 +471,64 @@ document.addEventListener("DOMContentLoaded", function () {
         return "heatmap-tile tile-yellow";
     }
 
+    function renderManagerWeeklyFocus(items) {
+        const wrapper = document.getElementById("manager-weekly-focus-list");
+        if (!wrapper) return;
+
+        if (!items || items.length === 0) {
+            wrapper.innerHTML = `<div class="summary-pill">All weekly focus items complete.</div>`;
+            return;
+        }
+
+        const cards = items.map(item => `
+            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
+                <label class="checklist-checkbox-row">
+                    <input
+                        type="checkbox"
+                        class="manager-weekly-focus-box"
+                        data-item-id="${item.id}"
+                    >
+                    <span>${item.item_text}</span>
+                </label>
+                <div class="task-meta" style="margin-top: 10px;">
+                    ${item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1)}
+                </div>
+            </div>
+        `).join("");
+
+        wrapper.innerHTML = `<div class="admin-task-list">${cards}</div>`;
+        bindWeeklyFocusCheckboxes();
+    }
+
+    async function completeWeeklyFocus(itemId) {
+        try {
+            const response = await fetch("/complete-weekly-focus", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    item_id: Number(itemId),
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) return;
+
+            refreshDashboard();
+        } catch (error) {
+            console.error("Weekly focus completion failed:", error);
+        }
+    }
+
+    function bindWeeklyFocusCheckboxes() {
+        document.querySelectorAll(".manager-weekly-focus-box").forEach(box => {
+            box.addEventListener("change", function () {
+                completeWeeklyFocus(this.dataset.itemId);
+            });
+        });
+    }
+
     async function refreshDashboard() {
         try {
             const response = await fetch("/live-data");
@@ -486,6 +575,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             document.getElementById("summary-open-maintenance").textContent = `Open Maintenance: ${data.open_maintenance_count}`;
+
+            if (isManager) {
+                renderManagerWeeklyFocus(data.manager_weekly_focus || []);
+            }
 
             if (isOpsView) {
                 document.getElementById("opening-not-started-count").textContent = `${data.morning_exceptions.opening_not_started.length} stores`;
@@ -628,6 +721,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    bindWeeklyFocusCheckboxes();
     refreshDashboard();
     setInterval(refreshDashboard, 10000);
 });

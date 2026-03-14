@@ -163,6 +163,26 @@ class SVRReportValue(db.Model):
     template_field = db.relationship("SVRTemplateField")
 
 
+class WeeklyFocusItem(db.Model):
+    __tablename__ = "weekly_focus_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    store_number = db.Column(db.String(10), nullable=False)
+
+    item_type = db.Column(db.String(50), nullable=False)  # cleaning / goal
+    item_text = db.Column(db.String(255), nullable=False)
+
+    is_completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    source_type = db.Column(db.String(50), nullable=False, default="svr")
+    svr_report_id = db.Column(db.Integer, db.ForeignKey("svr_reports.id"), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    svr_report = db.relationship("SVRReport")
+
+
 class MaintenanceTicket(db.Model):
     __tablename__ = "maintenance_tickets"
 
