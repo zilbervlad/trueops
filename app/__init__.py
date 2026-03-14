@@ -26,6 +26,12 @@ def create_app():
     app.register_blueprint(store_admin_bp)
     app.register_blueprint(reports_bp)
 
+    @app.route("/create-db")
+    def create_db():
+        from app import models
+        db.create_all()
+        return "Database tables created"
+
     with app.app_context():
         from app import models
         db.create_all()
