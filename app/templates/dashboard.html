@@ -45,7 +45,7 @@
             {% elif is_maintenance %}
                 Open maintenance workload, task visibility, and fast access to repair tracking.
             {% else %}
-                Real-time checklist execution, opening integrity, SVR compliance, and maintenance visibility.
+                Real-time checklist execution, opening integrity, SVR compliance, maintenance visibility, and closeout exceptions.
             {% endif %}
         </p>
     </div>
@@ -110,6 +110,58 @@
             {% endfor %}
         </div>
     </section>
+</div>
+{% endif %}
+
+{% if is_ops_view %}
+<div class="panel premium-panel" style="margin-bottom: 24px;">
+    <div class="panel-head">
+        <h3>Yesterday Exceptions</h3>
+        <span class="summary-pill">{{ yesterday_label }}</span>
+    </div>
+
+    <div class="table-wrap premium-table-wrap">
+        <table class="data-table premium-table">
+            <thead>
+                <tr>
+                    <th>Store</th>
+                    <th>Manager</th>
+                    <th>Completion</th>
+                    <th>Integrity</th>
+                    <th>Manager Walk</th>
+                    <th>Incomplete Tasks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in yesterday_exceptions %}
+                <tr onclick="window.location='{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date) }}'" style="cursor: pointer;">
+                    <td>{{ item.store_number }}</td>
+                    <td>{{ item.manager_on_duty }}</td>
+                    <td>
+                        <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ item.percent_complete }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ item.integrity_score }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="table-badge {% if item.manager_walk_missed %}badge-danger{% else %}badge-success{% endif %}">
+                            {% if item.manager_walk_missed %}Missed{% else %}Done{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ item.incomplete_task_count }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">No closeout exceptions recorded for {{ yesterday_label }}.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 

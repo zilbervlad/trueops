@@ -3,7 +3,14 @@ from datetime import date, timedelta, datetime
 from flask import Blueprint, render_template, session, jsonify, request
 from app.auth.routes import login_required
 from app.extensions import db
-from app.models import Store, DailyChecklist, SVRReport, MaintenanceTicket, WeeklyFocusItem
+from app.models import (
+    Store,
+    DailyChecklist,
+    SVRReport,
+    MaintenanceTicket,
+    WeeklyFocusItem,
+    ChecklistException,
+)
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -142,6 +149,7 @@ def build_dashboard_data():
 
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
+    yesterday = today - timedelta(days=1)
 
     weekly_svr_reports = SVRReport.query.filter(
         SVRReport.visit_date >= week_start
@@ -179,6 +187,29 @@ def build_dashboard_data():
                 "store_number": item.store_number,
             }
             for item in focus_items
+        ]
+
+    yesterday_exceptions = []
+    if user_role in ["admin", "supervisor"] and visible_store_numbers:
+        exception_rows = ChecklistException.query.filter(
+            ChecklistException.store_number.in_(visible_store_numbers),
+            ChecklistException.checklist_date == yesterday
+        ).order_by(ChecklistException.store_number.asc()).all()
+
+        yesterday_exceptions = [
+            {
+                "store_number": row.store_number,
+                "manager_on_duty": row.manager_on_duty or "—",
+                "percent_complete": row.percent_complete,
+                "integrity_score": row.integrity_score,
+                "manager_walk_missed": row.manager_walk_missed,
+                "incomplete_task_count": row.incomplete_task_count,
+                "incomplete_task_names": row.incomplete_task_names or "",
+                "checklist_started": row.checklist_started,
+                "checklist_completed": row.checklist_completed,
+                "checklist_date": row.checklist_date.strftime("%Y-%m-%d"),
+            }
+            for row in exception_rows
         ]
 
     alerts = []
@@ -234,6 +265,8 @@ def build_dashboard_data():
         "open_maintenance_count": open_maintenance_count,
         "complete_maintenance_count": complete_maintenance_count,
         "manager_weekly_focus": manager_weekly_focus,
+        "yesterday_exceptions": yesterday_exceptions,
+        "yesterday_label": yesterday.strftime("%B %d, %Y"),
     }
 
 
@@ -276,6 +309,8 @@ def home():
         open_maintenance_count=data["open_maintenance_count"],
         complete_maintenance_count=data["complete_maintenance_count"],
         manager_weekly_focus=data["manager_weekly_focus"],
+        yesterday_exceptions=data["yesterday_exceptions"],
+        yesterday_label=data["yesterday_label"],
     )
 
 
