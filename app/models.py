@@ -111,6 +111,30 @@ class DailyChecklistItem(db.Model):
     template_item = db.relationship("ChecklistTemplateItem")
 
 
+class ChecklistException(db.Model):
+    __tablename__ = "checklist_exceptions"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    store_number = db.Column(db.String(10), nullable=False)
+    checklist_date = db.Column(db.Date, nullable=False)
+
+    manager_on_duty = db.Column(db.String(120), nullable=True)
+
+    checklist_started = db.Column(db.Boolean, default=False)
+    checklist_completed = db.Column(db.Boolean, default=False)
+    manager_walk_missed = db.Column(db.Boolean, default=False)
+
+    percent_complete = db.Column(db.Float, nullable=False, default=0.0)
+    integrity_score = db.Column(db.Float, nullable=False, default=0.0)
+
+    incomplete_task_count = db.Column(db.Integer, nullable=False, default=0)
+    incomplete_task_names = db.Column(db.Text, nullable=True)
+
+    auto_closed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    closeout_type = db.Column(db.String(50), nullable=False, default="auto_5am")
+
+
 class SVRTemplateField(db.Model):
     __tablename__ = "svr_template_fields"
 
