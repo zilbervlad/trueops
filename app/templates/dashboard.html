@@ -240,24 +240,49 @@
         </div>
 
         <div id="manager-weekly-focus-list">
-            {% if manager_weekly_focus %}
-                <div class="admin-task-list">
-                    {% for item in manager_weekly_focus %}
-                    <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
-                        <label class="checklist-checkbox-row">
-                            <input
-                                type="checkbox"
-                                class="manager-weekly-focus-box"
-                                data-item-id="{{ item.id }}"
-                            >
-                            <span>{{ item.item_text }}</span>
-                        </label>
-                        <div class="task-meta" style="margin-top: 10px;">
-                            {{ item.item_type|title }}
+            {% set cleaning_items = manager_weekly_focus | selectattr('item_type', 'equalto', 'cleaning') | list %}
+            {% set goal_items = manager_weekly_focus | selectattr('item_type', 'equalto', 'goal') | list %}
+
+            {% if cleaning_items or goal_items %}
+                {% if cleaning_items %}
+                <div class="weekly-focus-section">
+                    <div class="summary-pill" style="margin-bottom: 12px;">Cleaning</div>
+                    <div class="admin-task-list">
+                        {% for item in cleaning_items %}
+                        <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
+                            <label class="checklist-checkbox-row">
+                                <input
+                                    type="checkbox"
+                                    class="manager-weekly-focus-box"
+                                    data-item-id="{{ item.id }}"
+                                >
+                                <span>{{ item.item_text }}</span>
+                            </label>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
+                {% endif %}
+
+                {% if goal_items %}
+                <div class="weekly-focus-section" style="margin-top: 16px;">
+                    <div class="summary-pill" style="margin-bottom: 12px;">Goals</div>
+                    <div class="admin-task-list">
+                        {% for item in goal_items %}
+                        <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
+                            <label class="checklist-checkbox-row">
+                                <input
+                                    type="checkbox"
+                                    class="manager-weekly-focus-box"
+                                    data-item-id="{{ item.id }}"
+                                >
+                                <span>{{ item.item_text }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             {% else %}
                 <div class="summary-pill">All weekly focus items complete.</div>
             {% endif %}
@@ -475,28 +500,61 @@ document.addEventListener("DOMContentLoaded", function () {
         const wrapper = document.getElementById("manager-weekly-focus-list");
         if (!wrapper) return;
 
-        if (!items || items.length === 0) {
+        const cleaningItems = (items || []).filter(item => item.item_type === "cleaning");
+        const goalItems = (items || []).filter(item => item.item_type === "goal");
+
+        if (cleaningItems.length === 0 && goalItems.length === 0) {
             wrapper.innerHTML = `<div class="summary-pill">All weekly focus items complete.</div>`;
             return;
         }
 
-        const cards = items.map(item => `
-            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
-                <label class="checklist-checkbox-row">
-                    <input
-                        type="checkbox"
-                        class="manager-weekly-focus-box"
-                        data-item-id="${item.id}"
-                    >
-                    <span>${item.item_text}</span>
-                </label>
-                <div class="task-meta" style="margin-top: 10px;">
-                    ${item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1)}
-                </div>
-            </div>
-        `).join("");
+        let html = "";
 
-        wrapper.innerHTML = `<div class="admin-task-list">${cards}</div>`;
+        if (cleaningItems.length > 0) {
+            html += `
+                <div class="weekly-focus-section">
+                    <div class="summary-pill" style="margin-bottom: 12px;">Cleaning</div>
+                    <div class="admin-task-list">
+                        ${cleaningItems.map(item => `
+                            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
+                                <label class="checklist-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        class="manager-weekly-focus-box"
+                                        data-item-id="${item.id}"
+                                    >
+                                    <span>${item.item_text}</span>
+                                </label>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (goalItems.length > 0) {
+            html += `
+                <div class="weekly-focus-section" style="margin-top: 16px;">
+                    <div class="summary-pill" style="margin-bottom: 12px;">Goals</div>
+                    <div class="admin-task-list">
+                        ${goalItems.map(item => `
+                            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
+                                <label class="checklist-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        class="manager-weekly-focus-box"
+                                        data-item-id="${item.id}"
+                                    >
+                                    <span>${item.item_text}</span>
+                                </label>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        wrapper.innerHTML = html;
         bindWeeklyFocusCheckboxes();
     }
 
