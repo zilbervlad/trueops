@@ -41,6 +41,20 @@ def get_visible_stores():
     return []
 
 
+def calculate_section_percent(daily, section_name):
+    if not daily:
+        return 0.0
+
+    section_items = [item for item in daily.items if item.section_name == section_name]
+    total = len(section_items)
+
+    if total == 0:
+        return 0.0
+
+    completed = sum(1 for item in section_items if item.is_completed)
+    return round((completed / total) * 100, 1)
+
+
 def build_dashboard_data():
     stores = get_visible_stores()
     visible_store_numbers = {store.store_number for store in stores}
@@ -68,17 +82,7 @@ def build_dashboard_data():
         integrity_score = daily.integrity_score if daily else 0.0
         status = daily.status if daily else "not_started"
 
-        opening_total = 0
-        opening_completed = 0
-
-        if daily:
-            for item in daily.items:
-                if item.section_name == "Before Open / Before 10:30":
-                    opening_total += 1
-                    if item.is_completed:
-                        opening_completed += 1
-
-        opening_percent = round((opening_completed / opening_total) * 100, 1) if opening_total else 0.0
+        opening_percent = calculate_section_percent(daily, "Before Open / Before 10:30")
 
         if status == "completed":
             completed_today += 1
@@ -196,21 +200,32 @@ def build_dashboard_data():
             ChecklistException.checklist_date == yesterday
         ).order_by(ChecklistException.store_number.asc()).all()
 
-        yesterday_exceptions = [
-            {
+        yesterday_daily_map = {
+            daily.store_number: daily
+            for daily in DailyChecklist.query.filter(
+                DailyChecklist.store_number.in_(visible_store_numbers),
+                DailyChecklist.checklist_date == yesterday
+            ).all()
+        }
+
+        yesterday_exceptions = []
+        for row in exception_rows:
+            yesterday_daily = yesterday_daily_map.get(row.store_number)
+            manager_walk_percent = calculate_section_percent(yesterday_daily, "Manager's Walk")
+
+            yesterday_exceptions.append({
                 "store_number": row.store_number,
                 "manager_on_duty": row.manager_on_duty or "—",
                 "percent_complete": row.percent_complete,
                 "integrity_score": row.integrity_score,
+                "manager_walk_percent": manager_walk_percent,
                 "manager_walk_missed": row.manager_walk_missed,
                 "incomplete_task_count": row.incomplete_task_count,
                 "incomplete_task_names": row.incomplete_task_names or "",
                 "checklist_started": row.checklist_started,
                 "checklist_completed": row.checklist_completed,
                 "checklist_date": row.checklist_date.strftime("%Y-%m-%d"),
-            }
-            for row in exception_rows
-        ]
+            })
 
     alerts = []
 

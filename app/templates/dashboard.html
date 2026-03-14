@@ -142,7 +142,7 @@
                         <th>Incomplete Tasks</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="yesterday-exceptions-tbody">
                     {% for item in yesterday_exceptions %}
                     <tr onclick="window.location='{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date) }}'" style="cursor: pointer;">
                         <td>{{ item.store_number }}</td>
@@ -158,8 +158,8 @@
                             </span>
                         </td>
                         <td>
-                            <span class="table-badge {% if item.manager_walk_missed %}badge-danger{% else %}badge-success{% endif %}">
-                                {% if item.manager_walk_missed %}Missed{% else %}Done{% endif %}
+                            <span class="table-badge {% if item.manager_walk_percent >= 100 %}badge-success{% elif item.manager_walk_percent > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ item.manager_walk_percent }}%
                             </span>
                         </td>
                         <td>{{ item.incomplete_task_count }}</td>
@@ -521,6 +521,13 @@ document.addEventListener("DOMContentLoaded", function () {
         return "table-badge badge-neutral";
     }
 
+    function managerWalkBadgeClass(value) {
+        const num = Number(value);
+        if (num >= 100) return "table-badge badge-success";
+        if (num > 0) return "table-badge badge-warning";
+        return "table-badge badge-danger";
+    }
+
     function integrityTextClass(value) {
         const num = Number(value);
         if (num > 0 && num < 80) return "danger-text";
@@ -722,6 +729,40 @@ document.addEventListener("DOMContentLoaded", function () {
                     (item) => `${item.store_number} - ${item.opening_percent}%`
                 );
                 renderChipList("opening-complete-list", data.morning_exceptions.opening_complete, "success-pill");
+
+                const yesterdayTbody = document.getElementById("yesterday-exceptions-tbody");
+                if (yesterdayTbody) {
+                    if (data.yesterday_exceptions && data.yesterday_exceptions.length > 0) {
+                        yesterdayTbody.innerHTML = data.yesterday_exceptions.map(item => `
+                            <tr onclick="window.location='/checklist/?store=${encodeURIComponent(item.store_number)}&date=${encodeURIComponent(item.checklist_date)}'" style="cursor: pointer;">
+                                <td>${item.store_number}</td>
+                                <td>${item.manager_on_duty}</td>
+                                <td>
+                                    <span class="${checklistBadgeClass(item.percent_complete)}">
+                                        ${item.percent_complete}%
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="${integrityBadgeClass(item.integrity_score)}">
+                                        ${item.integrity_score}%
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="${managerWalkBadgeClass(item.manager_walk_percent)}">
+                                        ${item.manager_walk_percent}%
+                                    </span>
+                                </td>
+                                <td>${item.incomplete_task_count}</td>
+                            </tr>
+                        `).join("");
+                    } else {
+                        yesterdayTbody.innerHTML = `
+                            <tr>
+                                <td colspan="6">No closeout exceptions recorded for ${data.yesterday_label}.</td>
+                            </tr>
+                        `;
+                    }
+                }
 
                 const heatmapWrapper = document.getElementById("heatmap-wrapper");
                 if (heatmapWrapper) {
