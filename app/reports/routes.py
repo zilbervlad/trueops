@@ -1,4 +1,4 @@
-frfrom collections import defaultdict
+from collections import defaultdict
 from datetime import date, timedelta, datetime
 
 from flask import Blueprint, render_template, request, session
