@@ -1,10 +1,16 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from collections import defaultdict
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app.auth.routes import login_required, role_required
 from app.extensions import db
-from app.models import ChecklistTemplateItem, DailyChecklist, DailyChecklistItem, Store
+from app.models import (
+    ChecklistTemplateItem,
+    DailyChecklist,
+    DailyChecklistItem,
+    Store,
+    ChecklistException,
+)
 
 checklist_bp = Blueprint("checklist", __name__, url_prefix="/checklist")
 
@@ -124,6 +130,86 @@ def get_visible_stores():
         ).order_by(Store.store_number.asc()).all()
 
     return []
+
+
+def run_checklist_closeout(closeout_date: date):
+    active_stores = Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+    created_count = 0
+    skipped_count = 0
+
+    for store in active_stores:
+        existing_exception = ChecklistException.query.filter_by(
+            store_number=store.store_number,
+            checklist_date=closeout_date,
+            closeout_type="auto_5am"
+        ).first()
+
+        if existing_exception:
+            skipped_count += 1
+            continue
+
+        daily = DailyChecklist.query.filter_by(
+            store_number=store.store_number,
+            checklist_date=closeout_date
+        ).first()
+
+        if not daily:
+            db.session.add(
+                ChecklistException(
+                    store_number=store.store_number,
+                    checklist_date=closeout_date,
+                    manager_on_duty=None,
+                    checklist_started=False,
+                    checklist_completed=False,
+                    manager_walk_missed=False,
+                    percent_complete=0.0,
+                    integrity_score=0.0,
+                    incomplete_task_count=0,
+                    incomplete_task_names="Checklist not started",
+                    auto_closed_at=datetime.utcnow(),
+                    closeout_type="auto_5am",
+                )
+            )
+            created_count += 1
+            continue
+
+        incomplete_items = [item for item in daily.items if not item.is_completed]
+        manager_walk_items = [item for item in daily.items if item.section_name == "Manager's Walk"]
+        manager_walk_missed = any(not item.is_completed for item in manager_walk_items) if manager_walk_items else False
+
+        checklist_completed = len(incomplete_items) == 0 or daily.status == "completed"
+
+        if checklist_completed and not manager_walk_missed:
+            skipped_count += 1
+            continue
+
+        incomplete_names = ", ".join(item.task_text for item in incomplete_items)
+
+        db.session.add(
+            ChecklistException(
+                store_number=store.store_number,
+                checklist_date=closeout_date,
+                manager_on_duty=daily.manager_on_duty,
+                checklist_started=True,
+                checklist_completed=checklist_completed,
+                manager_walk_missed=manager_walk_missed,
+                percent_complete=daily.percent_complete or 0.0,
+                integrity_score=daily.integrity_score or 0.0,
+                incomplete_task_count=len(incomplete_items),
+                incomplete_task_names=incomplete_names,
+                auto_closed_at=datetime.utcnow(),
+                closeout_type="auto_5am",
+            )
+        )
+        created_count += 1
+
+    db.session.commit()
+
+    return {
+        "closeout_date": closeout_date,
+        "created_count": created_count,
+        "skipped_count": skipped_count,
+    }
 
 
 @checklist_bp.route("/overview")
@@ -393,6 +479,22 @@ def admin():
         items=items,
         section_options=section_options,
     )
+
+
+@checklist_bp.route("/run-closeout", methods=["POST"])
+@login_required
+@role_required("admin")
+def run_closeout():
+    yesterday = date.today() - timedelta(days=1)
+    result = run_checklist_closeout(yesterday)
+
+    flash(
+        f"Checklist closeout ran for {result['closeout_date'].strftime('%B %d, %Y')}. "
+        f"Exceptions created: {result['created_count']}. "
+        f"Stores skipped: {result['skipped_count']}.",
+        "success"
+    )
+    return redirect(url_for("dashboard.home"))
 
 
 @checklist_bp.route("/autosave-item", methods=["POST"])
