@@ -230,6 +230,14 @@
             <a class="action-btn" href="{{ action.url }}">{{ action.label }}</a>
             {% endfor %}
         </div>
+
+        {% if user_role == "admin" %}
+        <form method="POST" action="{{ url_for('checklist.run_closeout') }}" style="margin-top: 14px;">
+            <button type="submit" class="btn-primary" style="width: 100%;">
+                Run Yesterday Closeout
+            </button>
+        </form>
+        {% endif %}
     </section>
 
     {% if is_manager %}
