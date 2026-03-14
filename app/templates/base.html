@@ -25,7 +25,9 @@
             <nav class="nav">
                 <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
 
-                {% if session.get('user_role') in ['admin', 'supervisor', 'manager'] %}
+                {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                <a href="{{ url_for('checklist.overview') }}">Checklist</a>
+                {% elif session.get('user_role') == 'manager' %}
                 <a href="{{ url_for('checklist.index') }}">Checklist</a>
                 {% endif %}
 

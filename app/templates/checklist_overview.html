@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Checklist Overview | BPI Ops{% endblock %}
+{% block header %}Checklist Overview{% endblock %}
+
+{% block content %}
+<div class="command-bar panel" style="margin-bottom: 24px;">
+    <div class="command-bar-left">
+        <div class="command-eyebrow">SUPERVISOR VIEW</div>
+        <h2 class="command-title">Checklist Control Board</h2>
+        <p class="command-subtitle">
+            In-progress checklists, completed stores, and recent archives for {{ today_label }}.
+        </p>
+    </div>
+    <div class="command-bar-right">
+        <div class="command-chip">Oversight View</div>
+        <div class="command-chip">{{ today_label }}</div>
+    </div>
+</div>
+
+<div class="dashboard-grid dashboard-grid-premium" style="margin-bottom: 24px;">
+    <div class="metric-card premium-card premium-card-alert">
+        <span class="metric-label">Not Started</span>
+        <h3>{{ not_started|length }}</h3>
+        <p class="metric-footnote">Stores with no checklist started today</p>
+    </div>
+
+    <div class="metric-card premium-card premium-card-blue">
+        <span class="metric-label">In Progress</span>
+        <h3>{{ in_progress|length }}</h3>
+        <p class="metric-footnote">Stores currently working today’s checklist</p>
+    </div>
+
+    <div class="metric-card premium-card">
+        <span class="metric-label">Completed</span>
+        <h3>{{ completed|length }}</h3>
+        <p class="metric-footnote">Stores that finished today’s checklist</p>
+    </div>
+
+    <div class="metric-card premium-card">
+        <span class="metric-label">Archives</span>
+        <h3>{{ recent_archives|length }}</h3>
+        <p class="metric-footnote">Recent completed or saved prior-day checklists</p>
+    </div>
+</div>
+
+<div class="content-grid" style="margin-bottom: 24px;">
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>In Progress</h3>
+            <span class="summary-pill">{{ in_progress|length }} stores</span>
+        </div>
+
+        <div class="admin-task-list">
+            {% for item in in_progress %}
+            <a class="admin-task-card" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                <div class="admin-task-top">
+                    <span class="summary-pill">Store {{ item.store_number }}</span>
+                    <span class="table-badge badge-warning">{{ item.percent_complete }}%</span>
+                    <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                        Integrity {{ item.integrity_score }}%
+                    </span>
+                </div>
+                <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">No stores currently in progress.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Not Started</h3>
+            <span class="summary-pill">{{ not_started|length }} stores</span>
+        </div>
+
+        <div class="admin-task-list">
+            {% for item in not_started %}
+            <a class="admin-task-card" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                <div class="admin-task-top">
+                    <span class="summary-pill">Store {{ item.store_number }}</span>
+                    <span class="table-badge badge-neutral">0%</span>
+                </div>
+                <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">Every visible store has started today’s checklist.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<div class="content-grid" style="margin-bottom: 24px;">
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Completed Today</h3>
+            <span class="summary-pill">{{ completed|length }} stores</span>
+        </div>
+
+        <div class="admin-task-list">
+            {% for item in completed %}
+            <a class="admin-task-card" href="{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}">
+                <div class="admin-task-top">
+                    <span class="summary-pill">Store {{ item.store_number }}</span>
+                    <span class="table-badge badge-success">{{ item.percent_complete }}%</span>
+                    <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                        Integrity {{ item.integrity_score }}%
+                    </span>
+                </div>
+                <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">No stores have completed today’s checklist yet.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Recent Archives</h3>
+            <span class="summary-pill">{{ recent_archives|length }} items</span>
+        </div>
+
+        <div class="admin-task-list">
+            {% for item in recent_archives %}
+            <a class="admin-task-card" href="{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}">
+                <div class="admin-task-top">
+                    <span class="summary-pill">Store {{ item.store_number }}</span>
+                    <span class="summary-pill">{{ item.checklist_date.strftime('%b %d, %Y') }}</span>
+                    <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                        {{ item.percent_complete }}%
+                    </span>
+                </div>
+                <div class="area-subtitle">
+                    {{ item.store_name }} | {{ item.area_name }} | {{ item.status.replace('_', ' ')|title }}
+                </div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">No archive history available yet.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

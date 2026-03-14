@@ -126,6 +126,84 @@ def get_visible_stores():
     return []
 
 
+@checklist_bp.route("/overview")
+@login_required
+@role_required("admin", "supervisor", "manager")
+def overview():
+    if session.get("user_role") == "manager":
+        return redirect(url_for("checklist.index"))
+
+    visible_stores = get_visible_stores()
+    today = date.today()
+
+    not_started = []
+    in_progress = []
+    completed = []
+    recent_archives = []
+
+    for store in visible_stores:
+        today_checklist = DailyChecklist.query.filter_by(
+            store_number=store.store_number,
+            checklist_date=today
+        ).first()
+
+        if not today_checklist:
+            not_started.append({
+                "store_number": store.store_number,
+                "store_name": store.store_name or f"Store {store.store_number}",
+                "area_name": store.area_name,
+            })
+        elif today_checklist.status == "completed":
+            completed.append({
+                "store_number": store.store_number,
+                "store_name": store.store_name or f"Store {store.store_number}",
+                "area_name": store.area_name,
+                "percent_complete": today_checklist.percent_complete,
+                "integrity_score": today_checklist.integrity_score,
+                "checklist_date": today_checklist.checklist_date,
+            })
+        else:
+            in_progress.append({
+                "store_number": store.store_number,
+                "store_name": store.store_name or f"Store {store.store_number}",
+                "area_name": store.area_name,
+                "percent_complete": today_checklist.percent_complete,
+                "integrity_score": today_checklist.integrity_score,
+                "checklist_date": today_checklist.checklist_date,
+            })
+
+        archive_rows = DailyChecklist.query.filter(
+            DailyChecklist.store_number == store.store_number,
+            DailyChecklist.checklist_date < today
+        ).order_by(DailyChecklist.checklist_date.desc()).limit(5).all()
+
+        for row in archive_rows:
+            recent_archives.append({
+                "store_number": store.store_number,
+                "store_name": store.store_name or f"Store {store.store_number}",
+                "area_name": store.area_name,
+                "percent_complete": row.percent_complete,
+                "integrity_score": row.integrity_score,
+                "checklist_date": row.checklist_date,
+                "status": row.status,
+            })
+
+    recent_archives = sorted(
+        recent_archives,
+        key=lambda x: (x["checklist_date"], x["store_number"]),
+        reverse=True
+    )[:25]
+
+    return render_template(
+        "checklist_overview.html",
+        not_started=not_started,
+        in_progress=in_progress,
+        completed=completed,
+        recent_archives=recent_archives,
+        today_label=today.strftime("%B %d, %Y"),
+    )
+
+
 @checklist_bp.route("/", methods=["GET", "POST"])
 @login_required
 @role_required("admin", "supervisor", "manager")
