@@ -132,6 +132,26 @@ def get_visible_stores():
     return []
 
 
+def get_checklist_for_closeout(store_number: str, closeout_date: date):
+    exact = DailyChecklist.query.filter_by(
+        store_number=store_number,
+        checklist_date=closeout_date
+    ).first()
+
+    if exact:
+        return exact, closeout_date
+
+    fallback = DailyChecklist.query.filter(
+        DailyChecklist.store_number == store_number,
+        DailyChecklist.checklist_date < date.today()
+    ).order_by(DailyChecklist.checklist_date.desc()).first()
+
+    if fallback:
+        return fallback, fallback.checklist_date
+
+    return None, closeout_date
+
+
 def run_checklist_closeout(closeout_date: date):
     active_stores = Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
     created_count = 0
@@ -148,10 +168,7 @@ def run_checklist_closeout(closeout_date: date):
             skipped_count += 1
             continue
 
-        daily = DailyChecklist.query.filter_by(
-            store_number=store.store_number,
-            checklist_date=closeout_date
-        ).first()
+        daily, effective_date = get_checklist_for_closeout(store.store_number, closeout_date)
 
         if not daily:
             db.session.add(
