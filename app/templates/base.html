@@ -31,6 +31,10 @@
                 <a href="{{ url_for('checklist.index') }}">Checklist</a>
                 {% endif %}
 
+                {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                <a href="{{ url_for('reports.index') }}">Reports</a>
+                {% endif %}
+
                 {% if session.get('user_role') == 'admin' %}
                 <a href="{{ url_for('checklist.admin') }}">Checklist Admin</a>
                 <a href="{{ url_for('store_admin.index') }}">Store Admin</a>
