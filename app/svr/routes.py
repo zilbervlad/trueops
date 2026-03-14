@@ -2,7 +2,14 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.auth.routes import login_required, role_required
 from app.extensions import db
-from app.models import Store, SVRTemplateField, SVRReport, SVRReportValue, MaintenanceTicket
+from app.models import (
+    Store,
+    SVRTemplateField,
+    SVRReport,
+    SVRReportValue,
+    MaintenanceTicket,
+    WeeklyFocusItem,
+)
 
 svr_bp = Blueprint("svr", __name__, url_prefix="/svr")
 
@@ -23,7 +30,7 @@ def get_supervisor_visible_stores():
     return []
 
 
-def split_maintenance_lines(text: str):
+def split_lines(text: str):
     return [line.strip() for line in (text or "").splitlines() if line.strip()]
 
 
@@ -43,7 +50,7 @@ def sync_maintenance_from_svr(report: SVRReport):
     for ticket in existing_tickets:
         db.session.delete(ticket)
 
-    maintenance_lines = split_maintenance_lines(maintenance_value)
+    maintenance_lines = split_lines(maintenance_value)
 
     for line in maintenance_lines:
         db.session.add(
@@ -54,6 +61,51 @@ def sync_maintenance_from_svr(report: SVRReport):
                 source_type="svr",
                 svr_report_id=report.id,
                 status="open",
+            )
+        )
+
+    db.session.commit()
+
+
+def sync_weekly_focus_from_svr(report: SVRReport):
+    cleaning_value = ""
+    goals_value = ""
+
+    for value in report.values:
+        if value.field_key == "cleaning_list_for_week":
+            cleaning_value = (value.value_text or "").strip()
+        elif value.field_key == "goals_for_week":
+            goals_value = (value.value_text or "").strip()
+
+    existing_items = WeeklyFocusItem.query.filter_by(
+        store_number=report.store_number,
+        source_type="svr"
+    ).all()
+
+    for item in existing_items:
+        db.session.delete(item)
+
+    for line in split_lines(cleaning_value):
+        db.session.add(
+            WeeklyFocusItem(
+                store_number=report.store_number,
+                item_type="cleaning",
+                item_text=line,
+                is_completed=False,
+                source_type="svr",
+                svr_report_id=report.id,
+            )
+        )
+
+    for line in split_lines(goals_value):
+        db.session.add(
+            WeeklyFocusItem(
+                store_number=report.store_number,
+                item_type="goal",
+                item_text=line,
+                is_completed=False,
+                source_type="svr",
+                svr_report_id=report.id,
             )
         )
 
@@ -146,6 +198,7 @@ def new_report():
 
         db.session.commit()
         sync_maintenance_from_svr(report)
+        sync_weekly_focus_from_svr(report)
 
         flash("SVR saved successfully.", "success")
         return redirect(url_for("svr.view_report", report_id=report.id))
