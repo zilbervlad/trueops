@@ -317,6 +317,54 @@ def overview():
     )
 
 
+@checklist_bp.route("/delete-archive", methods=["POST"])
+@login_required
+@role_required("admin")
+def delete_archive():
+    store_number = request.form.get("store_number", "").strip()
+    checklist_date_str = request.form.get("checklist_date", "").strip()
+
+    if not store_number or not checklist_date_str:
+        flash("Missing checklist delete data.", "error")
+        return redirect(url_for("checklist.overview"))
+
+    try:
+        checklist_date = datetime.strptime(checklist_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        flash("Invalid checklist date.", "error")
+        return redirect(url_for("checklist.overview"))
+
+    if checklist_date >= date.today():
+        flash("Only archived past checklists can be deleted.", "error")
+        return redirect(url_for("checklist.overview"))
+
+    daily = DailyChecklist.query.filter_by(
+        store_number=store_number,
+        checklist_date=checklist_date
+    ).first()
+
+    if not daily:
+        flash("Checklist archive not found.", "error")
+        return redirect(url_for("checklist.overview"))
+
+    exception_rows = ChecklistException.query.filter_by(
+        store_number=store_number,
+        checklist_date=checklist_date
+    ).all()
+
+    for row in exception_rows:
+        db.session.delete(row)
+
+    db.session.delete(daily)
+    db.session.commit()
+
+    flash(
+        f"Deleted archived checklist for store {store_number} on {checklist_date.strftime('%B %d, %Y')}.",
+        "success"
+    )
+    return redirect(url_for("checklist.overview"))
+
+
 @checklist_bp.route("/", methods=["GET", "POST"])
 @login_required
 @role_required("admin", "supervisor", "manager")

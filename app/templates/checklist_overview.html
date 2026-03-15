@@ -160,6 +160,9 @@ box-sizing: border-box;
 <th>Completion</th>
 <th>Integrity</th>
 <th>Status</th>
+{% if session.get("user_role") == "admin" %}
+<th>Actions</th>
+{% endif %}
 </tr>
 </thead>
 <tbody>
@@ -183,10 +186,31 @@ box-sizing: border-box;
 </td>
 
 <td>{{ item.status.replace('_', ' ')|title }}</td>
+
+{% if session.get("user_role") == "admin" %}
+<td onclick="event.stopPropagation();">
+    <form
+        method="POST"
+        action="{{ url_for('checklist.delete_archive') }}"
+        onsubmit="event.stopPropagation(); return confirm('Delete archived checklist for store {{ item.store_number }} on {{ item.checklist_date.strftime('%b %d, %Y') }}?');"
+        style="margin:0;"
+    >
+        <input type="hidden" name="store_number" value="{{ item.store_number }}">
+        <input type="hidden" name="checklist_date" value="{{ item.checklist_date.strftime('%Y-%m-%d') }}">
+        <button
+            type="submit"
+            class="table-badge"
+            style="border:none; background:#ef4444; color:#fff; padding:8px 10px; border-radius:8px; cursor:pointer;"
+        >
+            Delete
+        </button>
+    </form>
+</td>
+{% endif %}
 </tr>
 {% else %}
 <tr>
-<td colspan="7">No archive history available yet.</td>
+<td colspan="{% if session.get('user_role') == 'admin' %}8{% else %}7{% endif %}">No archive history available yet.</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -244,4 +268,3 @@ other.removeAttribute("open");
 </script>
 
 {% endblock %}
-
