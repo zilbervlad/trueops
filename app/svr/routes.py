@@ -14,6 +14,31 @@ from app.models import (
 svr_bp = Blueprint("svr", __name__, url_prefix="/svr")
 
 
+DEFAULT_SVR_TEMPLATE = [
+    ("date", "Date", "text"),
+    ("store_number", "Store #", "text"),
+    ("manager_on_duty", "Manager on duty", "text"),
+    ("restroom_notes", "Restroom notes", "textarea"),
+    ("checklist_book_notes", "Checklist book notes", "textarea"),
+    ("one_way_proof", "1-way proof- dough projection/dough marked inside the walk-in", "textarea"),
+    ("pizza_quality_notes", "Pizza Quality notes", "textarea"),
+    ("load_and_go", "Load & Go- certified load captain on the schedule for every rush", "yesno"),
+    ("last_week_svr_review", "Last week's SVR review", "textarea"),
+    ("outside_store_condition_notes", "Outside store condition notes", "textarea"),
+    ("carry_out_notes", "Carry out notes", "textarea"),
+    ("store_condition_notes", "Store condition notes", "textarea"),
+    ("refrigeration_units_notes", "Refrigeration units notes", "textarea"),
+    ("bakewares_notes", "Bake wares notes", "textarea"),
+    ("oven_heatrack_notes", "Oven/heatrack notes", "textarea"),
+    ("callout_calendar_notes", "Call out calendar notes- who needs a meeting?", "textarea"),
+    ("deposit_log_notes", "Deposit Log- which days are missing?", "textarea"),
+    ("pest_control_notes", "Pest Control", "textarea"),
+    ("cleaning_list_for_week", "Cleaning list for the week", "textarea"),
+    ("goals_for_week", "Goals for the week", "textarea"),
+    ("maintenance_needs", "Maintenance needs", "textarea"),
+]
+
+
 def get_supervisor_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
@@ -112,6 +137,40 @@ def sync_weekly_focus_from_svr(report: SVRReport):
     db.session.commit()
 
 
+def ensure_default_svr_template():
+    existing_fields = {f.field_key: f for f in SVRTemplateField.query.all()}
+    active_keys = {key for key, _, _ in DEFAULT_SVR_TEMPLATE}
+
+    ordered_fields = []
+
+    for sort_order, (field_key, field_label, field_type) in enumerate(DEFAULT_SVR_TEMPLATE, start=1):
+        if field_key in existing_fields:
+            field = existing_fields[field_key]
+            field.field_label = field_label
+            field.field_type = field_type
+            field.sort_order = sort_order
+            field.is_active = True
+        else:
+            field = SVRTemplateField(
+                field_key=field_key,
+                field_label=field_label,
+                field_type=field_type,
+                sort_order=sort_order,
+                is_active=True,
+            )
+            db.session.add(field)
+
+        ordered_fields.append(field)
+
+    # Keep any old custom fields inactive so they don't clutter the live form
+    for field in existing_fields.values():
+        if field.field_key not in active_keys:
+            field.is_active = False
+
+    db.session.commit()
+    return ordered_fields
+
+
 @svr_bp.route("/")
 @login_required
 @role_required("admin", "supervisor")
@@ -133,10 +192,7 @@ def index():
 @role_required("supervisor")
 def new_report():
     stores = get_supervisor_visible_stores()
-    fields = SVRTemplateField.query.filter_by(is_active=True).order_by(
-        SVRTemplateField.sort_order.asc(),
-        SVRTemplateField.id.asc()
-    ).all()
+    fields = ensure_default_svr_template()
 
     if not stores:
         flash("No stores assigned to this supervisor.", "error")
@@ -319,6 +375,8 @@ def admin():
     ).all()
 
     return render_template("svr_admin.html", fields=fields)
+
+
 @svr_bp.route("/delete/<int:report_id>", methods=["POST"])
 @login_required
 @role_required("admin", "supervisor")
@@ -331,14 +389,10 @@ def delete_report(report_id):
         flash("You do not have access to delete that SVR.", "error")
         return redirect(url_for("svr.index"))
 
-    # delete SVR values
     SVRReportValue.query.filter_by(report_id=report.id).delete()
-
-    # delete weekly focus items created by this SVR
     WeeklyFocusItem.query.filter_by(svr_report_id=report.id).delete()
 
-    # DO NOT delete maintenance tickets (per your request)
-
+    # Keep maintenance tickets intact
     db.session.delete(report)
     db.session.commit()
 
