@@ -45,7 +45,7 @@
 </div>
 
 
-<div class="content-grid" style="margin-bottom: 24px;">
+<div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
 
 <!-- In Progress -->
 <details class="panel premium-panel" open>
@@ -98,7 +98,7 @@ Integrity {{ item.integrity_score }}%
 </div>
 
 
-<div class="content-grid" style="margin-bottom: 24px;">
+<div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
 
 <!-- Completed Today -->
 <details class="panel premium-panel">
@@ -220,8 +220,6 @@ row.style.display = text.includes(search) ? "" : "none";
 
 }
 
-/* accordion behavior */
-
 document.querySelectorAll("details.premium-panel").forEach(section => {
 
 section.addEventListener("toggle", function () {
@@ -246,3 +244,4 @@ other.removeAttribute("open");
 </script>
 
 {% endblock %}
+
