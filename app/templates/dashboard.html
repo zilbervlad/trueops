@@ -60,7 +60,7 @@
                 Live Dashboard
             {% endif %}
         </div>
-        <div class="command-chip" id="last-refresh-chip">Refreshing...</div>
+        <div class="command-chip" id="last-refresh-chip">Live View</div>
         <div class="command-chip">{{ user_role|title }}</div>
     </div>
 </div>
@@ -70,13 +70,15 @@
     <section class="panel premium-panel exception-panel">
         <div class="panel-head">
             <h3>Opening Not Started</h3>
-            <span class="summary-pill neutral-pill" id="opening-not-started-count">
+            <span class="summary-pill neutral-pill">
                 {{ morning_exceptions.opening_not_started|length }} stores
             </span>
         </div>
-        <div class="exception-list" id="opening-not-started-list">
+        <div class="exception-list">
             {% for store in morning_exceptions.opening_not_started %}
             <span class="exception-chip neutral-pill">{{ store }}</span>
+            {% else %}
+            <span class="exception-chip neutral-pill">None</span>
             {% endfor %}
         </div>
     </section>
@@ -84,15 +86,17 @@
     <section class="panel premium-panel exception-panel">
         <div class="panel-head">
             <h3>Opening Under 80%</h3>
-            <span class="summary-pill warning-pill" id="opening-under-80-count">
+            <span class="summary-pill warning-pill">
                 {{ morning_exceptions.opening_under_80|length }} stores
             </span>
         </div>
-        <div class="exception-list detailed" id="opening-under-80-list">
+        <div class="exception-list detailed">
             {% for store in morning_exceptions.opening_under_80 %}
             <span class="exception-chip warning-pill">
                 {{ store.store_number }} - {{ store.opening_percent }}%
             </span>
+            {% else %}
+            <span class="exception-chip warning-pill">None</span>
             {% endfor %}
         </div>
     </section>
@@ -100,13 +104,15 @@
     <section class="panel premium-panel exception-panel">
         <div class="panel-head">
             <h3>Opening Complete</h3>
-            <span class="summary-pill success-pill" id="opening-complete-count">
+            <span class="summary-pill success-pill">
                 {{ morning_exceptions.opening_complete|length }} stores
             </span>
         </div>
-        <div class="exception-list" id="opening-complete-list">
+        <div class="exception-list">
             {% for store in morning_exceptions.opening_complete %}
             <span class="exception-chip success-pill">{{ store }}</span>
+            {% else %}
+            <span class="exception-chip success-pill">None</span>
             {% endfor %}
         </div>
     </section>
@@ -142,7 +148,7 @@
                         <th>Incomplete Tasks</th>
                     </tr>
                 </thead>
-                <tbody id="yesterday-exceptions-tbody">
+                <tbody>
                     {% for item in yesterday_exceptions %}
                     <tr onclick="window.location='{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date) }}'" style="cursor: pointer;">
                         <td>{{ item.store_number }}</td>
@@ -180,13 +186,13 @@
 <div class="dashboard-grid dashboard-grid-premium maintenance-metric-grid">
     <div class="metric-card premium-card premium-card-blue">
         <span class="metric-label">Open Maintenance</span>
-        <h3 id="stat-open-maintenance">{{ stats.open_maintenance }}</h3>
+        <h3>{{ stats.open_maintenance }}</h3>
         <p class="metric-footnote">Open tasks across visible stores</p>
     </div>
 
     <div class="metric-card premium-card premium-card-alert">
         <span class="metric-label">Stores Flagged</span>
-        <h3 id="stat-stores-flagged">{{ stats.stores_flagged }}</h3>
+        <h3>{{ stats.stores_flagged }}</h3>
         <p class="metric-footnote">Stores with low integrity visibility</p>
     </div>
 </div>
@@ -194,33 +200,33 @@
 <div class="dashboard-grid dashboard-grid-premium {% if is_manager %}manager-metric-grid{% endif %}">
     <div class="metric-card premium-card">
         <span class="metric-label">Checklist Completion</span>
-        <h3 id="stat-checklist-completion">{{ stats.checklist_completion }}</h3>
+        <h3>{{ stats.checklist_completion }}</h3>
         <p class="metric-footnote">{% if is_manager %}Today's store completion{% else %}Visible stores completed today{% endif %}</p>
     </div>
 
     <div class="metric-card premium-card premium-card-blue">
         <span class="metric-label">Opening Tracker</span>
-        <h3 id="stat-opening-completion">{{ stats.opening_completion }}</h3>
+        <h3>{{ stats.opening_completion }}</h3>
         <p class="metric-footnote">Before Open / 10:30 progress</p>
     </div>
 
     {% if is_ops_view %}
     <div class="metric-card premium-card">
         <span class="metric-label">SVR Compliance</span>
-        <h3 id="stat-svr-compliance">{{ stats.svr_compliance }}</h3>
+        <h3>{{ stats.svr_compliance }}</h3>
         <p class="metric-footnote">Visible stores with SVR this week</p>
     </div>
     {% endif %}
 
     <div class="metric-card premium-card premium-card-alert">
         <span class="metric-label">{% if is_manager %}Store Flagged{% else %}Stores Flagged{% endif %}</span>
-        <h3 id="stat-stores-flagged">{{ stats.stores_flagged }}</h3>
+        <h3>{{ stats.stores_flagged }}</h3>
         <p class="metric-footnote">Integrity below threshold</p>
     </div>
 
     <div class="metric-card premium-card premium-card-blue">
         <span class="metric-label">Open Maintenance</span>
-        <h3 id="stat-open-maintenance">{{ stats.open_maintenance }}</h3>
+        <h3>{{ stats.open_maintenance }}</h3>
         <p class="metric-footnote">{% if is_manager %}Open tasks for your store{% else %}Open tasks across visible stores{% endif %}</p>
     </div>
 </div>
@@ -464,384 +470,33 @@
 document.addEventListener("DOMContentLoaded", function () {
     const isManager = {{ 'true' if session.get('user_role') == 'manager' else 'false' }};
     const isMaintenance = {{ 'true' if session.get('user_role') == 'maintenance' else 'false' }};
-    const isOpsView = !isManager && !isMaintenance;
-
-    function statusBadgeClass(status) {
-        if (status === "completed") return "status-badge status-completed";
-        if (status === "in_progress") return "status-badge status-progress";
-        return "status-badge status-not-started";
-    }
-
-    function checklistBadgeClass(value) {
-        const num = Number(value);
-        if (num >= 100) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-neutral";
-    }
-
-    function integrityBadgeClass(value) {
-        const num = Number(value);
-        if (num > 0 && num < 80) return "table-badge badge-danger";
-        if (num >= 90) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-neutral";
-    }
-
-    function managerWalkBadgeClass(value) {
-        const num = Number(value);
-        if (num >= 100) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-danger";
-    }
-
-    function integrityTextClass(value) {
-        const num = Number(value);
-        if (num > 0 && num < 80) return "danger-text";
-        if (num >= 90) return "success-text";
-        return "";
-    }
-
-    function formatStatus(status) {
-        return status.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
-    }
-
-    function stampRefreshTime() {
-        const chip = document.getElementById("last-refresh-chip");
-        if (!chip) return;
-        const now = new Date();
-        chip.textContent = `Updated ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
-    }
-
-    function renderChipList(containerId, items, cls, formatter = null) {
-        const el = document.getElementById(containerId);
-        if (!el) return;
-        el.innerHTML = "";
-
-        if (!items || items.length === 0) {
-            const span = document.createElement("span");
-            span.className = `exception-chip ${cls}`;
-            span.textContent = "None";
-            el.appendChild(span);
-            return;
-        }
-
-        items.forEach(item => {
-            const span = document.createElement("span");
-            span.className = `exception-chip ${cls}`;
-            span.textContent = formatter ? formatter(item) : item;
-            el.appendChild(span);
-        });
-    }
-
-    function heatTileClass(store) {
-        if (store.status === "not_started") return "heatmap-tile tile-gray";
-        if (Number(store.integrity_score) > 0 && Number(store.integrity_score) < 80) return "heatmap-tile tile-red";
-        if (Number(store.opening_percent) >= 100 && Number(store.integrity_score) >= 90) return "heatmap-tile tile-green";
-        return "heatmap-tile tile-yellow";
-    }
-
-    function renderManagerWeeklyFocus(items) {
-        const wrapper = document.getElementById("manager-weekly-focus-list");
-        if (!wrapper) return;
-
-        const cleaningItems = (items || []).filter(item => item.item_type === "cleaning");
-        const goalItems = (items || []).filter(item => item.item_type === "goal");
-
-        if (cleaningItems.length === 0 && goalItems.length === 0) {
-            wrapper.innerHTML = `<div class="summary-pill">All weekly focus items complete.</div>`;
-            return;
-        }
-
-        let html = "";
-
-        if (cleaningItems.length > 0) {
-            html += `
-                <div class="weekly-focus-section">
-                    <div class="summary-pill" style="margin-bottom: 12px;">Cleaning</div>
-                    <div class="admin-task-list">
-                        ${cleaningItems.map(item => `
-                            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
-                                <label class="checklist-checkbox-row">
-                                    <input
-                                        type="checkbox"
-                                        class="manager-weekly-focus-box"
-                                        data-item-id="${item.id}"
-                                    >
-                                    <span>${item.item_text}</span>
-                                </label>
-                            </div>
-                        `).join("")}
-                    </div>
-                </div>
-            `;
-        }
-
-        if (goalItems.length > 0) {
-            html += `
-                <div class="weekly-focus-section" style="margin-top: 16px;">
-                    <div class="summary-pill" style="margin-bottom: 12px;">Goals</div>
-                    <div class="admin-task-list">
-                        ${goalItems.map(item => `
-                            <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="${item.id}">
-                                <label class="checklist-checkbox-row">
-                                    <input
-                                        type="checkbox"
-                                        class="manager-weekly-focus-box"
-                                        data-item-id="${item.id}"
-                                    >
-                                    <span>${item.item_text}</span>
-                                </label>
-                            </div>
-                        `).join("")}
-                    </div>
-                </div>
-            `;
-        }
-
-        wrapper.innerHTML = html;
-        bindWeeklyFocusCheckboxes();
-    }
-
-    async function completeWeeklyFocus(itemId) {
-        try {
-            const response = await fetch("/complete-weekly-focus", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    item_id: Number(itemId),
-                }),
-            });
-
-            const data = await response.json();
-            if (!response.ok || !data.success) return;
-
-            refreshDashboard();
-        } catch (error) {
-            console.error("Weekly focus completion failed:", error);
-        }
-    }
 
     function bindWeeklyFocusCheckboxes() {
         document.querySelectorAll(".manager-weekly-focus-box").forEach(box => {
-            box.addEventListener("change", function () {
-                completeWeeklyFocus(this.dataset.itemId);
+            box.addEventListener("change", async function () {
+                try {
+                    const response = await fetch("/complete-weekly-focus", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            item_id: Number(this.dataset.itemId),
+                        }),
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) return;
+
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Weekly focus completion failed:", error);
+                }
             });
         });
     }
 
-    async function refreshDashboard() {
-        try {
-            const response = await fetch("/live-data");
-            if (!response.ok) return;
-
-            const data = await response.json();
-
-            if (document.getElementById("stat-checklist-completion")) {
-                document.getElementById("stat-checklist-completion").textContent = data.stats.checklist_completion;
-            }
-
-            if (document.getElementById("stat-opening-completion")) {
-                document.getElementById("stat-opening-completion").textContent = data.stats.opening_completion;
-            }
-
-            if (document.getElementById("stat-svr-compliance")) {
-                document.getElementById("stat-svr-compliance").textContent = data.stats.svr_compliance;
-            }
-
-            if (document.getElementById("stat-stores-flagged")) {
-                document.getElementById("stat-stores-flagged").textContent = data.stats.stores_flagged;
-            }
-
-            if (document.getElementById("stat-open-maintenance")) {
-                document.getElementById("stat-open-maintenance").textContent = data.stats.open_maintenance;
-            }
-
-            if (isManager) {
-                renderManagerWeeklyFocus(data.manager_weekly_focus || []);
-            }
-
-            if (isOpsView) {
-                const openingNotStartedCount = document.getElementById("opening-not-started-count");
-                const openingUnder80Count = document.getElementById("opening-under-80-count");
-                const openingCompleteCount = document.getElementById("opening-complete-count");
-
-                if (openingNotStartedCount) {
-                    openingNotStartedCount.textContent = `${data.morning_exceptions.opening_not_started.length} stores`;
-                }
-
-                if (openingUnder80Count) {
-                    openingUnder80Count.textContent = `${data.morning_exceptions.opening_under_80.length} stores`;
-                }
-
-                if (openingCompleteCount) {
-                    openingCompleteCount.textContent = `${data.morning_exceptions.opening_complete.length} stores`;
-                }
-
-                renderChipList("opening-not-started-list", data.morning_exceptions.opening_not_started, "neutral-pill");
-                renderChipList(
-                    "opening-under-80-list",
-                    data.morning_exceptions.opening_under_80,
-                    "warning-pill",
-                    (item) => `${item.store_number} - ${item.opening_percent}%`
-                );
-                renderChipList("opening-complete-list", data.morning_exceptions.opening_complete, "success-pill");
-
-                const yesterdayTbody = document.getElementById("yesterday-exceptions-tbody");
-                if (yesterdayTbody) {
-                    if (data.yesterday_exceptions && data.yesterday_exceptions.length > 0) {
-                        yesterdayTbody.innerHTML = data.yesterday_exceptions.map(item => `
-                            <tr onclick="window.location='/checklist/?store=${encodeURIComponent(item.store_number)}&date=${encodeURIComponent(item.checklist_date)}'" style="cursor: pointer;">
-                                <td>${item.store_number}</td>
-                                <td>${item.manager_on_duty}</td>
-                                <td>
-                                    <span class="${checklistBadgeClass(item.percent_complete)}">
-                                        ${item.percent_complete}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${integrityBadgeClass(item.integrity_score)}">
-                                        ${item.integrity_score}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${managerWalkBadgeClass(item.manager_walk_percent)}">
-                                        ${item.manager_walk_percent}%
-                                    </span>
-                                </td>
-                                <td>${item.incomplete_task_count}</td>
-                            </tr>
-                        `).join("");
-                    } else {
-                        yesterdayTbody.innerHTML = `
-                            <tr>
-                                <td colspan="6">No closeout exceptions recorded for ${data.yesterday_label}.</td>
-                            </tr>
-                        `;
-                    }
-                }
-
-                const heatmapWrapper = document.getElementById("heatmap-wrapper");
-                if (heatmapWrapper) {
-                    heatmapWrapper.innerHTML = "";
-                    Object.entries(data.area_groups).forEach(([areaName, stores]) => {
-                        stores.forEach(store => {
-                            const link = document.createElement("a");
-                            link.className = "heatmap-link";
-                            link.href = `/checklist/?store=${encodeURIComponent(store.store_number)}`;
-                            link.setAttribute("aria-label", `Open checklist for store ${store.store_number}`);
-
-                            const tile = document.createElement("div");
-                            tile.className = heatTileClass(store);
-                            tile.innerHTML = `
-                                <div class="heatmap-store">${store.store_number}</div>
-                                <div class="heatmap-area">${areaName}</div>
-                                <div class="heatmap-metrics">
-                                    <span>Open ${store.opening_percent}%</span>
-                                    <span>Int ${store.integrity_score}%</span>
-                                </div>
-                            `;
-
-                            link.appendChild(tile);
-                            heatmapWrapper.appendChild(link);
-                        });
-                    });
-                }
-
-                const areasWrapper = document.getElementById("areas-wrapper");
-                if (areasWrapper) {
-                    areasWrapper.innerHTML = "";
-
-                    Object.entries(data.area_groups).forEach(([areaName, stores]) => {
-                        const summary = data.area_summaries[areaName];
-
-                        const rows = stores.map(store => `
-                            <tr class="clickable-row" onclick="window.location='/checklist/?store=${encodeURIComponent(store.store_number)}'">
-                                <td>
-                                    <div class="store-cell">
-                                        <div class="store-main">${store.store_number}</div>
-                                        <div class="store-sub">${store.store_name || "Store " + store.store_number}</div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="${checklistBadgeClass(store.opening_percent)}">
-                                        ${store.opening_percent}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${checklistBadgeClass(store.checklist_percent)}">
-                                        ${store.checklist_percent}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${integrityBadgeClass(store.integrity_score)}">
-                                        ${store.integrity_score}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${statusBadgeClass(store.status)}">
-                                        ${formatStatus(store.status)}
-                                    </span>
-                                </td>
-                            </tr>
-                        `).join("");
-
-                        const block = document.createElement("div");
-                        block.className = "panel premium-panel area-panel";
-                        block.style.marginBottom = "24px";
-                        block.innerHTML = `
-                            <div class="area-header area-header-premium">
-                                <div>
-                                    <div class="command-eyebrow">AREA PERFORMANCE</div>
-                                    <h3>${areaName}</h3>
-                                    <div class="area-subtitle">
-                                        Avg Opening:
-                                        <span class="inline-metric">${summary.avg_opening}%</span>
-                                        |
-                                        Avg Completion:
-                                        <span class="inline-metric">${summary.avg_completion}%</span>
-                                        |
-                                        Avg Integrity:
-                                        <span class="inline-metric ${integrityTextClass(summary.avg_integrity)}">${summary.avg_integrity}%</span>
-                                    </div>
-                                </div>
-                                <div class="area-header-right">
-                                    <span class="summary-pill">${summary.store_count} stores</span>
-                                </div>
-                            </div>
-
-                            <div class="table-wrap premium-table-wrap">
-                                <table class="data-table premium-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Store</th>
-                                            <th>Opening</th>
-                                            <th>Checklist</th>
-                                            <th>Integrity</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${rows}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
-                        areasWrapper.appendChild(block);
-                    });
-                }
-            }
-
-            stampRefreshTime();
-        } catch (error) {
-            console.error("Dashboard refresh failed:", error);
-        }
-    }
-
     bindWeeklyFocusCheckboxes();
-    refreshDashboard();
-    setInterval(refreshDashboard, 15000);
 
     const yesterdayToggle = document.getElementById("yesterday-exceptions-toggle");
     const yesterdayBody = document.getElementById("yesterday-exceptions-body");
@@ -855,7 +510,13 @@ document.addEventListener("DOMContentLoaded", function () {
             yesterdayChevron.textContent = isHidden ? "Hide ▲" : "Show ▼";
         });
     }
+
+    const refreshChip = document.getElementById("last-refresh-chip");
+    if (refreshChip) {
+        refreshChip.textContent = "Loaded";
+    }
 });
 </script>
 {% endblock %}
+
 
