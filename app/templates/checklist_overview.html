@@ -118,28 +118,91 @@
 
     <section class="panel premium-panel">
         <div class="panel-head">
-            <h3>Recent Archives</h3>
+            <h3>Checklist Archives</h3>
             <span class="summary-pill">{{ recent_archives|length }} items</span>
         </div>
 
-        <div class="admin-task-list">
-            {% for item in recent_archives %}
-            <a class="admin-task-card" href="{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}">
-                <div class="admin-task-top">
-                    <span class="summary-pill">Store {{ item.store_number }}</span>
-                    <span class="summary-pill">{{ item.checklist_date.strftime('%b %d, %Y') }}</span>
-                    <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
-                        {{ item.percent_complete }}%
-                    </span>
-                </div>
-                <div class="area-subtitle">
-                    {{ item.store_name }} | {{ item.area_name }} | {{ item.status.replace('_', ' ')|title }}
-                </div>
-            </a>
-            {% else %}
-            <div class="admin-task-card">No archive history available yet.</div>
-            {% endfor %}
+        <div style="margin-bottom: 16px;">
+            <input
+                id="archiveSearch"
+                type="text"
+                placeholder="Search store, name, area, date, status..."
+                style="
+                    width: 100%;
+                    padding: 10px 12px;
+                    border-radius: 10px;
+                    border: 1px solid #d1d5db;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                "
+            />
+        </div>
+
+        <div class="table-wrap premium-table-wrap">
+            <table class="data-table premium-table" id="archiveTable">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Name</th>
+                        <th>Area</th>
+                        <th>Date</th>
+                        <th>Completion</th>
+                        <th>Integrity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_archives %}
+                    <tr
+                        onclick="window.location='{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}'"
+                        style="cursor: pointer;"
+                    >
+                        <td>{{ item.store_number }}</td>
+                        <td>{{ item.store_name }}</td>
+                        <td>{{ item.area_name }}</td>
+                        <td>{{ item.checklist_date.strftime('%b %d, %Y') }}</td>
+
+                        <td>
+                            <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ item.percent_complete }}%
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ item.integrity_score }}%
+                            </span>
+                        </td>
+
+                        <td>{{ item.status.replace('_', ' ')|title }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7">No archive history available yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </section>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const archiveSearch = document.getElementById("archiveSearch");
+    const archiveTable = document.getElementById("archiveTable");
+
+    if (!archiveSearch || !archiveTable) return;
+
+    archiveSearch.addEventListener("keyup", function () {
+        const search = this.value.toLowerCase();
+        const rows = archiveTable.querySelectorAll("tbody tr");
+
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(search) ? "" : "none";
+        });
+    });
+});
+</script>
 {% endblock %}
