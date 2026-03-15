@@ -182,56 +182,6 @@
 </div>
 {% endif %}
 
-{% if is_maintenance %}
-<div class="dashboard-grid dashboard-grid-premium maintenance-metric-grid">
-    <div class="metric-card premium-card premium-card-blue">
-        <span class="metric-label">Open Maintenance</span>
-        <h3 id="stat-open-maintenance">{{ stats.open_maintenance }}</h3>
-        <p class="metric-footnote">Open tasks across visible stores</p>
-    </div>
-
-    <div class="metric-card premium-card premium-card-alert">
-        <span class="metric-label">Stores Flagged</span>
-        <h3 id="stat-stores-flagged">{{ stats.stores_flagged }}</h3>
-        <p class="metric-footnote">Stores with low integrity visibility</p>
-    </div>
-</div>
-{% else %}
-<div class="dashboard-grid dashboard-grid-premium {% if is_manager %}manager-metric-grid{% endif %}">
-    <div class="metric-card premium-card">
-        <span class="metric-label">Checklist Completion</span>
-        <h3 id="stat-checklist-completion">{{ stats.checklist_completion }}</h3>
-        <p class="metric-footnote">{% if is_manager %}Today's store completion{% else %}Visible stores completed today{% endif %}</p>
-    </div>
-
-    <div class="metric-card premium-card premium-card-blue">
-        <span class="metric-label">Opening Tracker</span>
-        <h3 id="stat-opening-completion">{{ stats.opening_completion }}</h3>
-        <p class="metric-footnote">Before Open / 10:30 progress</p>
-    </div>
-
-    {% if is_ops_view %}
-    <div class="metric-card premium-card">
-        <span class="metric-label">SVR Compliance</span>
-        <h3 id="stat-svr-compliance">{{ stats.svr_compliance }}</h3>
-        <p class="metric-footnote">Visible stores with SVR this week</p>
-    </div>
-    {% endif %}
-
-    <div class="metric-card premium-card premium-card-alert">
-        <span class="metric-label">{% if is_manager %}Store Flagged{% else %}Stores Flagged{% endif %}</span>
-        <h3 id="stat-stores-flagged">{{ stats.stores_flagged }}</h3>
-        <p class="metric-footnote">Integrity below threshold</p>
-    </div>
-
-    <div class="metric-card premium-card premium-card-blue">
-        <span class="metric-label">Open Maintenance</span>
-        <h3 id="stat-open-maintenance">{{ stats.open_maintenance }}</h3>
-        <p class="metric-footnote">{% if is_manager %}Open tasks for your store{% else %}Open tasks across visible stores{% endif %}</p>
-    </div>
-</div>
-{% endif %}
-
 {% if is_ops_view %}
 <div class="panel premium-panel heatmap-panel" style="margin-bottom: 24px;">
     <div class="panel-head">
@@ -697,5 +647,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endblock %}
+
 
 
