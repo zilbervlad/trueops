@@ -29,19 +29,6 @@
         </div>
     </div>
 
-    <div class="checklist-mobile-sticky">
-        <div class="checklist-mobile-sticky-inner">
-            <div class="checklist-mobile-stat">
-                <span>Completion</span>
-                <strong id="mobile-overall-completion">{{ daily.percent_complete }}%</strong>
-            </div>
-            <div class="checklist-mobile-stat">
-                <span>Integrity</span>
-                <strong id="mobile-integrity-score">{{ daily.integrity_score }}%</strong>
-            </div>
-        </div>
-    </div>
-
     <div class="content-grid checklist-layout-grid">
         <div class="checklist-main-column">
             <form method="GET" class="panel checklist-load-panel" style="margin-bottom: 24px;">
@@ -198,8 +185,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const noteInputs = Array.from(document.querySelectorAll(".autosave-note"));
     const overallCompletionEl = document.getElementById("overall-completion");
     const integrityScoreEl = document.getElementById("integrity-score");
-    const mobileOverallCompletionEl = document.getElementById("mobile-overall-completion");
-    const mobileIntegrityScoreEl = document.getElementById("mobile-integrity-score");
     const autosaveStatusEl = document.getElementById("autosave-status");
     const managerInput = document.getElementById("manager_on_duty");
 
@@ -232,14 +217,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (integrityScoreEl && data.integrity_score !== undefined) {
             integrityScoreEl.textContent = `${data.integrity_score}%`;
-        }
-
-        if (mobileOverallCompletionEl && data.overall_completion !== undefined) {
-            mobileOverallCompletionEl.textContent = `${data.overall_completion}%`;
-        }
-
-        if (mobileIntegrityScoreEl && data.integrity_score !== undefined) {
-            mobileIntegrityScoreEl.textContent = `${data.integrity_score}%`;
         }
 
         if (data.sections) {
