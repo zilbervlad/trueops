@@ -187,7 +187,12 @@ def ensure_default_svr_template():
 @login_required
 @role_required("admin", "supervisor")
 def index():
-    visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
+    stores = get_supervisor_visible_stores()
+    visible_store_numbers = {store.store_number for store in stores}
+
+    store_filter = request.args.get("store_number", "").strip()
+    status_filter = request.args.get("status", "").strip().lower()
+    type_filter = request.args.get("item_type", "").strip().lower()
 
     reports = SVRReport.query.order_by(
         SVRReport.visit_date.desc(),
@@ -196,7 +201,48 @@ def index():
 
     reports = [r for r in reports if r.store_number in visible_store_numbers]
 
-    return render_template("svr_list.html", reports=reports)
+    if store_filter:
+        reports = [r for r in reports if r.store_number == store_filter]
+
+    action_items = WeeklyFocusItem.query.filter(
+        WeeklyFocusItem.source_type == "svr",
+        WeeklyFocusItem.store_number.in_(visible_store_numbers)
+    ).order_by(
+        WeeklyFocusItem.is_completed.asc(),
+        WeeklyFocusItem.store_number.asc(),
+        WeeklyFocusItem.item_type.asc(),
+        WeeklyFocusItem.id.asc()
+    ).all() if visible_store_numbers else []
+
+    if store_filter:
+        action_items = [item for item in action_items if item.store_number == store_filter]
+
+    if status_filter == "open":
+        action_items = [item for item in action_items if not item.is_completed]
+    elif status_filter == "completed":
+        action_items = [item for item in action_items if item.is_completed]
+
+    if type_filter in ["cleaning", "goal"]:
+        action_items = [item for item in action_items if item.item_type == type_filter]
+
+    open_action_count = sum(1 for item in action_items if not item.is_completed)
+    completed_action_count = sum(1 for item in action_items if item.is_completed)
+    cleaning_action_count = sum(1 for item in action_items if item.item_type == "cleaning")
+    goal_action_count = sum(1 for item in action_items if item.item_type == "goal")
+
+    return render_template(
+        "svr_list.html",
+        reports=reports,
+        stores=stores,
+        action_items=action_items,
+        store_filter=store_filter,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        open_action_count=open_action_count,
+        completed_action_count=completed_action_count,
+        cleaning_action_count=cleaning_action_count,
+        goal_action_count=goal_action_count,
+    )
 
 
 @svr_bp.route("/new", methods=["GET", "POST"])
@@ -308,11 +354,25 @@ def view_report(report_id):
         elif value.field_key == "goals_for_week":
             manager_summary["goals_for_week"] = value.value_text or ""
 
+    current_action_items = WeeklyFocusItem.query.filter_by(
+        store_number=report.store_number,
+        source_type="svr"
+    ).order_by(
+        WeeklyFocusItem.is_completed.asc(),
+        WeeklyFocusItem.item_type.asc(),
+        WeeklyFocusItem.id.asc()
+    ).all()
+
+    open_action_items = [item for item in current_action_items if not item.is_completed]
+    completed_action_items = [item for item in current_action_items if item.is_completed]
+
     return render_template(
         "svr_view.html",
         report=report,
         values=values,
         manager_summary=manager_summary,
+        open_action_items=open_action_items,
+        completed_action_items=completed_action_items,
     )
 
 

@@ -18,6 +18,20 @@
     </div>
 </div>
 
+<div class="dashboard-grid dashboard-grid-premium" style="margin-bottom: 24px;">
+    <div class="metric-card premium-card premium-card-alert">
+        <span class="metric-label">Open Action Items</span>
+        <h3>{{ open_action_items|length }}</h3>
+        <p class="metric-footnote">Still outstanding for this store</p>
+    </div>
+
+    <div class="metric-card premium-card premium-card-blue">
+        <span class="metric-label">Completed Action Items</span>
+        <h3>{{ completed_action_items|length }}</h3>
+        <p class="metric-footnote">Completed by the manager</p>
+    </div>
+</div>
+
 <div class="content-grid" style="margin-bottom: 24px;">
     <section class="panel premium-panel">
         <h3>Full SVR</h3>
@@ -47,6 +61,71 @@
     <section class="panel premium-panel">
         <h3>Manager Weekly Focus Summary</h3>
         {% include "svr_manager_export.html" %}
+    </section>
+</div>
+
+<div class="content-grid">
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Current Open Action Items</h3>
+            <span class="summary-pill">{{ open_action_items|length }} open</span>
+        </div>
+
+        {% if open_action_items %}
+        <div class="admin-task-list">
+            {% for item in open_action_items %}
+            <div class="checklist-item-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div>
+                        <div style="font-weight:700; margin-bottom:6px;">{{ item.item_text }}</div>
+                        <div class="area-subtitle">
+                            {{ item.item_type|title }} item
+                        </div>
+                    </div>
+
+                    {% if item.item_type == "cleaning" %}
+                    <span class="table-badge badge-warning">Cleaning</span>
+                    {% else %}
+                    <span class="table-badge badge-success">Goal</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="summary-pill">No open action items for this store.</div>
+        {% endif %}
+    </section>
+
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Completed Action Items</h3>
+            <span class="summary-pill">{{ completed_action_items|length }} completed</span>
+        </div>
+
+        {% if completed_action_items %}
+        <div class="admin-task-list">
+            {% for item in completed_action_items %}
+            <div class="checklist-item-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div>
+                        <div style="font-weight:700; margin-bottom:6px;">{{ item.item_text }}</div>
+                        <div class="area-subtitle">
+                            {{ item.item_type|title }} item
+                            {% if item.completed_at %}
+                            | Completed {{ item.completed_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <span class="table-badge badge-success">Completed</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="summary-pill">No completed action items yet.</div>
+        {% endif %}
     </section>
 </div>
 {% endblock %}
