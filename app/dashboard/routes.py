@@ -1,5 +1,7 @@
 from collections import defaultdict
 from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
+
 from flask import Blueprint, render_template, session, jsonify, request, redirect, url_for, flash
 from app.auth.routes import login_required, role_required
 from app.extensions import db
@@ -13,6 +15,16 @@ from app.models import (
 )
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+APP_TZ = ZoneInfo("America/New_York")
+
+
+def now_et():
+    return datetime.now(APP_TZ)
+
+
+def today_et():
+    return now_et().date()
 
 
 def get_visible_stores():
@@ -151,7 +163,7 @@ def build_dashboard_data():
         sum(s["opening_percent"] for area in ordered_area_groups.values() for s in area) / total_stores, 1
     ) if total_stores else 0.0
 
-    today = date.today()
+    today = today_et()
     week_start = today - timedelta(days=today.weekday())
     yesterday = today - timedelta(days=1)
 
@@ -489,4 +501,3 @@ def clear_weekly_focus_items():
 
     flash(f"Cleared {cleared_count} completed item(s).", "success")
     return redirect(url_for("dashboard.action_board"))
-
