@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app.auth.routes import login_required, role_required
@@ -13,6 +14,16 @@ from app.models import (
 )
 
 checklist_bp = Blueprint("checklist", __name__, url_prefix="/checklist")
+
+APP_TZ = ZoneInfo("America/New_York")
+
+
+def now_et():
+    return datetime.now(APP_TZ)
+
+
+def today_et():
+    return now_et().date()
 
 
 def get_or_create_daily_checklist(store_number: str, checklist_date: date):
@@ -247,7 +258,7 @@ def overview():
         return redirect(url_for("checklist.index"))
 
     visible_stores = get_visible_stores()
-    today = date.today()
+    today = today_et()
 
     not_started = []
     in_progress = []
@@ -334,7 +345,7 @@ def delete_archive():
         flash("Invalid checklist date.", "error")
         return redirect(url_for("checklist.overview"))
 
-    if checklist_date >= date.today():
+    if checklist_date >= today_et():
         flash("Only archived past checklists can be deleted.", "error")
         return redirect(url_for("checklist.overview"))
 
@@ -387,7 +398,7 @@ def index():
         store_number = default_store
 
     requested_date_str = request.args.get("date", "").strip()
-    today = date.today()
+    today = today_et()
 
     if requested_date_str:
         try:
@@ -560,7 +571,7 @@ def admin():
 @login_required
 @role_required("admin")
 def run_closeout():
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = today_et() - timedelta(days=1)
     result = run_checklist_closeout(yesterday)
 
     flash(
@@ -591,7 +602,7 @@ def autosave_item():
         return jsonify({"success": False, "error": "Item not found"}), 404
 
     daily = item.daily_checklist
-    if daily.checklist_date < date.today():
+    if daily.checklist_date < today_et():
         return jsonify({"success": False, "error": "Past checklists are read-only"}), 400
 
     visible_store_numbers = {store.store_number for store in get_visible_stores()}
@@ -632,7 +643,7 @@ def autosave_manager():
     except ValueError:
         return jsonify({"success": False, "error": "Invalid date"}), 400
 
-    if selected_date < date.today():
+    if selected_date < today_et():
         return jsonify({"success": False, "error": "Past checklists are read-only"}), 400
 
     visible_store_numbers = {store.store_number for store in get_visible_stores()}
