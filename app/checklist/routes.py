@@ -86,10 +86,34 @@ def update_checklist_progress(daily: DailyChecklist):
     if not section_one_items:
         daily.integrity_score = 0.0
     else:
+        # 60% = completion score
         completed_section_one = sum(1 for item in section_one_items if item.is_completed)
-        daily.integrity_score = round(
-            (completed_section_one / len(section_one_items)) * 100, 1
-        )
+        completion_score = (completed_section_one / len(section_one_items)) * 100
+
+        # 40% = timing credibility score
+        expected_minutes = sum(item.expected_minutes or 0 for item in section_one_items)
+        completed_times = [item.completed_at for item in section_one_items if item.completed_at]
+
+        timing_score = 100.0
+
+        # Only judge timing if we actually have enough completed items and a real expected time
+        if len(completed_times) >= 2 and expected_minutes > 0:
+            first_completed = min(completed_times)
+            last_completed = max(completed_times)
+            elapsed_minutes = (last_completed - first_completed).total_seconds() / 60
+
+            ratio = elapsed_minutes / expected_minutes if expected_minutes > 0 else 1.0
+
+            if ratio >= 0.70:
+                timing_score = 100.0
+            elif ratio >= 0.50:
+                timing_score = 75.0
+            elif ratio >= 0.30:
+                timing_score = 40.0
+            else:
+                timing_score = 0.0
+
+        daily.integrity_score = round((completion_score * 0.60) + (timing_score * 0.40), 1)
 
     daily.status = "completed" if completed_items == total_items and total_items > 0 else "in_progress"
     db.session.commit()
