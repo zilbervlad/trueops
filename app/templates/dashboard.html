@@ -45,7 +45,7 @@
             {% elif is_maintenance %}
                 Open maintenance workload, task visibility, and fast access to repair tracking.
             {% else %}
-                Real-time checklist execution, opening integrity, SVR compliance, maintenance visibility, and closeout exceptions.
+                Real-time checklist execution, opening integrity, SVR compliance, maintenance visibility, and shift execution progress.
             {% endif %}
         </p>
     </div>
@@ -120,65 +120,68 @@
 {% endif %}
 
 {% if is_ops_view %}
-<div class="panel premium-panel" style="margin-bottom: 24px;">
-    <button
-        type="button"
-        id="yesterday-exceptions-toggle"
-        class="panel-head"
-        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
-        aria-expanded="true"
-    >
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <h3 style="margin: 0;">Yesterday Exceptions</h3>
-            <span class="summary-pill">{{ yesterday_label }}</span>
+<div class="content-grid" style="margin-bottom: 24px;">
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>3 O'Clock Restock Progress</h3>
+            <span class="summary-pill">{{ restock_progress|length }} stores</span>
         </div>
-        <span id="yesterday-exceptions-chevron" class="summary-pill">Hide ▲</span>
-    </button>
 
-    <div id="yesterday-exceptions-body" style="margin-top: 16px;">
-        <div class="table-wrap premium-table-wrap">
-            <table class="data-table premium-table">
-                <thead>
-                    <tr>
-                        <th>Store</th>
-                        <th>Manager</th>
-                        <th>Completion</th>
-                        <th>Integrity</th>
-                        <th>Manager Walk</th>
-                        <th>Incomplete Tasks</th>
-                    </tr>
-                </thead>
-                <tbody id="yesterday-exceptions-tbody">
-                    {% for item in yesterday_exceptions %}
-                    <tr onclick="window.location='{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date) }}'" style="cursor: pointer;">
-                        <td>{{ item.store_number }}</td>
-                        <td>{{ item.manager_on_duty }}</td>
-                        <td>
-                            <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-danger{% endif %}">
-                                {{ item.percent_complete }}%
-                            </span>
-                        </td>
-                        <td>
-                            <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-danger{% endif %}">
-                                {{ item.integrity_score }}%
-                            </span>
-                        </td>
-                        <td>
-                            <span class="table-badge {% if item.manager_walk_percent >= 100 %}badge-success{% elif item.manager_walk_percent > 0 %}badge-warning{% else %}badge-danger{% endif %}">
-                                {{ item.manager_walk_percent }}%
-                            </span>
-                        </td>
-                        <td>{{ item.incomplete_task_count }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6">No closeout exceptions recorded for {{ yesterday_label }}.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div id="restock-progress-list" style="display:flex; flex-direction:column; gap:12px;">
+            {% for item in restock_progress %}
+            <a
+                href="{{ url_for('checklist.index', store=item.store_number) }}"
+                style="text-decoration:none; color:inherit;"
+            >
+                <div class="admin-task-card" style="cursor:pointer;">
+                    <div class="admin-task-top">
+                        <span class="summary-pill">Store {{ item.store_number }}</span>
+                        <span class="table-badge {% if item.percent >= 100 %}badge-success{% elif item.percent > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                            {{ item.percent }}%
+                        </span>
+                    </div>
+                    <div class="area-subtitle" style="margin-bottom:10px;">{{ item.store_name }} | {{ item.area_name }}</div>
+                    <div style="width:100%; height:12px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+                        <div style="height:100%; width:{{ item.percent }}%; background:{% if item.percent >= 100 %}#22c55e{% elif item.percent > 0 %}#f59e0b{% else %}#cbd5e1{% endif %}; border-radius:999px;"></div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">No restock progress data available.</div>
+            {% endfor %}
         </div>
-    </div>
+    </section>
+
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <h3>Manager's Walk Progress</h3>
+            <span class="summary-pill">{{ manager_walk_progress|length }} stores</span>
+        </div>
+
+        <div id="manager-walk-progress-list" style="display:flex; flex-direction:column; gap:12px;">
+            {% for item in manager_walk_progress %}
+            <a
+                href="{{ url_for('checklist.index', store=item.store_number) }}"
+                style="text-decoration:none; color:inherit;"
+            >
+                <div class="admin-task-card" style="cursor:pointer;">
+                    <div class="admin-task-top">
+                        <span class="summary-pill">Store {{ item.store_number }}</span>
+                        <span class="table-badge {% if item.percent >= 100 %}badge-success{% elif item.percent > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                            {{ item.percent }}%
+                        </span>
+                    </div>
+                    <div class="area-subtitle" style="margin-bottom:10px;">{{ item.store_name }} | {{ item.area_name }}</div>
+                    <div style="width:100%; height:12px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+                        <div style="height:100%; width:{{ item.percent }}%; background:{% if item.percent >= 100 %}#22c55e{% elif item.percent > 0 %}#f59e0b{% else %}#cbd5e1{% endif %}; border-radius:999px;"></div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <div class="admin-task-card">No manager walk progress data available.</div>
+            {% endfor %}
+        </div>
+    </section>
 </div>
 {% endif %}
 
@@ -432,6 +435,8 @@
                     <tr>
                         <th>Store</th>
                         <th>Opening</th>
+                        <th>Restock</th>
+                        <th>Walk</th>
                         <th>Checklist</th>
                         <th>Integrity</th>
                         <th>Status</th>
@@ -450,6 +455,18 @@
                         <td>
                             <span class="table-badge {% if store.opening_percent >= 100 %}badge-success{% elif store.opening_percent > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
                                 {{ store.opening_percent }}%
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="table-badge {% if store.restock_percent >= 100 %}badge-success{% elif store.restock_percent > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ store.restock_percent }}%
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="table-badge {% if store.manager_walk_percent >= 100 %}badge-success{% elif store.manager_walk_percent > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ store.manager_walk_percent }}%
                             </span>
                         </td>
 
@@ -491,27 +508,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let refreshInFlight = false;
 
-    function checklistBadgeClass(value) {
-        const num = Number(value);
-        if (num >= 100) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-danger";
-    }
-
-    function integrityBadgeClass(value) {
-        const num = Number(value);
-        if (num >= 90) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-danger";
-    }
-
-    function managerWalkBadgeClass(value) {
-        const num = Number(value);
-        if (num >= 100) return "table-badge badge-success";
-        if (num > 0) return "table-badge badge-warning";
-        return "table-badge badge-danger";
-    }
-
     function renderChipList(containerId, items, cls, formatter = null) {
         const el = document.getElementById(containerId);
         if (!el) return;
@@ -540,6 +536,20 @@ document.addEventListener("DOMContentLoaded", function () {
         chip.textContent = text;
     }
 
+    function progressBadgeClass(value) {
+        const num = Number(value);
+        if (num >= 100) return "table-badge badge-success";
+        if (num > 0) return "table-badge badge-warning";
+        return "table-badge badge-neutral";
+    }
+
+    function progressBarColor(value) {
+        const num = Number(value);
+        if (num >= 100) return "#22c55e";
+        if (num > 0) return "#f59e0b";
+        return "#cbd5e1";
+    }
+
     function bindWeeklyFocusCheckboxes() {
         document.querySelectorAll(".manager-weekly-focus-box").forEach(box => {
             box.addEventListener("change", async function () {
@@ -563,6 +573,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         });
+    }
+
+    function renderProgressCards(containerId, items) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+
+        if (!items || items.length === 0) {
+            el.innerHTML = `<div class="admin-task-card">No progress data available.</div>`;
+            return;
+        }
+
+        el.innerHTML = items.map(item => `
+            <a href="/checklist/?store=${encodeURIComponent(item.store_number)}" style="text-decoration:none; color:inherit;">
+                <div class="admin-task-card" style="cursor:pointer;">
+                    <div class="admin-task-top">
+                        <span class="summary-pill">Store ${item.store_number}</span>
+                        <span class="${progressBadgeClass(item.percent)}">${item.percent}%</span>
+                    </div>
+                    <div class="area-subtitle" style="margin-bottom:10px;">${item.store_name} | ${item.area_name}</div>
+                    <div style="width:100%; height:12px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+                        <div style="height:100%; width:${item.percent}%; background:${progressBarColor(item.percent)}; border-radius:999px;"></div>
+                    </div>
+                </div>
+            </a>
+        `).join("");
     }
 
     async function refreshDashboard() {
@@ -621,39 +656,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     "success-pill"
                 );
 
-                const yesterdayTbody = document.getElementById("yesterday-exceptions-tbody");
-                if (yesterdayTbody) {
-                    if (data.yesterday_exceptions && data.yesterday_exceptions.length > 0) {
-                        yesterdayTbody.innerHTML = data.yesterday_exceptions.map(item => `
-                            <tr onclick="window.location='/checklist/?store=${encodeURIComponent(item.store_number)}&date=${encodeURIComponent(item.checklist_date)}'" style="cursor: pointer;">
-                                <td>${item.store_number}</td>
-                                <td>${item.manager_on_duty}</td>
-                                <td>
-                                    <span class="${checklistBadgeClass(item.percent_complete)}">
-                                        ${item.percent_complete}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${integrityBadgeClass(item.integrity_score)}">
-                                        ${item.integrity_score}%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="${managerWalkBadgeClass(item.manager_walk_percent)}">
-                                        ${item.manager_walk_percent}%
-                                    </span>
-                                </td>
-                                <td>${item.incomplete_task_count}</td>
-                            </tr>
-                        `).join("");
-                    } else {
-                        yesterdayTbody.innerHTML = `
-                            <tr>
-                                <td colspan="6">No closeout exceptions recorded for ${data.yesterday_label}.</td>
-                            </tr>
-                        `;
-                    }
-                }
+                renderProgressCards("restock-progress-list", data.restock_progress || []);
+                renderProgressCards("manager-walk-progress-list", data.manager_walk_progress || []);
             }
 
             const now = new Date();
@@ -669,28 +673,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     bindWeeklyFocusCheckboxes();
-
-    const yesterdayToggle = document.getElementById("yesterday-exceptions-toggle");
-    const yesterdayBody = document.getElementById("yesterday-exceptions-body");
-    const yesterdayChevron = document.getElementById("yesterday-exceptions-chevron");
-
-    if (yesterdayToggle && yesterdayBody && yesterdayChevron) {
-        yesterdayToggle.addEventListener("click", function () {
-            const isHidden = yesterdayBody.style.display === "none";
-            yesterdayBody.style.display = isHidden ? "block" : "none";
-            yesterdayToggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
-            yesterdayChevron.textContent = isHidden ? "Hide ▲" : "Show ▼";
-        });
-    }
-
     updateRefreshChip("Loaded");
     refreshDashboard();
     setInterval(refreshDashboard, 15000);
 });
 </script>
 {% endblock %}
-
-
 
 
 

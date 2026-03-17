@@ -90,6 +90,8 @@ def build_dashboard_data():
     opening_complete = []
     low_integrity_stores = []
 
+    restock_progress = []
+    manager_walk_progress = []
     area_groups = defaultdict(list)
 
     today = business_date_et()
@@ -105,6 +107,8 @@ def build_dashboard_data():
         status = daily.status if daily else "not_started"
 
         opening_percent = calculate_section_percent(daily, "Before Open / Before 10:30")
+        restock_percent = calculate_section_percent(daily, "3-O'Clock Restock")
+        manager_walk_percent = calculate_section_percent(daily, "Manager's Walk")
 
         if status == "completed":
             completed_today += 1
@@ -126,10 +130,26 @@ def build_dashboard_data():
             "checklist_percent": checklist_percent,
             "integrity_score": integrity_score,
             "opening_percent": opening_percent,
+            "restock_percent": restock_percent,
+            "manager_walk_percent": manager_walk_percent,
             "status": status,
         }
 
         area_groups[store.area_name].append(store_payload)
+
+        restock_progress.append({
+            "store_number": store.store_number,
+            "store_name": store.store_name or f"Store {store.store_number}",
+            "area_name": store.area_name,
+            "percent": restock_percent,
+        })
+
+        manager_walk_progress.append({
+            "store_number": store.store_number,
+            "store_name": store.store_name or f"Store {store.store_number}",
+            "area_name": store.area_name,
+            "percent": manager_walk_percent,
+        })
 
         if not daily:
             opening_not_started.append(store.store_number)
@@ -174,7 +194,6 @@ def build_dashboard_data():
     ) if total_stores else 0.0
 
     week_start = today - timedelta(days=today.weekday())
-    yesterday = today - timedelta(days=1)
 
     weekly_svr_reports = SVRReport.query.filter(
         SVRReport.visit_date >= week_start
@@ -213,39 +232,6 @@ def build_dashboard_data():
             }
             for item in focus_items
         ]
-
-    yesterday_exceptions = []
-    if user_role in ["admin", "supervisor"] and visible_store_numbers:
-        exception_rows = ChecklistException.query.filter(
-            ChecklistException.store_number.in_(visible_store_numbers),
-            ChecklistException.checklist_date == yesterday
-        ).order_by(ChecklistException.store_number.asc()).all()
-
-        yesterday_daily_map = {
-            daily.store_number: daily
-            for daily in DailyChecklist.query.filter(
-                DailyChecklist.store_number.in_(visible_store_numbers),
-                DailyChecklist.checklist_date == yesterday
-            ).all()
-        }
-
-        for row in exception_rows:
-            yesterday_daily = yesterday_daily_map.get(row.store_number)
-            manager_walk_percent = calculate_section_percent(yesterday_daily, "Manager's Walk")
-
-            yesterday_exceptions.append({
-                "store_number": row.store_number,
-                "manager_on_duty": row.manager_on_duty or "—",
-                "percent_complete": row.percent_complete,
-                "integrity_score": row.integrity_score,
-                "manager_walk_percent": manager_walk_percent,
-                "manager_walk_missed": row.manager_walk_missed,
-                "incomplete_task_count": row.incomplete_task_count,
-                "incomplete_task_names": row.incomplete_task_names or "",
-                "checklist_started": row.checklist_started,
-                "checklist_completed": row.checklist_completed,
-                "checklist_date": row.checklist_date.strftime("%Y-%m-%d"),
-            })
 
     alerts = []
 
@@ -300,8 +286,8 @@ def build_dashboard_data():
         "open_maintenance_count": open_maintenance_count,
         "complete_maintenance_count": complete_maintenance_count,
         "manager_weekly_focus": manager_weekly_focus,
-        "yesterday_exceptions": yesterday_exceptions,
-        "yesterday_label": yesterday.strftime("%B %d, %Y"),
+        "restock_progress": restock_progress,
+        "manager_walk_progress": manager_walk_progress,
     }
 
 
@@ -345,8 +331,8 @@ def home():
         open_maintenance_count=data["open_maintenance_count"],
         complete_maintenance_count=data["complete_maintenance_count"],
         manager_weekly_focus=data["manager_weekly_focus"],
-        yesterday_exceptions=data["yesterday_exceptions"],
-        yesterday_label=data["yesterday_label"],
+        restock_progress=data["restock_progress"],
+        manager_walk_progress=data["manager_walk_progress"],
     )
 
 
