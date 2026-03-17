@@ -16,6 +16,7 @@ from app.models import (
 checklist_bp = Blueprint("checklist", __name__, url_prefix="/checklist")
 
 APP_TZ = ZoneInfo("America/New_York")
+UTC_TZ = ZoneInfo("UTC")
 
 
 def now_et():
@@ -24,6 +25,12 @@ def now_et():
 
 def today_et():
     return now_et().date()
+
+
+def utc_naive_to_et(dt):
+    if not dt:
+        return None
+    return dt.replace(tzinfo=UTC_TZ).astimezone(APP_TZ)
 
 
 def get_or_create_daily_checklist(store_number: str, checklist_date: date):
@@ -93,13 +100,22 @@ def update_checklist_progress(daily: DailyChecklist):
         # Total expected time for required opening items
         expected_minutes = sum(item.expected_minutes or 0 for item in section_one_items)
 
-        # Completion timestamps for required opening items
-        completed_times = sorted(
-            [item.completed_at for item in section_one_items if item.completed_at]
-        )
+        # Only count completion timestamps that happened on the checklist's
+        # actual business date in Eastern Time. This prevents accidental
+        # check-ins from the prior night from boosting today's timing score.
+        valid_completed_times = []
+        for item in section_one_items:
+            if not item.completed_at:
+                continue
 
-        # Default timing score
-        timing_score = 100.0
+            completed_et = utc_naive_to_et(item.completed_at)
+            if completed_et and completed_et.date() == daily.checklist_date:
+                valid_completed_times.append(item.completed_at)
+
+        completed_times = sorted(valid_completed_times)
+
+        # Default timing score should be 0 unless we have valid same-day timing data
+        timing_score = 0.0
 
         # Burst detection:
         # If 4 or more required opening items are completed within 60 seconds,
