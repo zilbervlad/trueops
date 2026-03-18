@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -253,16 +253,6 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
         spaceAfter=8,
     )
 
-    subheader_style = ParagraphStyle(
-        "SVRSubheader",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=13,
-        textColor=colors.HexColor("#475569"),
-        spaceAfter=8,
-    )
-
     section_style = ParagraphStyle(
         "SVRSection",
         parent=styles["Heading2"],
@@ -281,7 +271,6 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
         fontSize=9,
         leading=11,
         textColor=colors.HexColor("#64748b"),
-        uppercase=True,
     )
 
     value_style = ParagraphStyle(
@@ -307,21 +296,23 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
     header_table = Table(
         [[
             Paragraph("BPI Ops SVR Report", title_style),
-            Paragraph(f"SVR #{report.id}", ParagraphStyle(
-                "HeaderPill",
-                parent=styles["Normal"],
-                fontName="Helvetica-Bold",
-                fontSize=10,
-                textColor=colors.HexColor("#1e3a8a"),
-                alignment=TA_LEFT,
-            ))
+            Paragraph(
+                f"SVR #{report.id}",
+                ParagraphStyle(
+                    "HeaderPill",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    textColor=colors.HexColor("#1e3a8a"),
+                    alignment=TA_LEFT,
+                )
+            )
         ]],
         colWidths=[5.8 * inch, 1.1 * inch],
     )
     header_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef4ff")),
         ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#c7d2fe")),
-        ("ROUNDEDCORNERS", [10, 10, 10, 10]),
         ("LEFTPADDING", (0, 0), (-1, -1), 12),
         ("RIGHTPADDING", (0, 0), (-1, -1), 12),
         ("TOPPADDING", (0, 0), (-1, -1), 11),
@@ -340,7 +331,7 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
         ]
     ], colWidths=[1.6 * inch, 1.9 * inch, 1.9 * inch, 1.7 * inch])
     info_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
         ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#dbe3ee")),
         ("INNERGRID", (0, 0), (-1, -1), 0.75, colors.HexColor("#e5e7eb")),
         ("LEFTPADDING", (0, 0), (-1, -1), 10),
@@ -377,14 +368,6 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
     field_rows = []
     for value in values:
         display_value = value.value_text or "—"
-        if value.field_type == "yesno":
-            if display_value == "Yes":
-                display_value = "Yes"
-            elif display_value == "No":
-                display_value = "No"
-            else:
-                display_value = "—"
-
         field_rows.append([
             Paragraph(value.field_label, label_style),
             Paragraph(display_value.replace("\n", "<br/>"), value_style),
@@ -503,10 +486,6 @@ def index():
     stores = get_supervisor_visible_stores()
     visible_store_numbers = {store.store_number for store in stores}
 
-    store_filter = request.args.get("store_number", "").strip()
-    status_filter = request.args.get("status", "").strip().lower()
-    type_filter = request.args.get("item_type", "").strip().lower()
-
     reports = SVRReport.query.order_by(
         SVRReport.visit_date.desc(),
         SVRReport.created_at.desc()
@@ -514,47 +493,54 @@ def index():
 
     reports = [r for r in reports if r.store_number in visible_store_numbers]
 
-    if store_filter:
-        reports = [r for r in reports if r.store_number == store_filter]
+    today = today_et()
+    week_start = today - timedelta(days=today.weekday())
 
-    action_items = WeeklyFocusItem.query.filter(
-        WeeklyFocusItem.source_type == "svr",
-        WeeklyFocusItem.store_number.in_(visible_store_numbers)
-    ).order_by(
-        WeeklyFocusItem.is_completed.asc(),
-        WeeklyFocusItem.store_number.asc(),
-        WeeklyFocusItem.item_type.asc(),
-        WeeklyFocusItem.id.asc()
-    ).all() if visible_store_numbers else []
+    weekly_reports = [r for r in reports if r.visit_date >= week_start]
+    weekly_report_store_numbers = {r.store_number for r in weekly_reports}
 
-    if store_filter:
-        action_items = [item for item in action_items if item.store_number == store_filter]
+    total_stores = len(stores)
+    submitted_this_week = len(weekly_report_store_numbers)
+    missing_this_week = max(total_stores - submitted_this_week, 0)
+    overall_compliance = round((submitted_this_week / total_stores) * 100, 1) if total_stores else 0.0
 
-    if status_filter == "open":
-        action_items = [item for item in action_items if not item.is_completed]
-    elif status_filter == "completed":
-        action_items = [item for item in action_items if item.is_completed]
+    stores_by_area = {}
+    for store in stores:
+        stores_by_area.setdefault(store.area_name, []).append(store)
 
-    if type_filter in ["cleaning", "goal"]:
-        action_items = [item for item in action_items if item.item_type == type_filter]
+    area_summary_rows = []
+    areas_fully_complete = 0
 
-    open_action_count = sum(1 for item in action_items if not item.is_completed)
-    completed_action_count = sum(1 for item in action_items if item.is_completed)
-    cleaning_action_count = sum(1 for item in action_items if item.item_type == "cleaning")
-    goal_action_count = sum(1 for item in action_items if item.item_type == "goal")
+    for area_name, area_stores in sorted(stores_by_area.items()):
+        area_store_numbers = {store.store_number for store in area_stores}
+        submitted_count = len(area_store_numbers & weekly_report_store_numbers)
+        store_count = len(area_stores)
+        missing_count = max(store_count - submitted_count, 0)
+        compliance = round((submitted_count / store_count) * 100, 1) if store_count else 0.0
+
+        if missing_count == 0 and store_count > 0:
+            areas_fully_complete += 1
+
+        missing_store_numbers = sorted(list(area_store_numbers - weekly_report_store_numbers))
+
+        area_summary_rows.append({
+            "area_name": area_name,
+            "store_count": store_count,
+            "submitted_count": submitted_count,
+            "missing_count": missing_count,
+            "missing_store_numbers": missing_store_numbers,
+            "compliance": compliance,
+        })
 
     return render_template(
         "svr_list.html",
         reports=reports,
         stores=stores,
-        action_items=action_items,
-        store_filter=store_filter,
-        status_filter=status_filter,
-        type_filter=type_filter,
-        open_action_count=open_action_count,
-        completed_action_count=completed_action_count,
-        cleaning_action_count=cleaning_action_count,
-        goal_action_count=goal_action_count,
+        submitted_this_week=submitted_this_week,
+        missing_this_week=missing_this_week,
+        areas_fully_complete=areas_fully_complete,
+        overall_compliance=overall_compliance,
+        area_summary_rows=area_summary_rows,
     )
 
 
