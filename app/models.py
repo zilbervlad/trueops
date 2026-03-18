@@ -71,7 +71,13 @@ class DailyChecklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     store_number = db.Column(db.String(20), nullable=False)
     checklist_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    # Keep old field temporarily for compatibility
     manager_on_duty = db.Column(db.String(120), nullable=True)
+
+    # New ownership fields
+    opening_manager = db.Column(db.String(120), nullable=True)
+    closing_manager = db.Column(db.String(120), nullable=True)
 
     status = db.Column(db.String(50), nullable=False, default="in_progress")
     percent_complete = db.Column(db.Float, nullable=False, default=0.0)

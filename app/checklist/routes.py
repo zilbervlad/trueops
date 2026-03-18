@@ -153,16 +153,11 @@ def update_checklist_progress(daily: DailyChecklist):
     if not section_one_items:
         daily.integrity_score = 0.0
     else:
-        # 60% = completion score
         completed_section_one = sum(1 for item in section_one_items if item.is_completed)
         completion_score = (completed_section_one / len(section_one_items)) * 100
 
-        # Total expected time for required opening items
         expected_minutes = sum(item.expected_minutes or 0 for item in section_one_items)
 
-        # Only count completion timestamps that happened on the checklist's
-        # actual business date in Eastern Time. This prevents accidental
-        # check-ins from the prior night from boosting today's timing score.
         valid_completed_times = []
         for item in section_one_items:
             if not item.completed_at:
@@ -174,12 +169,8 @@ def update_checklist_progress(daily: DailyChecklist):
 
         completed_times = sorted(valid_completed_times)
 
-        # Default timing score should be 0 unless we have valid same-day timing data
         timing_score = 0.0
 
-        # Burst detection:
-        # If 4 or more required opening items are completed within 60 seconds,
-        # force timing score to 0.
         burst_threshold = 4
         burst_window_seconds = 60
 
@@ -291,13 +282,14 @@ def run_checklist_closeout(closeout_date: date):
             checklist_date=closeout_date
         ).first()
 
-        # Force an archived checklist to exist even if the store never opened it
         if not daily:
             daily = get_or_create_daily_checklist(store.store_number, closeout_date)
             daily.status = "in_progress"
             daily.percent_complete = 0.0
             daily.integrity_score = 0.0
             daily.manager_on_duty = daily.manager_on_duty or ""
+            daily.opening_manager = daily.opening_manager or ""
+            daily.closing_manager = daily.closing_manager or ""
             db.session.commit()
             archived_shell_count += 1
 
@@ -305,9 +297,11 @@ def run_checklist_closeout(closeout_date: date):
         manager_walk_items = [item for item in daily.items if item.section_name == "Manager's Walk"]
         manager_walk_missed = any(not item.is_completed for item in manager_walk_items) if manager_walk_items else False
 
-        checklist_started = bool((daily.manager_on_duty or "").strip()) or any(
-            item.is_completed or (item.notes or "").strip()
-            for item in daily.items
+        checklist_started = (
+            bool((daily.opening_manager or "").strip())
+            or bool((daily.closing_manager or "").strip())
+            or bool((daily.manager_on_duty or "").strip())
+            or any(item.is_completed or (item.notes or "").strip() for item in daily.items)
         )
 
         checklist_completed = len(incomplete_items) == 0 or daily.status == "completed"
@@ -340,11 +334,18 @@ def run_checklist_closeout(closeout_date: date):
 
         incomplete_names = ", ".join(item.task_text for item in incomplete_items)
 
+        display_manager = (
+            (daily.opening_manager or "").strip()
+            or (daily.closing_manager or "").strip()
+            or (daily.manager_on_duty or "").strip()
+            or None
+        )
+
         db.session.add(
             ChecklistException(
                 store_number=store.store_number,
                 checklist_date=closeout_date,
-                manager_on_duty=daily.manager_on_duty,
+                manager_on_duty=display_manager,
                 checklist_started=True,
                 checklist_completed=checklist_completed,
                 manager_walk_missed=manager_walk_missed,
@@ -535,6 +536,12 @@ def index():
     is_read_only = selected_date < today
 
     daily = get_or_create_daily_checklist(store_number, selected_date)
+
+    # Backfill for older records that only have manager_on_duty
+    if daily.manager_on_duty and not daily.opening_manager:
+        daily.opening_manager = daily.manager_on_duty
+        db.session.commit()
+
     manager_walk_integrity = calculate_manager_walk_integrity(daily)
 
     if request.method == "POST":
@@ -548,7 +555,9 @@ def index():
                 )
             )
 
-        daily.manager_on_duty = request.form.get("manager_on_duty", "").strip()
+        daily.manager_on_duty = request.form.get("opening_manager", "").strip()
+        daily.opening_manager = request.form.get("opening_manager", "").strip()
+        daily.closing_manager = request.form.get("closing_manager", "").strip()
 
         for item in daily.items:
             checkbox_name = f"item_{item.id}"
@@ -762,7 +771,8 @@ def autosave_manager():
 
     store_number = (data.get("store_number") or "").strip()
     selected_date_str = (data.get("selected_date") or "").strip()
-    manager_on_duty = (data.get("manager_on_duty") or "").strip()
+    opening_manager = (data.get("opening_manager") or "").strip()
+    closing_manager = (data.get("closing_manager") or "").strip()
 
     if not store_number or not selected_date_str:
         return jsonify({"success": False, "error": "Missing store/date"}), 400
@@ -780,7 +790,9 @@ def autosave_manager():
         return jsonify({"success": False, "error": "Unauthorized"}), 403
 
     daily = get_or_create_daily_checklist(store_number, selected_date)
-    daily.manager_on_duty = manager_on_duty
+    daily.manager_on_duty = opening_manager
+    daily.opening_manager = opening_manager
+    daily.closing_manager = closing_manager
     db.session.commit()
 
     return jsonify({"success": True})
