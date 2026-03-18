@@ -95,8 +95,6 @@
                             placeholder="Filter by manager name..."
                         >
                     </div>
-
-                    <div></div>
                 </div>
 
                 <div class="admin-task-grid">
@@ -124,105 +122,27 @@
     <div class="metric-card premium-card">
         <span class="metric-label">Avg Completion</span>
         <h3>{{ summary.avg_completion }}%</h3>
-        <p class="metric-footnote">Average completion across filtered checklists</p>
     </div>
 
     <div class="metric-card premium-card premium-card-blue">
         <span class="metric-label">Avg Integrity</span>
         <h3>{{ summary.avg_integrity }}%</h3>
-        <p class="metric-footnote">Average opening integrity score</p>
     </div>
 
     <div class="metric-card premium-card">
         <span class="metric-label">Completed</span>
         <h3>{{ summary.completed_count }}</h3>
-        <p class="metric-footnote">Completed checklist records in date range</p>
     </div>
 
     <div class="metric-card premium-card premium-card-alert">
         <span class="metric-label">Not Started</span>
         <h3>{{ summary.not_started_count }}</h3>
-        <p class="metric-footnote">Possible missed checklist days</p>
     </div>
 </div>
 
-{% if show_task_analysis and task_analysis %}
-<div class="dashboard-grid dashboard-grid-premium" style="margin-bottom: 24px;">
-    <div class="panel premium-panel">
-        <div class="panel-head">
-            <h3>Top Ranked Stores</h3>
-            <span class="summary-pill">Task Analysis</span>
-        </div>
-        <div class="stack-list">
-            {% for row in task_analysis.top_ranked_stores %}
-            <div class="premium-list-row">
-                <div>
-                    <strong>{{ row.store_number }}</strong> — {{ row.store_name }}
-                    <div class="area-subtitle">{{ row.area_name }}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div><strong>{{ row.avg_completion }}%</strong> completion</div>
-                    <div class="area-subtitle">{{ row.avg_integrity }}% integrity</div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state">No ranked store data available.</div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="panel premium-panel">
-        <div class="panel-head">
-            <h3>Lowest Integrity Stores</h3>
-            <span class="summary-pill">Watch List</span>
-        </div>
-        <div class="stack-list">
-            {% for row in task_analysis.lowest_integrity_stores %}
-            <div class="premium-list-row">
-                <div>
-                    <strong>{{ row.store_number }}</strong> — {{ row.store_name }}
-                    <div class="area-subtitle">{{ row.area_name }}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div><strong>{{ row.avg_integrity }}%</strong> integrity</div>
-                    <div class="area-subtitle">{{ row.avg_completion }}% completion</div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state">No integrity data available.</div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="panel premium-panel">
-        <div class="panel-head">
-            <h3>Biggest Completion Gaps</h3>
-            <span class="summary-pill">Attention Needed</span>
-        </div>
-        <div class="stack-list">
-            {% for row in task_analysis.biggest_completion_gaps %}
-            <div class="premium-list-row">
-                <div>
-                    <strong>{{ row.store_number }}</strong> — {{ row.store_name }}
-                    <div class="area-subtitle">{{ row.area_name }}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div><strong>{{ row.not_started_count }}</strong> not started</div>
-                    <div class="area-subtitle">{{ row.in_progress_count }} in progress</div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state">No completion gaps found.</div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<div class="panel premium-panel" style="margin-bottom: 24px;">
+<div class="panel premium-panel">
     <div class="panel-head">
         <h3>Store Performance</h3>
-        <span class="summary-pill">{{ store_report_rows|length }} stores</span>
     </div>
 
     <div class="table-wrap premium-table-wrap">
@@ -232,107 +152,29 @@
                     <th>Store</th>
                     <th>Area</th>
                     <th>Managers</th>
-                    <th>Avg Completion</th>
-                    <th>Avg Integrity</th>
-                    <th>Completed</th>
-                    <th>In Progress</th>
-                    <th>Not Started</th>
-                    <th>Total Checklists</th>
+                    <th>Completion</th>
+                    <th>Integrity</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in store_report_rows %}
                 <tr>
                     <td>
-                        <div class="store-cell">
-                            <div class="store-main">
-                                <a href="{{ url_for('reports.store_detail', store_number=row.store_number, start_date=start_date, end_date=end_date, q=q, area_name=selected_area, store_number=selected_store, manager_name=manager_name, show_task_analysis='1' if show_task_analysis else '') }}" style="color: inherit; text-decoration: none;">
-                                    {{ row.store_number }}
-                                </a>
-                            </div>
-                            <div class="store-sub">
-                                <a href="{{ url_for('reports.store_detail', store_number=row.store_number, start_date=start_date, end_date=end_date, q=q, area_name=selected_area, store_number=selected_store, manager_name=manager_name, show_task_analysis='1' if show_task_analysis else '') }}" style="color: inherit; text-decoration: none;">
-                                    {{ row.store_name }}
-                                </a>
-                            </div>
-                        </div>
+                        <a href="{{ url_for('reports.store_detail',
+                            store_number=row.store_number,
+                            start_date=start_date,
+                            end_date=end_date,
+                            q=q,
+                            area_name=selected_area,
+                            manager_name=manager_name,
+                            show_task_analysis='1' if show_task_analysis else '') }}">
+                            {{ row.store_number }} - {{ row.store_name }}
+                        </a>
                     </td>
                     <td>{{ row.area_name }}</td>
-                    <td>
-                        {% if row.manager_names %}
-                            {{ row.manager_names | join(', ') }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td>
-                        <span class="table-badge {% if row.avg_completion >= 90 %}badge-success{% elif row.avg_completion >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
-                            {{ row.avg_completion }}%
-                        </span>
-                    </td>
-                    <td>
-                        <span class="table-badge {% if row.avg_integrity >= 90 %}badge-success{% elif row.avg_integrity >= 75 %}badge-warning{% else %}badge-danger{% endif %}">
-                            {{ row.avg_integrity }}%
-                        </span>
-                    </td>
-                    <td>{{ row.completed_count }}</td>
-                    <td>{{ row.in_progress_count }}</td>
-                    <td>{{ row.not_started_count }}</td>
-                    <td>{{ row.checklist_count }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="9">No checklist data found for the selected filters.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="panel premium-panel">
-    <div class="panel-head">
-        <h3>Area Performance</h3>
-        <span class="summary-pill">{{ area_report_rows|length }} areas</span>
-    </div>
-
-    <div class="table-wrap premium-table-wrap">
-        <table class="data-table premium-table">
-            <thead>
-                <tr>
-                    <th>Area</th>
-                    <th>Store Count</th>
-                    <th>Avg Completion</th>
-                    <th>Avg Integrity</th>
-                    <th>Completed</th>
-                    <th>In Progress</th>
-                    <th>Not Started</th>
-                    <th>Total Checklists</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in area_report_rows %}
-                <tr>
-                    <td>{{ row.area_name }}</td>
-                    <td>{{ row.store_count }}</td>
-                    <td>
-                        <span class="table-badge {% if row.avg_completion >= 90 %}badge-success{% elif row.avg_completion >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
-                            {{ row.avg_completion }}%
-                        </span>
-                    </td>
-                    <td>
-                        <span class="table-badge {% if row.avg_integrity >= 90 %}badge-success{% elif row.avg_integrity >= 75 %}badge-warning{% else %}badge-danger{% endif %}">
-                            {{ row.avg_integrity }}%
-                        </span>
-                    </td>
-                    <td>{{ row.completed_count }}</td>
-                    <td>{{ row.in_progress_count }}</td>
-                    <td>{{ row.not_started_count }}</td>
-                    <td>{{ row.checklist_count }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8">No area data found for the selected filters.</td>
+                    <td>{{ row.manager_names | join(', ') if row.manager_names else '—' }}</td>
+                    <td>{{ row.avg_completion }}%</td>
+                    <td>{{ row.avg_integrity }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
