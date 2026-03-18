@@ -1,7 +1,8 @@
 from datetime import datetime, date
+from io import BytesIO
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file
 from app.auth.routes import login_required, role_required
 from app.extensions import db
 from app.models import (
@@ -11,6 +12,19 @@ from app.models import (
     SVRReportValue,
     MaintenanceTicket,
     WeeklyFocusItem,
+)
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
 svr_bp = Blueprint("svr", __name__, url_prefix="/svr")
@@ -174,13 +188,312 @@ def ensure_default_svr_template():
 
         ordered_fields.append(field)
 
-    # Keep any old custom fields inactive so they don't clutter the live form
     for field in existing_fields.values():
         if field.field_key not in active_keys:
             field.is_active = False
 
     db.session.commit()
     return ordered_fields
+
+
+def build_report_context(report: SVRReport):
+    values = sorted(report.values, key=lambda x: (x.sort_order, x.id))
+
+    manager_summary = {
+        "store_number": report.store_number,
+        "visit_date": report.visit_date.strftime("%B %d, %Y"),
+        "supervisor_name": report.supervisor_name or "—",
+        "manager_on_duty": report.manager_on_duty or "—",
+        "cleaning_list_for_week": "",
+        "goals_for_week": "",
+    }
+
+    for value in values:
+        if value.field_key == "cleaning_list_for_week":
+            manager_summary["cleaning_list_for_week"] = value.value_text or ""
+        elif value.field_key == "goals_for_week":
+            manager_summary["goals_for_week"] = value.value_text or ""
+
+    current_action_items = WeeklyFocusItem.query.filter_by(
+        store_number=report.store_number,
+        source_type="svr"
+    ).order_by(
+        WeeklyFocusItem.is_completed.asc(),
+        WeeklyFocusItem.item_type.asc(),
+        WeeklyFocusItem.id.asc()
+    ).all()
+
+    open_action_items = [item for item in current_action_items if not item.is_completed]
+    completed_action_items = [item for item in current_action_items if item.is_completed]
+
+    return values, manager_summary, open_action_items, completed_action_items
+
+
+def generate_svr_pdf(report, values, manager_summary, open_action_items, completed_action_items):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=0.55 * inch,
+        rightMargin=0.55 * inch,
+        topMargin=0.55 * inch,
+        bottomMargin=0.55 * inch,
+    )
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "SVRTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=8,
+    )
+
+    subheader_style = ParagraphStyle(
+        "SVRSubheader",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=13,
+        textColor=colors.HexColor("#475569"),
+        spaceAfter=8,
+    )
+
+    section_style = ParagraphStyle(
+        "SVRSection",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        leading=14,
+        textColor=colors.HexColor("#0f172a"),
+        spaceBefore=10,
+        spaceAfter=8,
+    )
+
+    label_style = ParagraphStyle(
+        "SVRLabel",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#64748b"),
+        uppercase=True,
+    )
+
+    value_style = ParagraphStyle(
+        "SVRValue",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=11,
+        leading=14,
+        textColor=colors.HexColor("#0f172a"),
+    )
+
+    small_style = ParagraphStyle(
+        "SVRSmall",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#475569"),
+    )
+
+    story = []
+
+    header_table = Table(
+        [[
+            Paragraph("BPI Ops SVR Report", title_style),
+            Paragraph(f"SVR #{report.id}", ParagraphStyle(
+                "HeaderPill",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                textColor=colors.HexColor("#1e3a8a"),
+                alignment=TA_LEFT,
+            ))
+        ]],
+        colWidths=[5.8 * inch, 1.1 * inch],
+    )
+    header_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef4ff")),
+        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#c7d2fe")),
+        ("ROUNDEDCORNERS", [10, 10, 10, 10]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 11),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 11),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 12))
+
+    info_table = Table([
+        [
+            Paragraph("<b>Store</b><br/>" + (report.store_number or "—"), value_style),
+            Paragraph("<b>Date</b><br/>" + report.visit_date.strftime("%B %d, %Y"), value_style),
+            Paragraph("<b>Supervisor</b><br/>" + (report.supervisor_name or "—"), value_style),
+            Paragraph("<b>Manager</b><br/>" + (report.manager_on_duty or "—"), value_style),
+        ]
+    ], colWidths=[1.6 * inch, 1.9 * inch, 1.9 * inch, 1.7 * inch])
+    info_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
+        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#dbe3ee")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.75, colors.HexColor("#e5e7eb")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 12))
+
+    metrics_table = Table([
+        [
+            Paragraph("<b>Open Action Items</b><br/><font size='20'>%s</font>" % len(open_action_items), value_style),
+            Paragraph("<b>Completed Action Items</b><br/><font size='20'>%s</font>" % len(completed_action_items), value_style),
+        ]
+    ], colWidths=[3.6 * inch, 3.6 * inch])
+    metrics_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#fff1f2")),
+        ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#eff6ff")),
+        ("BOX", (0, 0), (0, 0), 1, colors.HexColor("#fda4af")),
+        ("BOX", (1, 0), (1, 0), 1, colors.HexColor("#93c5fd")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(metrics_table)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph("Full SVR", section_style))
+
+    field_rows = []
+    for value in values:
+        display_value = value.value_text or "—"
+        if value.field_type == "yesno":
+            if display_value == "Yes":
+                display_value = "Yes"
+            elif display_value == "No":
+                display_value = "No"
+            else:
+                display_value = "—"
+
+        field_rows.append([
+            Paragraph(value.field_label, label_style),
+            Paragraph(display_value.replace("\n", "<br/>"), value_style),
+        ])
+
+    field_table = Table(field_rows, colWidths=[2.15 * inch, 4.85 * inch], repeatRows=0)
+    field_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#dbe3ee")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(field_table)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph("Manager Weekly Focus Summary", section_style))
+
+    summary_rows = [
+        [Paragraph("Store", label_style), Paragraph(manager_summary["store_number"], value_style)],
+        [Paragraph("Date", label_style), Paragraph(manager_summary["visit_date"], value_style)],
+        [Paragraph("Supervisor", label_style), Paragraph(manager_summary["supervisor_name"], value_style)],
+        [Paragraph("Manager on Duty", label_style), Paragraph(manager_summary["manager_on_duty"], value_style)],
+        [Paragraph("Cleaning List for the Week", label_style), Paragraph((manager_summary["cleaning_list_for_week"] or "—").replace("\n", "<br/>"), value_style)],
+        [Paragraph("Goals for the Week", label_style), Paragraph((manager_summary["goals_for_week"] or "—").replace("\n", "<br/>"), value_style)],
+    ]
+
+    summary_table = Table(summary_rows, colWidths=[2.15 * inch, 4.85 * inch])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fafcff")),
+        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#dbe3ee")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph("Current Open Action Items", section_style))
+    if open_action_items:
+        open_rows = [[
+            Paragraph("<b>Type</b>", small_style),
+            Paragraph("<b>Item</b>", small_style),
+        ]]
+        for item in open_action_items:
+            open_rows.append([
+                Paragraph(item.item_type.title(), value_style),
+                Paragraph(item.item_text, value_style),
+            ])
+
+        open_table = Table(open_rows, colWidths=[1.3 * inch, 5.7 * inch], repeatRows=1)
+        open_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#fff7ed")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#9a3412")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#fed7aa")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#fde7cf")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(open_table)
+    else:
+        story.append(Paragraph("No open action items for this store.", small_style))
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph("Completed Action Items", section_style))
+    if completed_action_items:
+        completed_rows = [[
+            Paragraph("<b>Type</b>", small_style),
+            Paragraph("<b>Item</b>", small_style),
+            Paragraph("<b>Completed</b>", small_style),
+        ]]
+        for item in completed_action_items:
+            completed_rows.append([
+                Paragraph(item.item_type.title(), value_style),
+                Paragraph(item.item_text, value_style),
+                Paragraph(
+                    item.completed_at.strftime("%b %d, %Y %I:%M %p") if item.completed_at else "—",
+                    value_style
+                ),
+            ])
+
+        completed_table = Table(completed_rows, colWidths=[1.1 * inch, 4.2 * inch, 1.7 * inch], repeatRows=1)
+        completed_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eff6ff")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#bfdbfe")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#dbeafe")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(completed_table)
+    else:
+        story.append(Paragraph("No completed action items yet.", small_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 
 @svr_bp.route("/")
@@ -337,34 +650,7 @@ def view_report(report_id):
         flash("You do not have access to that SVR.", "error")
         return redirect(url_for("svr.index"))
 
-    values = sorted(report.values, key=lambda x: (x.sort_order, x.id))
-
-    manager_summary = {
-        "store_number": report.store_number,
-        "visit_date": report.visit_date.strftime("%B %d, %Y"),
-        "supervisor_name": report.supervisor_name or "—",
-        "manager_on_duty": report.manager_on_duty or "—",
-        "cleaning_list_for_week": "",
-        "goals_for_week": "",
-    }
-
-    for value in values:
-        if value.field_key == "cleaning_list_for_week":
-            manager_summary["cleaning_list_for_week"] = value.value_text or ""
-        elif value.field_key == "goals_for_week":
-            manager_summary["goals_for_week"] = value.value_text or ""
-
-    current_action_items = WeeklyFocusItem.query.filter_by(
-        store_number=report.store_number,
-        source_type="svr"
-    ).order_by(
-        WeeklyFocusItem.is_completed.asc(),
-        WeeklyFocusItem.item_type.asc(),
-        WeeklyFocusItem.id.asc()
-    ).all()
-
-    open_action_items = [item for item in current_action_items if not item.is_completed]
-    completed_action_items = [item for item in current_action_items if item.is_completed]
+    values, manager_summary, open_action_items, completed_action_items = build_report_context(report)
 
     return render_template(
         "svr_view.html",
@@ -373,6 +659,36 @@ def view_report(report_id):
         manager_summary=manager_summary,
         open_action_items=open_action_items,
         completed_action_items=completed_action_items,
+    )
+
+
+@svr_bp.route("/<int:report_id>/export-pdf")
+@login_required
+@role_required("admin", "supervisor")
+def export_pdf(report_id):
+    report = SVRReport.query.get_or_404(report_id)
+    visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
+
+    if report.store_number not in visible_store_numbers:
+        flash("You do not have access to that SVR.", "error")
+        return redirect(url_for("svr.index"))
+
+    values, manager_summary, open_action_items, completed_action_items = build_report_context(report)
+    pdf_buffer = generate_svr_pdf(
+        report,
+        values,
+        manager_summary,
+        open_action_items,
+        completed_action_items
+    )
+
+    filename = f"SVR_{report.store_number}_{report.visit_date.strftime('%Y%m%d')}.pdf"
+
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/pdf",
     )
 
 
@@ -461,7 +777,6 @@ def delete_report(report_id):
         flash("You do not have access to delete that SVR.", "error")
         return redirect(url_for("svr.index"))
 
-    # Keep maintenance tickets, but detach them from this SVR
     linked_tickets = MaintenanceTicket.query.filter_by(
         svr_report_id=report.id,
         source_type="svr"
@@ -474,13 +789,9 @@ def delete_report(report_id):
         else:
             ticket.details = "Original SVR was deleted"
 
-    # delete weekly focus items created by this SVR
     WeeklyFocusItem.query.filter_by(svr_report_id=report.id).delete()
-
-    # delete SVR values
     SVRReportValue.query.filter_by(report_id=report.id).delete()
 
-    # now delete the report itself
     db.session.delete(report)
     db.session.commit()
 

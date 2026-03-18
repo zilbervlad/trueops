@@ -14,7 +14,17 @@
                 Manager: {{ report.manager_on_duty or '—' }}
             </div>
         </div>
-        <span class="summary-pill">SVR #{{ report.id }}</span>
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <a
+                href="{{ url_for('svr.export_pdf', report_id=report.id) }}"
+                class="action-btn"
+                style="text-decoration:none; min-width: 140px; text-align:center;"
+            >
+                Export PDF
+            </a>
+            <span class="summary-pill">SVR #{{ report.id }}</span>
+        </div>
     </div>
 </div>
 
