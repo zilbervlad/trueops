@@ -17,6 +17,56 @@
 {% set is_maintenance = user_role == 'maintenance' %}
 {% set is_ops_view = not is_manager and not is_maintenance %}
 
+<style>
+    .manager-weekly-focus-card {
+        transition: background 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .manager-weekly-focus-card.is-completed {
+        background: rgba(0, 0, 0, 0.24);
+        opacity: 0.68;
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .manager-weekly-focus-card.is-completed .checklist-checkbox-row span {
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+    }
+
+    .manager-weekly-focus-card.is-completed:hover {
+        transform: none;
+    }
+
+    .weekly-focus-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .weekly-focus-status {
+        display: none;
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 700;
+        opacity: 0.9;
+    }
+
+    .manager-weekly-focus-card.is-completed .weekly-focus-status {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .manager-weekly-focus-card.is-completed .manager-weekly-focus-box {
+        pointer-events: none;
+    }
+
+    .manager-weekly-focus-card.is-completed .checklist-checkbox-row {
+        cursor: default;
+    }
+</style>
+
 <div class="command-bar panel" style="margin-bottom: 24px;">
     <div class="command-bar-left">
         <div class="command-eyebrow">
@@ -379,14 +429,17 @@
                     <div class="admin-task-list">
                         {% for item in cleaning_items %}
                         <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
-                            <label class="checklist-checkbox-row">
-                                <input
-                                    type="checkbox"
-                                    class="manager-weekly-focus-box"
-                                    data-item-id="{{ item.id }}"
-                                >
-                                <span>{{ item.item_text }}</span>
-                            </label>
+                            <div class="weekly-focus-item-row">
+                                <label class="checklist-checkbox-row" style="flex: 1;">
+                                    <input
+                                        type="checkbox"
+                                        class="manager-weekly-focus-box"
+                                        data-item-id="{{ item.id }}"
+                                    >
+                                    <span>{{ item.item_text }}</span>
+                                </label>
+                                <span class="summary-pill weekly-focus-status">Completed</span>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -399,14 +452,17 @@
                     <div class="admin-task-list">
                         {% for item in goal_items %}
                         <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
-                            <label class="checklist-checkbox-row">
-                                <input
-                                    type="checkbox"
-                                    class="manager-weekly-focus-box"
-                                    data-item-id="{{ item.id }}"
-                                >
-                                <span>{{ item.item_text }}</span>
-                            </label>
+                            <div class="weekly-focus-item-row">
+                                <label class="checklist-checkbox-row" style="flex: 1;">
+                                    <input
+                                        type="checkbox"
+                                        class="manager-weekly-focus-box"
+                                        data-item-id="{{ item.id }}"
+                                    >
+                                    <span>{{ item.item_text }}</span>
+                                </label>
+                                <span class="summary-pill weekly-focus-status">Completed</span>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -604,6 +660,11 @@ document.addEventListener("DOMContentLoaded", function () {
     function bindWeeklyFocusCheckboxes() {
         document.querySelectorAll(".manager-weekly-focus-box").forEach(box => {
             box.addEventListener("change", async function () {
+                if (!this.checked) return;
+
+                const card = this.closest(".manager-weekly-focus-card");
+                const itemId = Number(this.dataset.itemId);
+
                 try {
                     const response = await fetch("/complete-weekly-focus", {
                         method: "POST",
@@ -611,16 +672,25 @@ document.addEventListener("DOMContentLoaded", function () {
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            item_id: Number(this.dataset.itemId),
+                            item_id: itemId,
                         }),
                     });
 
                     const data = await response.json();
-                    if (!response.ok || !data.success) return;
+                    if (!response.ok || !data.success) {
+                        this.checked = false;
+                        return;
+                    }
 
-                    window.location.reload();
+                    if (card) {
+                        card.classList.add("is-completed");
+                    }
+
+                    this.checked = true;
+                    this.disabled = true;
                 } catch (error) {
                     console.error("Weekly focus completion failed:", error);
+                    this.checked = false;
                 }
             });
         });
