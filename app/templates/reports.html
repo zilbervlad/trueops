@@ -211,7 +211,7 @@
 
     <div class="panel premium-panel">
         <div class="panel-head">
-            <h3>Biggest Completion Gaps</h3>
+            <h3>Biggest Execution Gaps</h3>
             <span class="summary-pill">Attention Needed</span>
         </div>
         <div class="stack-list">
@@ -222,12 +222,12 @@
                     <div class="area-subtitle">{{ row.area_name }}</div>
                 </div>
                 <div style="text-align: right;">
-                    <div><strong>{{ row.not_started_count }}</strong> not started</div>
-                    <div class="area-subtitle">{{ row.in_progress_count }} in progress</div>
+                    <div><strong>{{ row.avg_opening }}%</strong> opening</div>
+                    <div class="area-subtitle">{{ row.avg_restock }}% restock | {{ row.avg_manager_walk }}% walk</div>
                 </div>
             </div>
             {% else %}
-            <div class="empty-state">No completion gaps found.</div>
+            <div class="empty-state">No execution gaps found.</div>
             {% endfor %}
         </div>
     </div>
@@ -249,9 +249,9 @@
                     <th>Managers</th>
                     <th>Completion</th>
                     <th>Integrity</th>
-                    <th>Completed</th>
-                    <th>In Progress</th>
-                    <th>Not Started</th>
+                    <th>Opening</th>
+                    <th>3 O'Clock Restock</th>
+                    <th>Manager's Walk</th>
                     <th>Total Checklists</th>
                 </tr>
             </thead>
@@ -308,15 +308,21 @@
                     </td>
 
                     <td>
-                        <span style="font-weight: 700;">{{ row.completed_count }}</span>
+                        <span class="table-badge {% if row.avg_opening >= 90 %}badge-success{% elif row.avg_opening >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_opening }}%
+                        </span>
                     </td>
 
                     <td>
-                        <span style="font-weight: 700;">{{ row.in_progress_count }}</span>
+                        <span class="table-badge {% if row.avg_restock >= 90 %}badge-success{% elif row.avg_restock >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_restock }}%
+                        </span>
                     </td>
 
                     <td>
-                        <span style="font-weight: 700;">{{ row.not_started_count }}</span>
+                        <span class="table-badge {% if row.avg_manager_walk >= 90 %}badge-success{% elif row.avg_manager_walk >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_manager_walk }}%
+                        </span>
                     </td>
 
                     <td>
@@ -347,9 +353,9 @@
                     <th>Store Count</th>
                     <th>Avg Completion</th>
                     <th>Avg Integrity</th>
-                    <th>Completed</th>
-                    <th>In Progress</th>
-                    <th>Not Started</th>
+                    <th>Avg Opening</th>
+                    <th>Avg 3 O'Clock Restock</th>
+                    <th>Avg Manager's Walk</th>
                     <th>Total Checklists</th>
                 </tr>
             </thead>
@@ -368,9 +374,21 @@
                             {{ row.avg_integrity }}%
                         </span>
                     </td>
-                    <td>{{ row.completed_count }}</td>
-                    <td>{{ row.in_progress_count }}</td>
-                    <td>{{ row.not_started_count }}</td>
+                    <td>
+                        <span class="table-badge {% if row.avg_opening >= 90 %}badge-success{% elif row.avg_opening >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_opening }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="table-badge {% if row.avg_restock >= 90 %}badge-success{% elif row.avg_restock >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_restock }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="table-badge {% if row.avg_manager_walk >= 90 %}badge-success{% elif row.avg_manager_walk >= 70 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.avg_manager_walk }}%
+                        </span>
+                    </td>
                     <td>{{ row.checklist_count }}</td>
                 </tr>
                 {% else %}

@@ -70,6 +70,20 @@ def parse_report_dates():
     return start_date, end_date, start_date_str, end_date_str
 
 
+def calculate_section_percent(daily, section_name):
+    if not daily or not getattr(daily, "items", None):
+        return 0.0
+
+    section_items = [item for item in daily.items if item.section_name == section_name]
+    total = len(section_items)
+
+    if total == 0:
+        return 0.0
+
+    completed = sum(1 for item in section_items if item.is_completed)
+    return round((completed / total) * 100, 1)
+
+
 def build_report_payload():
     visible_stores = get_visible_stores()
 
@@ -204,9 +218,17 @@ def build_report_payload():
             sum(integrity_values) / len(integrity_values), 1
         ) if integrity_values else 0.0
 
-        completed_count = sum(1 for row in store_rows if row.status == "completed")
-        in_progress_count = sum(1 for row in store_rows if row.status == "in_progress")
-        not_started_count = max(days_in_range - checklist_count, 0)
+        avg_opening = round(
+            sum(calculate_section_percent(row, "Before Open / Before 10:30") for row in store_rows) / checklist_count, 1
+        ) if checklist_count else 0.0
+
+        avg_restock = round(
+            sum(calculate_section_percent(row, "3-O'Clock Restock") for row in store_rows) / checklist_count, 1
+        ) if checklist_count else 0.0
+
+        avg_manager_walk = round(
+            sum(calculate_section_percent(row, "Manager's Walk") for row in store_rows) / checklist_count, 1
+        ) if checklist_count else 0.0
 
         manager_names = sorted({
             name.strip()
@@ -215,12 +237,19 @@ def build_report_payload():
             if name and name.strip()
         })
 
+        completed_count = sum(1 for row in store_rows if row.status == "completed")
+        in_progress_count = sum(1 for row in store_rows if row.status == "in_progress")
+        not_started_count = max(days_in_range - checklist_count, 0)
+
         store_report_rows.append({
             "store_number": store.store_number,
             "store_name": store.store_name or f"Store {store.store_number}",
             "area_name": store.area_name or "Unassigned",
             "avg_completion": avg_completion,
             "avg_integrity": avg_integrity,
+            "avg_opening": avg_opening,
+            "avg_restock": avg_restock,
+            "avg_manager_walk": avg_manager_walk,
             "completed_count": completed_count,
             "in_progress_count": in_progress_count,
             "not_started_count": not_started_count,
@@ -237,6 +266,9 @@ def build_report_payload():
         "store_count": 0,
         "avg_completion_total": 0.0,
         "avg_integrity_total": 0.0,
+        "avg_opening_total": 0.0,
+        "avg_restock_total": 0.0,
+        "avg_manager_walk_total": 0.0,
         "completed_count": 0,
         "in_progress_count": 0,
         "not_started_count": 0,
@@ -248,6 +280,9 @@ def build_report_payload():
         rollup["store_count"] += 1
         rollup["avg_completion_total"] += row["avg_completion"]
         rollup["avg_integrity_total"] += row["avg_integrity"]
+        rollup["avg_opening_total"] += row["avg_opening"]
+        rollup["avg_restock_total"] += row["avg_restock"]
+        rollup["avg_manager_walk_total"] += row["avg_manager_walk"]
         rollup["completed_count"] += row["completed_count"]
         rollup["in_progress_count"] += row["in_progress_count"]
         rollup["not_started_count"] += row["not_started_count"]
@@ -261,6 +296,9 @@ def build_report_payload():
             "store_count": store_count,
             "avg_completion": round(rollup["avg_completion_total"] / store_count, 1) if store_count else 0.0,
             "avg_integrity": round(rollup["avg_integrity_total"] / store_count, 1) if store_count else 0.0,
+            "avg_opening": round(rollup["avg_opening_total"] / store_count, 1) if store_count else 0.0,
+            "avg_restock": round(rollup["avg_restock_total"] / store_count, 1) if store_count else 0.0,
+            "avg_manager_walk": round(rollup["avg_manager_walk_total"] / store_count, 1) if store_count else 0.0,
             "completed_count": rollup["completed_count"],
             "in_progress_count": rollup["in_progress_count"],
             "not_started_count": rollup["not_started_count"],
@@ -277,7 +315,7 @@ def build_report_payload():
             key=lambda x: (
                 -x["avg_completion"],
                 -x["avg_integrity"],
-                -x["completed_count"],
+                -x["avg_opening"],
                 x["store_number"],
             )
         )
@@ -297,11 +335,12 @@ def build_report_payload():
         completion_gaps = sorted(
             [
                 row for row in store_report_rows
-                if row["not_started_count"] > 0 or row["in_progress_count"] > 0
+                if row["avg_restock"] < 100 or row["avg_manager_walk"] < 100 or row["avg_opening"] < 100
             ],
             key=lambda x: (
-                -x["not_started_count"],
-                -x["in_progress_count"],
+                x["avg_opening"],
+                x["avg_restock"],
+                x["avg_manager_walk"],
                 x["store_number"],
             )
         )
@@ -392,9 +431,9 @@ def create_excel_report(payload):
         "Managers",
         "Avg Completion %",
         "Avg Integrity %",
-        "Completed",
-        "In Progress",
-        "Not Started",
+        "Opening %",
+        "3 O'Clock Restock %",
+        "Manager's Walk %",
         "Total Checklists",
     ])
 
@@ -406,9 +445,9 @@ def create_excel_report(payload):
             ", ".join(row["manager_names"]) if row["manager_names"] else "—",
             row["avg_completion"],
             row["avg_integrity"],
-            row["completed_count"],
-            row["in_progress_count"],
-            row["not_started_count"],
+            row["avg_opening"],
+            row["avg_restock"],
+            row["avg_manager_walk"],
             row["checklist_count"],
         ])
 
@@ -421,9 +460,9 @@ def create_excel_report(payload):
         "Store Count",
         "Avg Completion %",
         "Avg Integrity %",
-        "Completed",
-        "In Progress",
-        "Not Started",
+        "Avg Opening %",
+        "Avg 3 O'Clock Restock %",
+        "Avg Manager's Walk %",
         "Total Checklists",
     ])
 
@@ -433,9 +472,9 @@ def create_excel_report(payload):
             row["store_count"],
             row["avg_completion"],
             row["avg_integrity"],
-            row["completed_count"],
-            row["in_progress_count"],
-            row["not_started_count"],
+            row["avg_opening"],
+            row["avg_restock"],
+            row["avg_manager_walk"],
             row["checklist_count"],
         ])
 
