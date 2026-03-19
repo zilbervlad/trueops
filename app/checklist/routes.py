@@ -27,6 +27,17 @@ def today_et():
     return now_et().date()
 
 
+def current_ops_date():
+    now = now_et()
+    if now.hour < 5:
+        return now.date() - timedelta(days=1)
+    return now.date()
+
+
+def is_past_ops_day(checklist_date: date):
+    return checklist_date < current_ops_date()
+
+
 def utc_naive_to_et(dt):
     if not dt:
         return None
@@ -380,7 +391,7 @@ def overview():
         return redirect(url_for("checklist.index"))
 
     visible_stores = get_visible_stores()
-    today = today_et()
+    today = current_ops_date()
 
     not_started = []
     in_progress = []
@@ -470,7 +481,7 @@ def delete_archive():
         flash("Invalid checklist date.", "error")
         return redirect(url_for("checklist.overview"))
 
-    if checklist_date >= today_et():
+    if checklist_date >= current_ops_date():
         flash("Only archived past checklists can be deleted.", "error")
         return redirect(url_for("checklist.overview"))
 
@@ -523,7 +534,7 @@ def index():
         store_number = default_store
 
     requested_date_str = request.args.get("date", "").strip()
-    today = today_et()
+    today = current_ops_date()
 
     if requested_date_str:
         try:
@@ -738,7 +749,7 @@ def autosave_item():
         return jsonify({"success": False, "error": "Item not found"}), 404
 
     daily = item.daily_checklist
-    if daily.checklist_date < today_et():
+    if is_past_ops_day(daily.checklist_date):
         return jsonify({"success": False, "error": "Past checklists are read-only"}), 400
 
     visible_store_numbers = {store.store_number for store in get_visible_stores()}
@@ -782,7 +793,7 @@ def autosave_manager():
     except ValueError:
         return jsonify({"success": False, "error": "Invalid date"}), 400
 
-    if selected_date < today_et():
+    if is_past_ops_day(selected_date):
         return jsonify({"success": False, "error": "Past checklists are read-only"}), 400
 
     visible_store_numbers = {store.store_number for store in get_visible_stores()}
