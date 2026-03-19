@@ -183,9 +183,27 @@ def index():
     if store_filter:
         tickets = [t for t in tickets if t.store_number == store_filter]
 
+    open_tickets = [t for t in tickets if t.status == "open"]
+    assigned_tickets = [t for t in tickets if t.status == "assigned"]
+    in_progress_tickets = [t for t in tickets if t.status == "in_progress"]
+    complete_tickets = [t for t in tickets if t.status == "complete"]
+
+    summary = {
+        "open_count": len(open_tickets),
+        "assigned_count": len(assigned_tickets),
+        "in_progress_count": len(in_progress_tickets),
+        "complete_count": len(complete_tickets),
+        "total_count": len(tickets),
+    }
+
     return render_template(
         "maintenance.html",
         tickets=tickets,
+        open_tickets=open_tickets,
+        assigned_tickets=assigned_tickets,
+        in_progress_tickets=in_progress_tickets,
+        complete_tickets=complete_tickets,
+        summary=summary,
         stores=visible_stores,
         status_filter=status_filter,
         store_filter=store_filter,
