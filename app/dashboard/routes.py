@@ -85,11 +85,9 @@ def build_dashboard_data():
     not_started_today = 0
     flagged_stores = 0
 
-    opening_not_started = []
-    opening_under_80 = []
-    opening_complete = []
     low_integrity_stores = []
 
+    opening_progress = []
     restock_progress = []
     manager_walk_progress = []
     area_groups = defaultdict(list)
@@ -137,6 +135,13 @@ def build_dashboard_data():
 
         area_groups[store.area_name].append(store_payload)
 
+        opening_progress.append({
+            "store_number": store.store_number,
+            "store_name": store.store_name or f"Store {store.store_number}",
+            "area_name": store.area_name,
+            "percent": opening_percent,
+        })
+
         restock_progress.append({
             "store_number": store.store_number,
             "store_name": store.store_name or f"Store {store.store_number}",
@@ -151,16 +156,18 @@ def build_dashboard_data():
             "percent": manager_walk_percent,
         })
 
-        if not daily:
-            opening_not_started.append(store.store_number)
-        elif 0 < opening_percent < 80:
-            opening_under_80.append({
-                "store_number": store.store_number,
-                "opening_percent": opening_percent,
-                "integrity_score": integrity_score,
-            })
-        elif opening_percent >= 100:
-            opening_complete.append(store.store_number)
+    opening_progress = sorted(
+        opening_progress,
+        key=lambda x: (x["percent"], x["store_number"])
+    )
+    restock_progress = sorted(
+        restock_progress,
+        key=lambda x: (x["percent"], x["store_number"])
+    )
+    manager_walk_progress = sorted(
+        manager_walk_progress,
+        key=lambda x: (x["percent"], x["store_number"])
+    )
 
     ordered_area_groups = dict(sorted(area_groups.items(), key=lambda x: x[0]))
 
@@ -235,13 +242,9 @@ def build_dashboard_data():
 
     alerts = []
 
-    for store_number in opening_not_started[:5]:
-        alerts.append(f"Store {store_number}: opening section not started")
-
-    for item in opening_under_80[:5]:
-        alerts.append(
-            f"Store {item['store_number']}: opening only {item['opening_percent']}%"
-        )
+    for item in opening_progress[:5]:
+        if item["percent"] < 100:
+            alerts.append(f"Store {item['store_number']}: opening at {item['percent']}%")
 
     for item in low_integrity_stores[:5]:
         alerts.append(
@@ -265,12 +268,6 @@ def build_dashboard_data():
         "open_maintenance": str(open_maintenance_count),
     }
 
-    morning_exceptions = {
-        "opening_not_started": opening_not_started,
-        "opening_under_80": opening_under_80,
-        "opening_complete": opening_complete,
-    }
-
     return {
         "stats": stats,
         "alerts": alerts,
@@ -280,12 +277,12 @@ def build_dashboard_data():
         "completed_today": completed_today,
         "in_progress_today": in_progress_today,
         "not_started_today": not_started_today,
-        "morning_exceptions": morning_exceptions,
         "svr_completed_count": svr_completed_count,
         "svr_missing_stores": svr_missing_stores,
         "open_maintenance_count": open_maintenance_count,
         "complete_maintenance_count": complete_maintenance_count,
         "manager_weekly_focus": manager_weekly_focus,
+        "opening_progress": opening_progress,
         "restock_progress": restock_progress,
         "manager_walk_progress": manager_walk_progress,
     }
@@ -325,12 +322,12 @@ def home():
         completed_today=data["completed_today"],
         in_progress_today=data["in_progress_today"],
         not_started_today=data["not_started_today"],
-        morning_exceptions=data["morning_exceptions"],
         svr_completed_count=data["svr_completed_count"],
         svr_missing_stores=data["svr_missing_stores"],
         open_maintenance_count=data["open_maintenance_count"],
         complete_maintenance_count=data["complete_maintenance_count"],
         manager_weekly_focus=data["manager_weekly_focus"],
+        opening_progress=data["opening_progress"],
         restock_progress=data["restock_progress"],
         manager_walk_progress=data["manager_walk_progress"],
     )

@@ -116,56 +116,78 @@
 </div>
 
 {% if is_ops_view %}
-<div class="content-grid exceptions-grid" style="margin-bottom: 24px;">
-    <section class="panel premium-panel exception-panel">
-        <div class="panel-head">
-            <h3>Opening Not Started</h3>
-            <span class="summary-pill neutral-pill" id="opening-not-started-count">
-                {{ morning_exceptions.opening_not_started|length }} stores
-            </span>
+<div class="panel premium-panel" style="margin-bottom: 24px;">
+    <button
+        type="button"
+        id="section-progress-toggle"
+        class="panel-head"
+        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+        aria-expanded="false"
+    >
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="margin: 0;">Section Progress Board</h3>
+            <span class="summary-pill">{{ opening_progress|length }} stores</span>
         </div>
-        <div class="exception-list" id="opening-not-started-list">
-            {% for store in morning_exceptions.opening_not_started %}
-            <span class="exception-chip neutral-pill">{{ store }}</span>
-            {% else %}
-            <span class="exception-chip neutral-pill">None</span>
-            {% endfor %}
-        </div>
-    </section>
+        <span id="section-progress-chevron" class="summary-pill">Show ▼</span>
+    </button>
 
-    <section class="panel premium-panel exception-panel">
-        <div class="panel-head">
-            <h3>Opening Under 80%</h3>
-            <span class="summary-pill warning-pill" id="opening-under-80-count">
-                {{ morning_exceptions.opening_under_80|length }} stores
-            </span>
-        </div>
-        <div class="exception-list detailed" id="opening-under-80-list">
-            {% for store in morning_exceptions.opening_under_80 %}
-            <span class="exception-chip warning-pill">
-                {{ store.store_number }} - {{ store.opening_percent }}%
-            </span>
-            {% else %}
-            <span class="exception-chip warning-pill">None</span>
-            {% endfor %}
-        </div>
-    </section>
+    <div id="section-progress-body" style="margin-top: 16px; display: none;">
+        <div class="content-grid exceptions-grid">
+            <section class="panel premium-panel exception-panel">
+                <div class="panel-head">
+                    <h3>Opening</h3>
+                    <span class="summary-pill neutral-pill" id="opening-progress-count">
+                        {{ opening_progress|length }} stores
+                    </span>
+                </div>
+                <div class="exception-list detailed" id="opening-progress-list">
+                    {% for store in opening_progress %}
+                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
+                        {{ store.store_number }} - {{ store.percent }}%
+                    </span>
+                    {% else %}
+                    <span class="exception-chip neutral-pill">None</span>
+                    {% endfor %}
+                </div>
+            </section>
 
-    <section class="panel premium-panel exception-panel">
-        <div class="panel-head">
-            <h3>Opening Complete</h3>
-            <span class="summary-pill success-pill" id="opening-complete-count">
-                {{ morning_exceptions.opening_complete|length }} stores
-            </span>
+            <section class="panel premium-panel exception-panel">
+                <div class="panel-head">
+                    <h3>3 O'Clock Restock</h3>
+                    <span class="summary-pill warning-pill" id="restock-progress-count">
+                        {{ restock_progress|length }} stores
+                    </span>
+                </div>
+                <div class="exception-list detailed" id="restock-progress-list">
+                    {% for store in restock_progress %}
+                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
+                        {{ store.store_number }} - {{ store.percent }}%
+                    </span>
+                    {% else %}
+                    <span class="exception-chip neutral-pill">None</span>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="panel premium-panel exception-panel">
+                <div class="panel-head">
+                    <h3>Manager's Walk</h3>
+                    <span class="summary-pill success-pill" id="manager-walk-progress-count">
+                        {{ manager_walk_progress|length }} stores
+                    </span>
+                </div>
+                <div class="exception-list detailed" id="manager-walk-progress-list">
+                    {% for store in manager_walk_progress %}
+                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
+                        {{ store.store_number }} - {{ store.percent }}%
+                    </span>
+                    {% else %}
+                    <span class="exception-chip neutral-pill">None</span>
+                    {% endfor %}
+                </div>
+            </section>
         </div>
-        <div class="exception-list" id="opening-complete-list">
-            {% for store in morning_exceptions.opening_complete %}
-            <span class="exception-chip success-pill">{{ store }}</span>
-            {% else %}
-            <span class="exception-chip success-pill">None</span>
-            {% endfor %}
-        </div>
-    </section>
+    </div>
 </div>
 {% endif %}
 
@@ -620,7 +642,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let refreshInFlight = false;
 
-    function renderChipList(containerId, items, cls, formatter = null) {
+    function renderChipList(containerId, items) {
         const el = document.getElementById(containerId);
         if (!el) return;
 
@@ -628,7 +650,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!items || items.length === 0) {
             const span = document.createElement("span");
-            span.className = `exception-chip ${cls}`;
+            span.className = "exception-chip neutral-pill";
             span.textContent = "None";
             el.appendChild(span);
             return;
@@ -636,8 +658,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         items.forEach(item => {
             const span = document.createElement("span");
-            span.className = `exception-chip ${cls}`;
-            span.textContent = formatter ? formatter(item) : item;
+
+            let pillClass = "neutral-pill";
+            if (Number(item.percent) >= 90) {
+                pillClass = "success-pill";
+            } else if (Number(item.percent) >= 50) {
+                pillClass = "warning-pill";
+            }
+
+            span.className = `exception-chip ${pillClass}`;
+            span.textContent = `${item.store_number} - ${item.percent}%`;
             el.appendChild(span);
         });
     }
@@ -786,40 +816,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const data = await response.json();
 
-            if (isOpsView && data.morning_exceptions) {
-                const openingNotStartedCount = document.getElementById("opening-not-started-count");
-                if (openingNotStartedCount) {
-                    openingNotStartedCount.textContent = `${data.morning_exceptions.opening_not_started.length} stores`;
+            if (isOpsView) {
+                const openingCount = document.getElementById("opening-progress-count");
+                if (openingCount) {
+                    openingCount.textContent = `${(data.opening_progress || []).length} stores`;
                 }
 
-                const openingUnder80Count = document.getElementById("opening-under-80-count");
-                if (openingUnder80Count) {
-                    openingUnder80Count.textContent = `${data.morning_exceptions.opening_under_80.length} stores`;
+                const restockCount = document.getElementById("restock-progress-count");
+                if (restockCount) {
+                    restockCount.textContent = `${(data.restock_progress || []).length} stores`;
                 }
 
-                const openingCompleteCount = document.getElementById("opening-complete-count");
-                if (openingCompleteCount) {
-                    openingCompleteCount.textContent = `${data.morning_exceptions.opening_complete.length} stores`;
+                const managerWalkCount = document.getElementById("manager-walk-progress-count");
+                if (managerWalkCount) {
+                    managerWalkCount.textContent = `${(data.manager_walk_progress || []).length} stores`;
                 }
 
-                renderChipList(
-                    "opening-not-started-list",
-                    data.morning_exceptions.opening_not_started,
-                    "neutral-pill"
-                );
-
-                renderChipList(
-                    "opening-under-80-list",
-                    data.morning_exceptions.opening_under_80,
-                    "warning-pill",
-                    (item) => `${item.store_number} - ${item.opening_percent}%`
-                );
-
-                renderChipList(
-                    "opening-complete-list",
-                    data.morning_exceptions.opening_complete,
-                    "success-pill"
-                );
+                renderChipList("opening-progress-list", data.opening_progress || []);
+                renderChipList("restock-progress-list", data.restock_progress || []);
+                renderChipList("manager-walk-progress-list", data.manager_walk_progress || []);
 
                 renderShiftExecutionTiles(
                     data.restock_progress || [],
@@ -842,6 +857,19 @@ document.addEventListener("DOMContentLoaded", function () {
     bindWeeklyFocusCheckboxes();
     bindAreaToggles();
 
+    const sectionProgressToggle = document.getElementById("section-progress-toggle");
+    const sectionProgressBody = document.getElementById("section-progress-body");
+    const sectionProgressChevron = document.getElementById("section-progress-chevron");
+
+    if (sectionProgressToggle && sectionProgressBody && sectionProgressChevron) {
+        sectionProgressToggle.addEventListener("click", function () {
+            const isHidden = sectionProgressBody.style.display === "none";
+            sectionProgressBody.style.display = isHidden ? "block" : "none";
+            sectionProgressToggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+            sectionProgressChevron.textContent = isHidden ? "Hide ▲" : "Show ▼";
+        });
+    }
+
     const shiftExecutionToggle = document.getElementById("shift-execution-toggle");
     const shiftExecutionBody = document.getElementById("shift-execution-body");
     const shiftExecutionChevron = document.getElementById("shift-execution-chevron");
@@ -861,6 +889,3 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endblock %}
-
-
-
