@@ -8,6 +8,22 @@ from app.services.email_service import send_email
 
 nightly_numbers_bp = Blueprint("nightly_numbers", __name__, url_prefix="/nightly-numbers")
 
+FIELD_CONFIG = {
+    "manager_name": {"label": "Manager", "enabled": True, "required": True},
+    "royalty_sales": {"label": "Royalty Sales", "enabled": True, "required": True},
+    "variable_labor": {"label": "Variable Labor", "enabled": True, "required": True},
+    "labor_goal": {"label": "Labor Goal", "enabled": True, "required": True},
+    "invoices_transfers_checked": {"label": "Invoices / Transfers Checked", "enabled": True, "required": False},
+    "food_variance": {"label": "Food Variance", "enabled": True, "required": True},
+    "food_variance_details": {"label": "Food Variance Details", "enabled": True, "required": False},
+    "adt": {"label": "ADT", "enabled": True, "required": True},
+    "adt_reason": {"label": "ADT Reason", "enabled": True, "required": False},
+    "load_time": {"label": "Load Time", "enabled": True, "required": True},
+    "bad_orders": {"label": "Bad Orders", "enabled": True, "required": False},
+    "cash_diff": {"label": "Cash +/-", "enabled": True, "required": True},
+    "food_order_placed": {"label": "Food Order Placed", "enabled": True, "required": False},
+}
+
 
 def get_visible_stores():
     role = session.get("user_role")
@@ -201,6 +217,7 @@ def index():
         report=existing_report,
         today_str=today_str,
         store_number=user_store,
+        field_config=FIELD_CONFIG,
     )
 
 
@@ -239,6 +256,7 @@ def admin():
         stores=visible_stores,
         selected_store=selected_store,
         selected_date=selected_date,
+        field_config=FIELD_CONFIG,
     )
 
 
@@ -275,4 +293,8 @@ def edit_report(report_id):
         flash("Nightly numbers report updated.", "success")
         return redirect(url_for("nightly_numbers.admin"))
 
-    return render_template("nightly_numbers_edit.html", report=report)
+    return render_template(
+        "nightly_numbers_edit.html",
+        report=report,
+        field_config=FIELD_CONFIG,
+    )
