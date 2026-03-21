@@ -76,6 +76,9 @@ def manage_users():
             role = request.form.get("role", "").strip()
             area_name = request.form.get("area_name", "").strip() or None
             store_number = request.form.get("store_number", "").strip() or None
+            email = request.form.get("email", "").strip() or None
+            notification_email = request.form.get("notification_email", "").strip() or None
+            email_enabled = request.form.get("email_enabled") == "on"
 
             valid_roles = {"admin", "supervisor", "manager", "maintenance"}
 
@@ -112,6 +115,9 @@ def manage_users():
                 role=role,
                 area_name=area_name,
                 store_number=store_number,
+                email=email,
+                notification_email=notification_email,
+                email_enabled=email_enabled,
                 is_active=True,
             )
             user.set_password(password)
@@ -138,6 +144,9 @@ def manage_users():
             role = request.form.get("role", "").strip()
             area_name = request.form.get("area_name", "").strip() or None
             store_number = request.form.get("store_number", "").strip() or None
+            email = request.form.get("email", "").strip() or None
+            notification_email = request.form.get("notification_email", "").strip() or None
+            email_enabled = request.form.get("email_enabled") == "on"
             new_password = request.form.get("password", "").strip()
 
             valid_roles = {"admin", "supervisor", "manager", "maintenance"}
@@ -146,14 +155,18 @@ def manage_users():
             # PROTECTED ADMIN LOGIC
             # -------------------------
             if user.role == "admin":
-                if not new_password:
-                    flash("For protected admin users, only password reset is allowed here.", "error")
-                    return redirect(url_for("auth.manage_users"))
+                user.email = email
+                user.notification_email = notification_email
+                user.email_enabled = email_enabled
 
-                user.set_password(new_password)
-                db.session.commit()
+                if new_password:
+                    user.set_password(new_password)
+                    db.session.commit()
+                    flash("Admin email settings and password updated successfully.", "success")
+                else:
+                    db.session.commit()
+                    flash("Admin email settings updated successfully.", "success")
 
-                flash("Admin password updated successfully.", "success")
                 return redirect(url_for("auth.manage_users"))
 
             if not name or not username or role not in valid_roles:
@@ -191,6 +204,9 @@ def manage_users():
             user.role = role
             user.area_name = area_name
             user.store_number = store_number
+            user.email = email
+            user.notification_email = notification_email
+            user.email_enabled = email_enabled
 
             if new_password:
                 user.set_password(new_password)

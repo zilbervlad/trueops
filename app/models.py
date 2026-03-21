@@ -22,6 +22,10 @@ class User(db.Model):
     area_name = db.Column(db.String(100), nullable=True)
     store_number = db.Column(db.String(10), nullable=True)
 
+    email = db.Column(db.String(255), nullable=True)
+    notification_email = db.Column(db.String(255), nullable=True)
+    email_enabled = db.Column(db.Boolean, nullable=False, default=True)
+
     is_active = db.Column(db.Boolean, default=True)
 
     def set_password(self, password: str):
@@ -41,6 +45,11 @@ class User(db.Model):
 
     def is_maintenance(self):
         return self.role == "maintenance"
+
+    def get_notification_email(self):
+        if not self.email_enabled:
+            return None
+        return self.notification_email or self.email
 
 
 class Store(db.Model):

@@ -47,6 +47,21 @@
                 <input type="text" id="create_store_number" name="store_number" placeholder="Example: 3209">
             </div>
 
+            <div class="form-group">
+                <label for="create_email">Primary Email</label>
+                <input type="email" id="create_email" name="email" placeholder="name@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="create_notification_email">Notification Email</label>
+                <input type="email" id="create_notification_email" name="notification_email" placeholder="Optional override for auto emails">
+            </div>
+
+            <label class="checkbox-inline">
+                <input type="checkbox" name="email_enabled" checked>
+                Enable automated emails for this user
+            </label>
+
             <button type="submit" class="btn-primary">Create User</button>
         </form>
     </section>
@@ -136,13 +151,39 @@
                            {% if user.role == 'admin' %}disabled{% endif %}>
                 </div>
 
+                <div class="admin-task-grid compact-grid">
+                    <div class="form-group compact-group">
+                        <label>Primary Email</label>
+                        <input type="email"
+                               name="email"
+                               value="{{ user.email or '' }}">
+                    </div>
+
+                    <div class="form-group compact-group">
+                        <label>Notification Email</label>
+                        <input type="email"
+                               name="notification_email"
+                               value="{{ user.notification_email or '' }}"
+                               placeholder="Optional override">
+                    </div>
+                </div>
+
+                <div class="admin-check-row compact-actions">
+                    <label class="checkbox-inline">
+                        <input type="checkbox"
+                               name="email_enabled"
+                               {% if user.email_enabled %}checked{% endif %}>
+                        Email Enabled
+                    </label>
+                </div>
+
                 <div class="admin-check-row compact-actions">
                     {% if user.role == 'admin' %}
                     <button type="submit"
                             name="action"
                             value="update"
                             class="btn-primary">
-                        Reset Admin Password
+                        Save Admin Settings
                     </button>
                     {% else %}
                     <button type="submit"
