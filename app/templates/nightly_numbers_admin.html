@@ -6,6 +6,40 @@
 {% block content %}
 <div class="content-grid">
     <section class="panel">
+        <h3>Nightly Form Settings</h3>
+        <p class="subtitle" style="margin-top: 0;">
+            These are the current fields available on the manager nightly numbers form.
+        </p>
+
+        <div class="admin-task-list">
+            {% for field_key, field in field_config.items() %}
+            <div class="admin-task-card">
+                <div class="admin-task-top">
+                    <span class="summary-pill">{{ field.label }}</span>
+
+                    {% if field.enabled %}
+                    <span class="table-badge badge-success">Enabled</span>
+                    {% else %}
+                    <span class="table-badge badge-neutral">Hidden</span>
+                    {% endif %}
+
+                    {% if field.required %}
+                    <span class="table-badge badge-danger">Required</span>
+                    {% else %}
+                    <span class="table-badge badge-neutral">Optional</span>
+                    {% endif %}
+                </div>
+
+                <div class="svr-value-card">
+                    <div class="svr-value-label">Field Key</div>
+                    <div class="svr-value-text">{{ field_key }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
         <h3>Filter Reports</h3>
 
         <form method="GET" class="login-form">
