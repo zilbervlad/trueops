@@ -56,13 +56,6 @@
                     </a>
                     {% endif %}
 
-                    {% if session.get('user_role') in ['admin', 'supervisor', 'manager'] %}
-                    <a href="{{ url_for('nightly_numbers.index') }}"
-                       class="{% if request.endpoint and request.endpoint.startswith('nightly_numbers') and request.endpoint != 'nightly_numbers.admin' and request.endpoint != 'nightly_numbers.edit_report' %}active{% endif %}">
-                        Nightly Numbers
-                    </a>
-                    {% endif %}
-
                     {% if session.get('user_role') in ['admin', 'supervisor', 'maintenance'] %}
                     <a href="{{ url_for('maintenance.index') }}"
                        class="{% if request.endpoint and request.endpoint.startswith('maintenance') %}active{% endif %}">
