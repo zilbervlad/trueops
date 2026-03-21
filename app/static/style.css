@@ -1521,3 +1521,8 @@ textarea:focus {
     padding-top: 18px;
     border-top: 1px solid #1f2937;
 }
+.nav a.active {
+    background: #1f2937;
+    color: #ffffff;
+    font-weight: 600;
+}

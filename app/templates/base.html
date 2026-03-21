@@ -23,41 +23,80 @@
             </div>
 
             <nav class="nav">
+
+                <!-- MAIN -->
                 <div class="nav-section">
                     <div class="nav-section-label">Main</div>
 
-                    <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+                    <a href="{{ url_for('dashboard.home') }}"
+                       class="{% if request.endpoint == 'dashboard.home' %}active{% endif %}">
+                        Dashboard
+                    </a>
 
                     {% if session.get('user_role') in ['admin', 'supervisor'] %}
-                    <a href="{{ url_for('checklist.overview') }}">Checklist</a>
+                    <a href="{{ url_for('checklist.overview') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('checklist') %}active{% endif %}">
+                        Checklist
+                    </a>
                     {% elif session.get('user_role') == 'manager' %}
-                    <a href="{{ url_for('checklist.index') }}">Checklist</a>
+                    <a href="{{ url_for('checklist.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('checklist') %}active{% endif %}">
+                        Checklist
+                    </a>
                     {% endif %}
 
                     {% if session.get('user_role') in ['admin', 'supervisor'] %}
-                    <a href="{{ url_for('reports.index') }}">Reports</a>
-                    <a href="{{ url_for('svr.index') }}">SVR</a>
+                    <a href="{{ url_for('reports.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('reports') %}active{% endif %}">
+                        Reports
+                    </a>
+
+                    <a href="{{ url_for('svr.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('svr') and request.endpoint != 'svr.admin' %}active{% endif %}">
+                        SVR
+                    </a>
                     {% endif %}
 
                     {% if session.get('user_role') in ['admin', 'supervisor', 'maintenance'] %}
-                    <a href="{{ url_for('maintenance.index') }}">Maintenance</a>
+                    <a href="{{ url_for('maintenance.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('maintenance') %}active{% endif %}">
+                        Maintenance
+                    </a>
                     {% endif %}
                 </div>
 
+                <!-- ADMIN -->
                 {% if session.get('user_role') == 'admin' %}
                 <div class="nav-section">
                     <div class="nav-section-label">Admin</div>
 
-                    <a href="{{ url_for('checklist.admin') }}">Checklist Admin</a>
-                    <a href="{{ url_for('svr.admin') }}">SVR Admin</a>
-                    <a href="{{ url_for('store_admin.index') }}">Store Admin</a>
-                    <a href="{{ url_for('auth.manage_users') }}">Users</a>
+                    <a href="{{ url_for('checklist.admin') }}"
+                       class="{% if request.endpoint == 'checklist.admin' %}active{% endif %}">
+                        Checklist Admin
+                    </a>
+
+                    <a href="{{ url_for('svr.admin') }}"
+                       class="{% if request.endpoint == 'svr.admin' %}active{% endif %}">
+                        SVR Admin
+                    </a>
+
+                    <a href="{{ url_for('store_admin.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('store_admin') %}active{% endif %}">
+                        Store Admin
+                    </a>
+
+                    <a href="{{ url_for('auth.manage_users') }}"
+                       class="{% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
+                        Users
+                    </a>
                 </div>
                 {% endif %}
 
+                <!-- LOGOUT -->
                 <div class="nav-section nav-section-bottom">
                     <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
                 </div>
+
             </nav>
         </aside>
 
@@ -108,17 +147,9 @@
             body.classList.remove("mobile-nav-open");
         }
 
-        if (openBtn) {
-            openBtn.addEventListener("click", openSidebar);
-        }
-
-        if (closeBtn) {
-            closeBtn.addEventListener("click", closeSidebar);
-        }
-
-        if (overlay) {
-            overlay.addEventListener("click", closeSidebar);
-        }
+        if (openBtn) openBtn.addEventListener("click", openSidebar);
+        if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+        if (overlay) overlay.addEventListener("click", closeSidebar);
 
         if (sidebar) {
             sidebar.querySelectorAll("a").forEach(link => {
@@ -133,6 +164,7 @@
         });
     });
     </script>
+
     {% else %}
     <div class="login-page-wrap">
         {% with messages = get_flashed_messages(with_categories=true) %}
