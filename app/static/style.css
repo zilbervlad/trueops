@@ -1479,3 +1479,45 @@ textarea:focus {
         grid-template-columns: 1fr;
     }
 }
+/* Sidebar nav regroup fix */
+.nav {
+    margin-top: 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: stretch;
+}
+
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.nav-section + .nav-section {
+    margin-top: 22px;
+}
+
+.nav-section-label {
+    display: block;
+    width: 100%;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0 4px;
+    margin-bottom: 2px;
+}
+
+.nav-section a {
+    display: block;
+    width: 100%;
+}
+
+.nav-section-bottom {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid #1f2937;
+}

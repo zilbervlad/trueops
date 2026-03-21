@@ -23,40 +23,41 @@
             </div>
 
             <nav class="nav">
-                <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+                <div class="nav-section">
+                    <div class="nav-section-label">Main</div>
 
-                {% if session.get('user_role') in ['admin', 'supervisor'] %}
-                <a href="{{ url_for('checklist.overview') }}">Checklist</a>
-                {% elif session.get('user_role') == 'manager' %}
-                <a href="{{ url_for('checklist.index') }}">Checklist</a>
-                {% endif %}
+                    <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
 
-                {% if session.get('user_role') in ['admin', 'supervisor'] %}
-                <a href="{{ url_for('reports.index') }}">Reports</a>
-                {% endif %}
+                    {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                    <a href="{{ url_for('checklist.overview') }}">Checklist</a>
+                    {% elif session.get('user_role') == 'manager' %}
+                    <a href="{{ url_for('checklist.index') }}">Checklist</a>
+                    {% endif %}
 
-                {% if session.get('user_role') == 'admin' %}
-                <a href="{{ url_for('checklist.admin') }}">Checklist Admin</a>
-                <a href="{{ url_for('store_admin.index') }}">Store Admin</a>
-                {% endif %}
+                    {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                    <a href="{{ url_for('reports.index') }}">Reports</a>
+                    <a href="{{ url_for('svr.index') }}">SVR</a>
+                    {% endif %}
 
-                {% if session.get('user_role') in ['admin', 'supervisor'] %}
-                <a href="{{ url_for('svr.index') }}">SVR</a>
-                {% endif %}
-
-                {% if session.get('user_role') == 'admin' %}
-                <a href="{{ url_for('svr.admin') }}">SVR Admin</a>
-                {% endif %}
-
-                {% if session.get('user_role') in ['admin', 'supervisor', 'maintenance'] %}
-                <a href="{{ url_for('maintenance.index') }}">Maintenance</a>
-                {% endif %}
+                    {% if session.get('user_role') in ['admin', 'supervisor', 'maintenance'] %}
+                    <a href="{{ url_for('maintenance.index') }}">Maintenance</a>
+                    {% endif %}
+                </div>
 
                 {% if session.get('user_role') == 'admin' %}
-                <a href="{{ url_for('auth.manage_users') }}">Users</a>
+                <div class="nav-section">
+                    <div class="nav-section-label">Admin</div>
+
+                    <a href="{{ url_for('checklist.admin') }}">Checklist Admin</a>
+                    <a href="{{ url_for('svr.admin') }}">SVR Admin</a>
+                    <a href="{{ url_for('store_admin.index') }}">Store Admin</a>
+                    <a href="{{ url_for('auth.manage_users') }}">Users</a>
+                </div>
                 {% endif %}
 
-                <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
+                <div class="nav-section nav-section-bottom">
+                    <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
+                </div>
             </nav>
         </aside>
 
