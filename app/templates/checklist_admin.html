@@ -12,7 +12,7 @@
             <div>
                 <h3>Integrity Settings</h3>
                 <div class="area-subtitle">
-                    Control which section is used for checklist integrity scoring, how completion vs timing are weighted, and how burst completion is detected.
+                    Control which section is used for checklist integrity scoring, how completion vs timing are weighted, how burst completion is detected, and how timing scores are graded.
                 </div>
             </div>
             <span class="summary-pill">Integrity</span>
@@ -98,12 +98,68 @@
                 </div>
             </div>
 
+            <div class="admin-task-grid">
+                <div class="form-group">
+                    <label for="full_score_ratio">Full Score Ratio</label>
+                    <input
+                        type="number"
+                        id="full_score_ratio"
+                        name="full_score_ratio"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value="{{ integrity_settings.full_score_ratio if integrity_settings else '0.70' }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="medium_score_ratio">Medium Score Ratio</label>
+                    <input
+                        type="number"
+                        id="medium_score_ratio"
+                        name="medium_score_ratio"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value="{{ integrity_settings.medium_score_ratio if integrity_settings else '0.50' }}"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="admin-task-grid">
+                <div class="form-group">
+                    <label for="low_score_ratio">Low Score Ratio</label>
+                    <input
+                        type="number"
+                        id="low_score_ratio"
+                        name="low_score_ratio"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value="{{ integrity_settings.low_score_ratio if integrity_settings else '0.30' }}"
+                        required
+                    >
+                </div>
+
+                <div class="svr-value-card">
+                    <div class="svr-value-label">Timing Grade Example</div>
+                    <div class="svr-value-text">
+                        If elapsed ÷ expected time is at least the full score ratio, timing earns 100.
+                        If it misses that but clears the medium score ratio, timing earns 75.
+                        If it misses that but clears the low score ratio, timing earns 40.
+                    </div>
+                </div>
+            </div>
+
             <div class="svr-value-card" style="margin-top: 4px;">
-                <div class="svr-value-label">Tip</div>
+                <div class="svr-value-label">Tips</div>
                 <div class="svr-value-text">
                     Best practice is for completion weight + timing weight to equal 1.00.
                     Example: 0.60 and 0.40.
                     Burst example: if 4 tasks are completed within 60 seconds, timing score is forced to 0.
+                    Best practice for timing ratios is descending order: full > medium > low.
                 </div>
             </div>
 

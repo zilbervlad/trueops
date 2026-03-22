@@ -189,6 +189,24 @@ def update_checklist_progress(daily: DailyChecklist):
         else 60
     )
 
+    full_score_ratio = (
+        settings.full_score_ratio
+        if settings and settings.full_score_ratio is not None
+        else 0.70
+    )
+
+    medium_score_ratio = (
+        settings.medium_score_ratio
+        if settings and settings.medium_score_ratio is not None
+        else 0.50
+    )
+
+    low_score_ratio = (
+        settings.low_score_ratio
+        if settings and settings.low_score_ratio is not None
+        else 0.30
+    )
+
     section_one_items = [
         item for item in daily.items
         if item.section_name == integrity_section and item.is_required
@@ -235,11 +253,11 @@ def update_checklist_progress(daily: DailyChecklist):
             elapsed_minutes = (last_completed - first_completed).total_seconds() / 60
             ratio = elapsed_minutes / expected_minutes
 
-            if ratio >= 0.70:
+            if ratio >= full_score_ratio:
                 timing_score = 100.0
-            elif ratio >= 0.50:
+            elif ratio >= medium_score_ratio:
                 timing_score = 75.0
-            elif ratio >= 0.30:
+            elif ratio >= low_score_ratio:
                 timing_score = 40.0
             else:
                 timing_score = 0.0
@@ -925,6 +943,9 @@ def admin():
                 timing_weight = float(request.form.get("timing_weight", "0.40").strip())
                 burst_threshold = int(request.form.get("burst_threshold", "4").strip())
                 burst_window_seconds = int(request.form.get("burst_window_seconds", "60").strip())
+                full_score_ratio = float(request.form.get("full_score_ratio", "0.70").strip())
+                medium_score_ratio = float(request.form.get("medium_score_ratio", "0.50").strip())
+                low_score_ratio = float(request.form.get("low_score_ratio", "0.30").strip())
             except ValueError:
                 flash("Integrity settings must be valid numbers.", "error")
                 return redirect(url_for("checklist.admin"))
@@ -941,10 +962,21 @@ def admin():
                 flash("Burst window seconds must be at least 1.", "error")
                 return redirect(url_for("checklist.admin"))
 
+            if not (0 <= low_score_ratio <= 1 and 0 <= medium_score_ratio <= 1 and 0 <= full_score_ratio <= 1):
+                flash("Timing score ratios must be between 0.00 and 1.00.", "error")
+                return redirect(url_for("checklist.admin"))
+
+            if not (full_score_ratio > medium_score_ratio > low_score_ratio):
+                flash("Timing score ratios must be in descending order: full > medium > low.", "error")
+                return redirect(url_for("checklist.admin"))
+
             settings.completion_weight = completion_weight
             settings.timing_weight = timing_weight
             settings.burst_threshold = burst_threshold
             settings.burst_window_seconds = burst_window_seconds
+            settings.full_score_ratio = full_score_ratio
+            settings.medium_score_ratio = medium_score_ratio
+            settings.low_score_ratio = low_score_ratio
 
             db.session.commit()
             flash("Integrity settings updated.", "success")
