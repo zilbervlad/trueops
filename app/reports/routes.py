@@ -8,7 +8,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
 from app.auth.routes import login_required, role_required
-from app.models import Store, DailyChecklist
+from app.models import Store, DailyChecklist, NightlyNumbersReport
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
@@ -93,6 +93,7 @@ def build_report_payload():
     selected_store = request.args.get("store_number", "").strip()
     selected_area = request.args.get("area_name", "").strip()
     manager_name = request.args.get("manager_name", "").strip()
+    nightly_filter = request.args.get("nightly_filter", "").strip()
     show_task_analysis = request.args.get("show_task_analysis", "").strip() == "1"
 
     area_options = sorted({store.area_name for store in visible_stores if store.area_name})
@@ -135,6 +136,17 @@ def build_report_payload():
             DailyChecklist.store_number.asc()
         ).all()
 
+    nightly_rows = []
+    if filtered_store_numbers:
+        nightly_rows = NightlyNumbersReport.query.filter(
+            NightlyNumbersReport.store_number.in_(filtered_store_numbers),
+            NightlyNumbersReport.report_date >= start_date,
+            NightlyNumbersReport.report_date <= end_date,
+        ).order_by(
+            NightlyNumbersReport.report_date.desc(),
+            NightlyNumbersReport.store_number.asc()
+        ).all()
+
     if manager_name:
         manager_lower = manager_name.lower()
         checklist_rows = [
@@ -158,12 +170,62 @@ def build_report_payload():
             )
         ]
 
+    if nightly_filter == "missing":
+        stores_with_nightly = {row.store_number for row in nightly_rows}
+        filtered_stores = [
+            store for store in filtered_stores
+            if store.store_number not in stores_with_nightly
+        ]
+    elif nightly_filter == "adt_high":
+        stores_with_high_adt = {
+            row.store_number
+            for row in nightly_rows
+            if row.adt is not None and row.adt > 25
+        }
+        filtered_stores = [
+            store for store in filtered_stores
+            if store.store_number in stores_with_high_adt
+        ]
+    elif nightly_filter == "labor_high":
+        stores_with_high_labor = {
+            row.store_number
+            for row in nightly_rows
+            if (
+                row.variable_labor is not None
+                and row.labor_goal is not None
+                and row.variable_labor > row.labor_goal
+            )
+        }
+        filtered_stores = [
+            store for store in filtered_stores
+            if store.store_number in stores_with_high_labor
+        ]
+    elif nightly_filter == "submitted":
+        stores_with_nightly = {row.store_number for row in nightly_rows}
+        filtered_stores = [
+            store for store in filtered_stores
+            if store.store_number in stores_with_nightly
+        ]
+
+    filtered_store_numbers = {store.store_number for store in filtered_stores}
+
+    checklist_rows = [
+        row for row in checklist_rows
+        if row.store_number in filtered_store_numbers
+    ]
+
+    nightly_rows = [
+        row for row in nightly_rows
+        if row.store_number in filtered_store_numbers
+    ]
+
     checklist_store_numbers = {row.store_number for row in checklist_rows}
 
     if selected_store or selected_area or q or manager_name:
         filtered_stores = [
             store for store in filtered_stores
             if store.store_number in checklist_store_numbers
+            or store.store_number in {row.store_number for row in nightly_rows}
             or (
                 q
                 and (
@@ -172,6 +234,7 @@ def build_report_payload():
                     or q.lower() in (store.area_name or "").lower()
                 )
             )
+            or nightly_filter == "missing"
         ]
 
     days_in_range = (end_date - start_date).days + 1
@@ -185,6 +248,8 @@ def build_report_payload():
         "days_in_range": days_in_range,
         "stores_in_scope": len(filtered_stores),
         "total_checklists": len(checklist_rows),
+        "stores_with_nightly": len({row.store_number for row in nightly_rows}),
+        "stores_missing_nightly": 0,
     }
 
     if checklist_rows:
@@ -202,11 +267,18 @@ def build_report_payload():
 
     possible_checklists = len(filtered_stores) * days_in_range
     summary["not_started_count"] = max(possible_checklists - len(checklist_rows), 0)
+    summary["stores_missing_nightly"] = max(
+        len(filtered_stores) - len({row.store_number for row in nightly_rows}),
+        0
+    )
 
     store_report_rows = []
 
     for store in filtered_stores:
         store_rows = [row for row in checklist_rows if row.store_number == store.store_number]
+        store_nightly_rows = [row for row in nightly_rows if row.store_number == store.store_number]
+
+        latest_nightly = store_nightly_rows[0] if store_nightly_rows else None
 
         checklist_count = len(store_rows)
         avg_completion = round(
@@ -255,6 +327,11 @@ def build_report_payload():
             "not_started_count": not_started_count,
             "checklist_count": checklist_count,
             "manager_names": manager_names,
+            "has_nightly": latest_nightly is not None,
+            "nightly_date": latest_nightly.report_date if latest_nightly else None,
+            "nightly_adt": latest_nightly.adt if latest_nightly else None,
+            "nightly_labor": latest_nightly.variable_labor if latest_nightly else None,
+            "nightly_labor_goal": latest_nightly.labor_goal if latest_nightly else None,
         })
 
     store_report_rows = sorted(
@@ -273,6 +350,7 @@ def build_report_payload():
         "in_progress_count": 0,
         "not_started_count": 0,
         "checklist_count": 0,
+        "stores_with_nightly": 0,
     })
 
     for row in store_report_rows:
@@ -287,6 +365,7 @@ def build_report_payload():
         rollup["in_progress_count"] += row["in_progress_count"]
         rollup["not_started_count"] += row["not_started_count"]
         rollup["checklist_count"] += row["checklist_count"]
+        rollup["stores_with_nightly"] += 1 if row["has_nightly"] else 0
 
     area_report_rows = []
     for area_name, rollup in sorted(area_rollups.items()):
@@ -303,6 +382,8 @@ def build_report_payload():
             "in_progress_count": rollup["in_progress_count"],
             "not_started_count": rollup["not_started_count"],
             "checklist_count": rollup["checklist_count"],
+            "stores_with_nightly": rollup["stores_with_nightly"],
+            "stores_missing_nightly": max(store_count - rollup["stores_with_nightly"], 0),
         })
 
     task_analysis = None
@@ -357,6 +438,7 @@ def build_report_payload():
         "selected_store": selected_store,
         "selected_area": selected_area,
         "manager_name": manager_name,
+        "nightly_filter": nightly_filter,
         "q": q,
         "start_date": start_date_str,
         "end_date": end_date_str,
@@ -408,6 +490,7 @@ def create_excel_report(payload):
         ("Selected Store", payload["selected_store"] or "All"),
         ("Selected Area", payload["selected_area"] or "All"),
         ("Manager Filter", payload["manager_name"] or "All"),
+        ("Nightly Filter", payload["nightly_filter"] or "All"),
         ("Days In Range", summary["days_in_range"]),
         ("Stores In Scope", summary["stores_in_scope"]),
         ("Total Checklists", summary["total_checklists"]),
@@ -416,6 +499,8 @@ def create_excel_report(payload):
         ("Completed Count", summary["completed_count"]),
         ("In Progress Count", summary["in_progress_count"]),
         ("Not Started Count", summary["not_started_count"]),
+        ("Stores With Nightly Numbers", summary["stores_with_nightly"]),
+        ("Stores Missing Nightly Numbers", summary["stores_missing_nightly"]),
     ]
     for row in summary_rows:
         summary_ws.append(row)
@@ -434,6 +519,11 @@ def create_excel_report(payload):
         "Opening %",
         "3 O'Clock Restock %",
         "Manager's Walk %",
+        "Has Nightly Numbers",
+        "Nightly Date",
+        "Nightly ADT",
+        "Nightly Labor",
+        "Nightly Labor Goal",
         "Total Checklists",
     ])
 
@@ -448,6 +538,11 @@ def create_excel_report(payload):
             row["avg_opening"],
             row["avg_restock"],
             row["avg_manager_walk"],
+            "Yes" if row["has_nightly"] else "No",
+            row["nightly_date"].strftime("%Y-%m-%d") if row["nightly_date"] else "",
+            row["nightly_adt"] if row["nightly_adt"] is not None else "",
+            row["nightly_labor"] if row["nightly_labor"] is not None else "",
+            row["nightly_labor_goal"] if row["nightly_labor_goal"] is not None else "",
             row["checklist_count"],
         ])
 
@@ -463,6 +558,8 @@ def create_excel_report(payload):
         "Avg Opening %",
         "Avg 3 O'Clock Restock %",
         "Avg Manager's Walk %",
+        "Stores With Nightly Numbers",
+        "Stores Missing Nightly Numbers",
         "Total Checklists",
     ])
 
@@ -475,6 +572,8 @@ def create_excel_report(payload):
             row["avg_opening"],
             row["avg_restock"],
             row["avg_manager_walk"],
+            row["stores_with_nightly"],
+            row["stores_missing_nightly"],
             row["checklist_count"],
         ])
 
@@ -500,6 +599,7 @@ def index():
         selected_store=payload["selected_store"],
         selected_area=payload["selected_area"],
         manager_name=payload["manager_name"],
+        nightly_filter=payload["nightly_filter"],
         q=payload["q"],
         start_date=payload["start_date"],
         end_date=payload["end_date"],
@@ -619,6 +719,7 @@ def store_detail(store_number):
     selected_area = request.args.get("area_name", "").strip()
     selected_store = request.args.get("store_number", "").strip()
     manager_name = request.args.get("manager_name", "").strip()
+    nightly_filter = request.args.get("nightly_filter", "").strip()
     show_task_analysis = request.args.get("show_task_analysis", "").strip()
 
     if q:
@@ -629,6 +730,8 @@ def store_detail(store_number):
         back_args["store_number"] = selected_store
     if manager_name:
         back_args["manager_name"] = manager_name
+    if nightly_filter:
+        back_args["nightly_filter"] = nightly_filter
     if show_task_analysis == "1":
         back_args["show_task_analysis"] = "1"
 
