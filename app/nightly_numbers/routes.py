@@ -91,7 +91,6 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
         cc_emails.append(supervisor_email)
     cc_emails.extend(admin_emails)
 
-    # remove duplicates and remove manager if duplicated in cc
     cc_emails = [email for email in dict.fromkeys(cc_emails) if email and email != manager_email]
 
     if not manager_email:
@@ -205,12 +204,19 @@ def index():
         except Exception as e:
             flash(f"Nightly numbers saved, but email failed: {str(e)}", "error")
 
-        return redirect(url_for("nightly_numbers.index"))
+        # ✅ UPDATED REDIRECT
+        return redirect(url_for("nightly_numbers.index", reset=1))
 
-    existing_report = NightlyNumbersReport.query.filter_by(
-        store_number=user_store,
-        report_date=datetime.strptime(today_str, "%Y-%m-%d").date()
-    ).first()
+    # ✅ RESET LOGIC ADDED
+    reset = request.args.get("reset")
+
+    existing_report = None
+
+    if not reset:
+        existing_report = NightlyNumbersReport.query.filter_by(
+            store_number=user_store,
+            report_date=datetime.strptime(today_str, "%Y-%m-%d").date()
+        ).first()
 
     return render_template(
         "nightly_numbers.html",
