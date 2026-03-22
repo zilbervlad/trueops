@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import date, timedelta, datetime
 from io import BytesIO
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, session, send_file
 from openpyxl import Workbook
@@ -11,6 +12,15 @@ from app.auth.routes import login_required, role_required
 from app.models import Store, DailyChecklist, NightlyNumbersReport
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+APP_TZ = ZoneInfo("America/New_York")
+UTC_TZ = ZoneInfo("UTC")
+
+
+def utc_naive_to_et(dt):
+    if not dt:
+        return None
+    return dt.replace(tzinfo=UTC_TZ).astimezone(APP_TZ)
 
 
 def get_visible_stores():
@@ -359,7 +369,7 @@ def build_report_payload():
         rollup["avg_completion_total"] += row["avg_completion"]
         rollup["avg_integrity_total"] += row["avg_integrity"]
         rollup["avg_opening_total"] += row["avg_opening"]
-        rollup["avg_restock_total"] += row["avg_restock"]
+        rollup["avg_restock_TOTAL"] = rollup.get("avg_restock_TOTAL", 0.0) + row["avg_restock"]
         rollup["avg_manager_walk_total"] += row["avg_manager_walk"]
         rollup["completed_count"] += row["completed_count"]
         rollup["in_progress_count"] += row["in_progress_count"]
@@ -376,7 +386,7 @@ def build_report_payload():
             "avg_completion": round(rollup["avg_completion_total"] / store_count, 1) if store_count else 0.0,
             "avg_integrity": round(rollup["avg_integrity_total"] / store_count, 1) if store_count else 0.0,
             "avg_opening": round(rollup["avg_opening_total"] / store_count, 1) if store_count else 0.0,
-            "avg_restock": round(rollup["avg_restock_total"] / store_count, 1) if store_count else 0.0,
+            "avg_restock": round(rollup.get("avg_restock_TOTAL", 0.0) / store_count, 1) if store_count else 0.0,
             "avg_manager_walk": round(rollup["avg_manager_walk_total"] / store_count, 1) if store_count else 0.0,
             "completed_count": rollup["completed_count"],
             "in_progress_count": rollup["in_progress_count"],
@@ -586,67 +596,13 @@ def create_excel_report(payload):
     return output
 
 
-@reports_bp.route("/")
-@login_required
-@role_required("admin", "supervisor")
-def index():
-    payload = build_report_payload()
-
-    return render_template(
-        "reports.html",
-        stores=payload["stores"],
-        area_options=payload["area_options"],
-        selected_store=payload["selected_store"],
-        selected_area=payload["selected_area"],
-        manager_name=payload["manager_name"],
-        nightly_filter=payload["nightly_filter"],
-        q=payload["q"],
-        start_date=payload["start_date"],
-        end_date=payload["end_date"],
-        show_task_analysis=payload["show_task_analysis"],
-        summary=payload["summary"],
-        store_report_rows=payload["store_report_rows"],
-        area_report_rows=payload["area_report_rows"],
-        task_analysis=payload["task_analysis"],
-    )
-
-
-@reports_bp.route("/export/excel")
-@login_required
-@role_required("admin", "supervisor")
-def export_excel():
-    payload = build_report_payload()
-    workbook_stream = create_excel_report(payload)
-
-    filename = f"checklist_report_{payload['start_date']}_to_{payload['end_date']}.xlsx"
-
-    return send_file(
-        workbook_stream,
-        as_attachment=True,
-        download_name=filename,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-
-@reports_bp.route("/store/<store_number>")
-@login_required
-@role_required("admin", "supervisor")
-def store_detail(store_number):
+def build_store_detail_payload(store_number):
     visible_stores = get_visible_stores()
     visible_store_map = {store.store_number: store for store in visible_stores}
 
     store = visible_store_map.get(store_number)
     if not store:
-        return render_template(
-            "store_report_detail.html",
-            store=None,
-            store_rows=[],
-            summary=None,
-            manager_names=[],
-            start_date="",
-            end_date="",
-            back_args={},
-        )
+        return None
 
     start_date, end_date, start_date_str, end_date_str = parse_report_dates()
 
@@ -700,14 +656,12 @@ def store_detail(store_number):
                 if item.is_completed and item.completed_at
             ]
 
-            completed_items = sorted(
-                completed_items,
-                key=lambda x: x.completed_at
-            )
+            completed_items = sorted(completed_items, key=lambda x: x.completed_at)
 
             prev_time = None
 
             for item in completed_items:
+                completed_at_et = utc_naive_to_et(item.completed_at)
                 gap_minutes = None
 
                 if prev_time:
@@ -718,7 +672,8 @@ def store_detail(store_number):
                 timeline.append({
                     "task_text": item.task_text,
                     "section": item.section_name,
-                    "completed_at": item.completed_at,
+                    "completed_at": completed_at_et,
+                    "completed_at_display": completed_at_et.strftime("%I:%M %p") if completed_at_et else "",
                     "gap_minutes": gap_minutes,
                 })
 
@@ -768,13 +723,209 @@ def store_detail(store_number):
     if show_task_analysis == "1":
         back_args["show_task_analysis"] = "1"
 
+    export_args = dict(back_args)
+
+    return {
+        "store": store,
+        "store_rows": daily_rows,
+        "summary": summary,
+        "manager_names": manager_names,
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+        "back_args": back_args,
+        "export_args": export_args,
+    }
+
+
+def create_store_detail_excel(payload):
+    wb = Workbook()
+
+    summary_ws = wb.active
+    summary_ws.title = "Store Summary"
+    summary_ws.append(["Metric", "Value"])
+
+    summary = payload["summary"]
+    summary_rows = [
+        ("Store Number", payload["store"].store_number),
+        ("Store Name", payload["store"].store_name or f"Store {payload['store'].store_number}"),
+        ("Area", payload["store"].area_name or ""),
+        ("Start Date", payload["start_date"]),
+        ("End Date", payload["end_date"]),
+        ("Avg Completion %", summary["avg_completion"]),
+        ("Avg Integrity %", summary["avg_integrity"]),
+        ("Completed Count", summary["completed_count"]),
+        ("In Progress Count", summary["in_progress_count"]),
+        ("Not Started Count", summary["not_started_count"]),
+        ("Checklist Count", summary["checklist_count"]),
+    ]
+    for row in summary_rows:
+        summary_ws.append(row)
+
+    style_header_row(summary_ws)
+    autosize_worksheet_columns(summary_ws)
+
+    history_ws = wb.create_sheet(title="Daily History")
+    history_ws.append([
+        "Checklist Date",
+        "Status",
+        "Completion %",
+        "Integrity %",
+        "Managers",
+        "Timeline Events",
+    ])
+
+    for row in payload["store_rows"]:
+        history_ws.append([
+            row["checklist_date"].strftime("%Y-%m-%d"),
+            row["status"].replace("_", " ").title(),
+            row["percent_complete"],
+            row["integrity_score"],
+            row["manager_display"],
+            len(row["timeline"]),
+        ])
+
+    style_header_row(history_ws)
+    autosize_worksheet_columns(history_ws)
+
+    timeline_ws = wb.create_sheet(title="Timeline Audit")
+    timeline_ws.append([
+        "Checklist Date",
+        "Task",
+        "Section",
+        "Completed Time (ET)",
+        "Gap From Previous (min)",
+    ])
+
+    for row in payload["store_rows"]:
+        if not row["timeline"]:
+            timeline_ws.append([
+                row["checklist_date"].strftime("%Y-%m-%d"),
+                "No completed tasks",
+                "",
+                "",
+                "",
+            ])
+            continue
+
+        for item in row["timeline"]:
+            timeline_ws.append([
+                row["checklist_date"].strftime("%Y-%m-%d"),
+                item["task_text"],
+                item["section"],
+                item["completed_at_display"],
+                item["gap_minutes"] if item["gap_minutes"] is not None else "",
+            ])
+
+    style_header_row(timeline_ws)
+    autosize_worksheet_columns(timeline_ws)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+@reports_bp.route("/")
+@login_required
+@role_required("admin", "supervisor")
+def index():
+    payload = build_report_payload()
+
+    return render_template(
+        "reports.html",
+        stores=payload["stores"],
+        area_options=payload["area_options"],
+        selected_store=payload["selected_store"],
+        selected_area=payload["selected_area"],
+        manager_name=payload["manager_name"],
+        nightly_filter=payload["nightly_filter"],
+        q=payload["q"],
+        start_date=payload["start_date"],
+        end_date=payload["end_date"],
+        show_task_analysis=payload["show_task_analysis"],
+        summary=payload["summary"],
+        store_report_rows=payload["store_report_rows"],
+        area_report_rows=payload["area_report_rows"],
+        task_analysis=payload["task_analysis"],
+    )
+
+
+@reports_bp.route("/export/excel")
+@login_required
+@role_required("admin", "supervisor")
+def export_excel():
+    payload = build_report_payload()
+    workbook_stream = create_excel_report(payload)
+
+    filename = f"checklist_report_{payload['start_date']}_to_{payload['end_date']}.xlsx"
+
+    return send_file(
+        workbook_stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@reports_bp.route("/store/<store_number>")
+@login_required
+@role_required("admin", "supervisor")
+def store_detail(store_number):
+    payload = build_store_detail_payload(store_number)
+
+    if not payload:
+        return render_template(
+            "store_report_detail.html",
+            store=None,
+            store_rows=[],
+            summary=None,
+            manager_names=[],
+            start_date="",
+            end_date="",
+            back_args={},
+            export_args={},
+        )
+
     return render_template(
         "store_report_detail.html",
-        store=store,
-        store_rows=daily_rows,
-        summary=summary,
-        manager_names=manager_names,
-        start_date=start_date_str,
-        end_date=end_date_str,
-        back_args=back_args,
+        store=payload["store"],
+        store_rows=payload["store_rows"],
+        summary=payload["summary"],
+        manager_names=payload["manager_names"],
+        start_date=payload["start_date"],
+        end_date=payload["end_date"],
+        back_args=payload["back_args"],
+        export_args=payload["export_args"],
+    )
+
+
+@reports_bp.route("/store/<store_number>/export/excel")
+@login_required
+@role_required("admin", "supervisor")
+def export_store_detail_excel(store_number):
+    payload = build_store_detail_payload(store_number)
+
+    if not payload:
+        empty_stream = BytesIO()
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Store Summary"
+        ws.append(["Error", "Store not found or not visible"])
+        wb.save(empty_stream)
+        empty_stream.seek(0)
+        return send_file(
+            empty_stream,
+            as_attachment=True,
+            download_name="store_report_error.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    workbook_stream = create_store_detail_excel(payload)
+    filename = f"store_{store_number}_timeline_{payload['start_date']}_to_{payload['end_date']}.xlsx"
+
+    return send_file(
+        workbook_stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
