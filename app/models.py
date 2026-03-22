@@ -154,6 +154,31 @@ class ChecklistException(db.Model):
     closeout_type = db.Column(db.String(50), nullable=False, default="auto_5am")
 
 
+class IntegritySettings(db.Model):
+    __tablename__ = "integrity_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    integrity_section = db.Column(
+        db.String(120),
+        nullable=False,
+        default="Before Open / Before 10:30"
+    )
+
+    completion_weight = db.Column(db.Float, nullable=False, default=0.60)
+    timing_weight = db.Column(db.Float, nullable=False, default=0.40)
+
+    burst_threshold = db.Column(db.Integer, nullable=False, default=4)
+    burst_window_seconds = db.Column(db.Integer, nullable=False, default=60)
+
+    full_score_ratio = db.Column(db.Float, nullable=False, default=0.70)
+    medium_score_ratio = db.Column(db.Float, nullable=False, default=0.50)
+    low_score_ratio = db.Column(db.Float, nullable=False, default=0.30)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class SVRTemplateField(db.Model):
     __tablename__ = "svr_template_fields"
 
