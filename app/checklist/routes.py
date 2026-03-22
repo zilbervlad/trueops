@@ -887,8 +887,21 @@ def index():
 @login_required
 @role_required("admin")
 def admin():
+    settings = IntegritySettings.query.first()
+
     if request.method == "POST":
         action = request.form.get("action", "").strip()
+
+        if action == "update_integrity":
+            if not settings:
+                settings = IntegritySettings()
+                db.session.add(settings)
+
+            settings.integrity_section = request.form.get("integrity_section", "").strip() or "Before Open / Before 10:30"
+
+            db.session.commit()
+            flash("Integrity settings updated.", "success")
+            return redirect(url_for("checklist.admin"))
 
         if action == "create":
             section_name = request.form.get("section_name", "").strip()
@@ -964,6 +977,7 @@ def admin():
         "checklist_admin.html",
         items=items,
         section_options=section_options,
+        integrity_settings=settings,
     )
 
 

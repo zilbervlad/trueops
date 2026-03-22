@@ -6,6 +6,42 @@
 {% block content %}
 <div class="admin-page">
 
+    <!-- 🔥 INTEGRITY SETTINGS -->
+    <section class="panel premium-panel" style="margin-bottom: 24px;">
+        <div class="panel-head">
+            <div>
+                <h3>Integrity Settings</h3>
+                <div class="area-subtitle">
+                    Control which section is used for checklist integrity scoring.
+                </div>
+            </div>
+            <span class="summary-pill">Integrity</span>
+        </div>
+
+        <form method="POST" class="login-form">
+            <input type="hidden" name="action" value="update_integrity">
+
+            <div class="admin-task-grid">
+                <div class="form-group">
+                    <label>Integrity Section</label>
+                    <select name="integrity_section" required>
+                        {% for section in section_options %}
+                        <option value="{{ section }}"
+                            {% if integrity_settings and integrity_settings.integrity_section == section %}selected{% endif %}>
+                            {{ section }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="admin-check-row">
+                <button type="submit" class="btn-primary">Save Integrity Settings</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- EXISTING HEADER -->
     <div class="command-bar panel" style="margin-bottom: 24px;">
         <div class="command-bar-left">
             <div class="command-eyebrow">ADMIN</div>
@@ -94,7 +130,6 @@
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="item_id" value="{{ item.id }}">
 
-                <!-- TOP ROW -->
                 <div class="admin-task-top">
                     <span class="summary-pill">ID {{ item.id }}</span>
                     <span class="summary-pill">{{ item.section_name }}</span>
@@ -112,7 +147,6 @@
                     {% endif %}
                 </div>
 
-                <!-- MAIN FIELDS -->
                 <div class="admin-task-grid">
                     <div class="form-group">
                         <label>Section</label>
@@ -131,7 +165,6 @@
                     </div>
                 </div>
 
-                <!-- NUMBERS -->
                 <div class="admin-task-grid">
                     <div class="form-group">
                         <label>Expected Minutes</label>
@@ -144,7 +177,6 @@
                     </div>
                 </div>
 
-                <!-- CHECKBOXES -->
                 <div class="admin-check-row">
                     <label class="checkbox-inline">
                         <input type="checkbox" name="is_required" {% if item.is_required %}checked{% endif %}>
@@ -157,7 +189,6 @@
                     </label>
                 </div>
 
-                <!-- ACTION -->
                 <div class="admin-check-row compact-actions">
                     <button type="submit" class="btn-primary">Save Task</button>
                 </div>
