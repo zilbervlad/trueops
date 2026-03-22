@@ -6,13 +6,13 @@
 {% block content %}
 <div class="admin-page">
 
-    <!-- 🔥 INTEGRITY SETTINGS -->
+    <!-- INTEGRITY SETTINGS -->
     <section class="panel premium-panel" style="margin-bottom: 24px;">
         <div class="panel-head">
             <div>
                 <h3>Integrity Settings</h3>
                 <div class="area-subtitle">
-                    Control which section is used for checklist integrity scoring.
+                    Control which section is used for checklist integrity scoring and how completion vs timing are weighted.
                 </div>
             </div>
             <span class="summary-pill">Integrity</span>
@@ -33,9 +33,54 @@
                         {% endfor %}
                     </select>
                 </div>
+
+                <div class="svr-value-card">
+                    <div class="svr-value-label">Current Rule</div>
+                    <div class="svr-value-text">
+                        Integrity is based on required tasks in the selected section. Completion and timing are blended using the weights below.
+                    </div>
+                </div>
             </div>
 
-            <div class="admin-check-row">
+            <div class="admin-task-grid">
+                <div class="form-group">
+                    <label for="completion_weight">Completion Weight</label>
+                    <input
+                        type="number"
+                        id="completion_weight"
+                        name="completion_weight"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value="{{ integrity_settings.completion_weight if integrity_settings else '0.60' }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="timing_weight">Timing Weight</label>
+                    <input
+                        type="number"
+                        id="timing_weight"
+                        name="timing_weight"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value="{{ integrity_settings.timing_weight if integrity_settings else '0.40' }}"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="svr-value-card" style="margin-top: 4px;">
+                <div class="svr-value-label">Tip</div>
+                <div class="svr-value-text">
+                    Best practice is for completion weight + timing weight to equal 1.00.
+                    Example: 0.60 and 0.40.
+                </div>
+            </div>
+
+            <div class="admin-check-row" style="margin-top: 12px;">
                 <button type="submit" class="btn-primary">Save Integrity Settings</button>
             </div>
         </form>

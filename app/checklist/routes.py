@@ -165,6 +165,18 @@ def update_checklist_progress(daily: DailyChecklist):
         else "Before Open / Before 10:30"
     )
 
+    completion_weight = (
+        settings.completion_weight
+        if settings and settings.completion_weight is not None
+        else 0.60
+    )
+
+    timing_weight = (
+        settings.timing_weight
+        if settings and settings.timing_weight is not None
+        else 0.40
+    )
+
     section_one_items = [
         item for item in daily.items
         if item.section_name == integrity_section and item.is_required
@@ -223,7 +235,7 @@ def update_checklist_progress(daily: DailyChecklist):
             else:
                 timing_score = 0.0
 
-        daily.integrity_score = round((completion_score * 0.60) + (timing_score * 0.40), 1)
+        daily.integrity_score = round((completion_score * completion_weight) + (timing_score * timing_weight), 1)
 
     daily.status = "completed" if completed_items == total_items and total_items > 0 else "in_progress"
     db.session.commit()
@@ -898,6 +910,20 @@ def admin():
                 db.session.add(settings)
 
             settings.integrity_section = request.form.get("integrity_section", "").strip() or "Before Open / Before 10:30"
+
+            try:
+                completion_weight = float(request.form.get("completion_weight", "0.60").strip())
+                timing_weight = float(request.form.get("timing_weight", "0.40").strip())
+            except ValueError:
+                flash("Completion weight and timing weight must be valid numbers.", "error")
+                return redirect(url_for("checklist.admin"))
+
+            if completion_weight < 0 or completion_weight > 1 or timing_weight < 0 or timing_weight > 1:
+                flash("Weights must be between 0.00 and 1.00.", "error")
+                return redirect(url_for("checklist.admin"))
+
+            settings.completion_weight = completion_weight
+            settings.timing_weight = timing_weight
 
             db.session.commit()
             flash("Integrity settings updated.", "success")
