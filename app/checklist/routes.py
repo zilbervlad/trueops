@@ -12,6 +12,7 @@ from app.models import (
     Store,
     ChecklistException,
     User,
+    IntegritySettings,
 )
 from app.services.email_service import send_email
 
@@ -156,9 +157,17 @@ def update_checklist_progress(daily: DailyChecklist):
     else:
         daily.percent_complete = round((completed_items / total_items) * 100, 1)
 
+    settings = IntegritySettings.query.first()
+
+    integrity_section = (
+        settings.integrity_section
+        if settings and settings.integrity_section
+        else "Before Open / Before 10:30"
+    )
+
     section_one_items = [
         item for item in daily.items
-        if item.section_name == "Before Open / Before 10:30" and item.is_required
+        if item.section_name == integrity_section and item.is_required
     ]
 
     daily.integrity_possible = len(section_one_items)
