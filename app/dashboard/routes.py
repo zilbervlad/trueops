@@ -226,9 +226,12 @@ def build_dashboard_data():
     manager_weekly_focus = []
     if user_role == "manager" and visible_store_numbers:
         focus_items = WeeklyFocusItem.query.filter(
-            WeeklyFocusItem.store_number.in_(visible_store_numbers),
-            WeeklyFocusItem.is_completed == False
-        ).order_by(WeeklyFocusItem.item_type.asc(), WeeklyFocusItem.id.asc()).all()
+            WeeklyFocusItem.store_number.in_(visible_store_numbers)
+        ).order_by(
+            WeeklyFocusItem.is_completed.asc(),
+            WeeklyFocusItem.item_type.asc(),
+            WeeklyFocusItem.id.asc()
+        ).all()
 
         manager_weekly_focus = [
             {
@@ -236,6 +239,7 @@ def build_dashboard_data():
                 "item_type": item.item_type,
                 "item_text": item.item_text,
                 "store_number": item.store_number,
+                "is_completed": item.is_completed,
             }
             for item in focus_items
         ]

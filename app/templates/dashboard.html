@@ -450,13 +450,14 @@
                     <div class="summary-pill" style="margin-bottom: 12px;">Cleaning</div>
                     <div class="admin-task-list">
                         {% for item in cleaning_items %}
-                        <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
+                        <div class="checklist-item-card manager-weekly-focus-card {% if item.is_completed %}is-completed{% endif %}" data-weekly-focus-id="{{ item.id }}">
                             <div class="weekly-focus-item-row">
                                 <label class="checklist-checkbox-row" style="flex: 1;">
                                     <input
                                         type="checkbox"
                                         class="manager-weekly-focus-box"
                                         data-item-id="{{ item.id }}"
+                                        {% if item.is_completed %}checked disabled{% endif %}
                                     >
                                     <span>{{ item.item_text }}</span>
                                 </label>
@@ -473,13 +474,14 @@
                     <div class="summary-pill" style="margin-bottom: 12px;">Goals</div>
                     <div class="admin-task-list">
                         {% for item in goal_items %}
-                        <div class="checklist-item-card manager-weekly-focus-card" data-weekly-focus-id="{{ item.id }}">
+                        <div class="checklist-item-card manager-weekly-focus-card {% if item.is_completed %}is-completed{% endif %}" data-weekly-focus-id="{{ item.id }}">
                             <div class="weekly-focus-item-row">
                                 <label class="checklist-checkbox-row" style="flex: 1;">
                                     <input
                                         type="checkbox"
                                         class="manager-weekly-focus-box"
                                         data-item-id="{{ item.id }}"
+                                        {% if item.is_completed %}checked disabled{% endif %}
                                     >
                                     <span>{{ item.item_text }}</span>
                                 </label>
