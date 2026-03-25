@@ -49,12 +49,23 @@
 
                 <div class="form-group">
                     <label for="title">Task Title(s)</label>
-                    <textarea id="title" name="title" rows="4" placeholder="Enter one task per line&#10;Example:&#10;Bottom oven not heating&#10;Walk-in fan noisy&#10;Bathroom sink leaking" required></textarea>
+                    <textarea
+                        id="title"
+                        name="title"
+                        rows="4"
+                        placeholder="Enter one task per line&#10;Example:&#10;Bottom oven not heating&#10;Walk-in fan noisy&#10;Bathroom sink leaking"
+                        required
+                    ></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="details">Details</label>
-                    <textarea id="details" name="details" rows="4" placeholder="Optional details that apply to all tasks..."></textarea>
+                    <textarea
+                        id="details"
+                        name="details"
+                        rows="4"
+                        placeholder="Optional details that apply to all tasks..."
+                    ></textarea>
                 </div>
 
                 <button type="submit" class="btn-primary">Add Task</button>
@@ -123,26 +134,26 @@
         margin-top: 24px;
     }
 
-    .maintenance-row-list {
+    .maintenance-card-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
     }
 
-    .maintenance-row-card {
+    .maintenance-card {
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
+        border-radius: 18px;
         background: rgba(255, 255, 255, 0.03);
         overflow: hidden;
     }
 
-    .maintenance-row-summary {
+    .maintenance-card-summary {
         width: 100%;
         background: transparent;
         border: none;
         color: inherit;
         cursor: pointer;
-        padding: 16px 18px;
+        padding: 18px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -150,20 +161,20 @@
         text-align: left;
     }
 
-    .maintenance-row-left {
+    .maintenance-card-left {
         display: flex;
         align-items: center;
         gap: 12px;
-        min-width: 0;
         flex-wrap: wrap;
         flex: 1;
-    }
-
-    .maintenance-row-title-wrap {
         min-width: 0;
     }
 
-    .maintenance-row-title {
+    .maintenance-title-wrap {
+        min-width: 0;
+    }
+
+    .maintenance-title-main {
         font-weight: 800;
         font-size: 15px;
         line-height: 1.2;
@@ -171,14 +182,14 @@
         word-break: break-word;
     }
 
-    .maintenance-row-meta {
+    .maintenance-title-sub {
         font-size: 12px;
         opacity: 0.72;
         line-height: 1.25;
         word-break: break-word;
     }
 
-    .maintenance-row-right {
+    .maintenance-card-right {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -202,14 +213,24 @@
     }
 
     .maintenance-expand-chip {
-        min-width: 78px;
+        min-width: 88px;
         text-align: center;
     }
 
-    .maintenance-row-body {
+    .maintenance-card-body {
         display: none;
         padding: 0 18px 18px 18px;
         border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .maintenance-section-label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.72;
+        margin-bottom: 10px;
+        margin-top: 14px;
     }
 
     .maintenance-empty {
@@ -221,27 +242,27 @@
     }
 
     @media (max-width: 900px) {
-        .maintenance-row-summary {
+        .maintenance-card-summary {
             align-items: flex-start;
             flex-direction: column;
         }
 
-        .maintenance-row-right {
+        .maintenance-card-right {
             width: 100%;
             justify-content: flex-start;
         }
     }
 </style>
 
-{% macro render_ticket_row(ticket, stores, user_role) %}
-<div class="maintenance-row-card">
+{% macro render_ticket_card(ticket, stores, user_role) %}
+<div class="maintenance-card">
     <button
         type="button"
-        class="maintenance-row-summary"
+        class="maintenance-card-summary"
         data-ticket-toggle="{{ ticket.id }}"
         aria-expanded="false"
     >
-        <div class="maintenance-row-left">
+        <div class="maintenance-card-left">
             <span class="summary-pill">Store {{ ticket.store_number }}</span>
 
             <span class="status-badge
@@ -254,9 +275,9 @@
 
             <span class="summary-pill">{{ ticket.source_type|upper }}</span>
 
-            <div class="maintenance-row-title-wrap">
-                <div class="maintenance-row-title">{{ ticket.title }}</div>
-                <div class="maintenance-row-meta">
+            <div class="maintenance-title-wrap">
+                <div class="maintenance-title-main">{{ ticket.title }}</div>
+                <div class="maintenance-title-sub">
                     {{ ticket.created_at.strftime('%b %d, %Y %I:%M %p') if ticket.created_at else '' }}
                     {% if ticket.svr_report_id %}
                     | Linked SVR #{{ ticket.svr_report_id }}
@@ -268,7 +289,7 @@
             </div>
         </div>
 
-        <div class="maintenance-row-right">
+        <div class="maintenance-card-right">
             {% if ticket.status == "open" %}
             <form method="POST" onclick="event.stopPropagation();">
                 <input type="hidden" name="action" value="update">
@@ -305,10 +326,11 @@
         </div>
     </button>
 
-    <div class="maintenance-row-body" data-ticket-body="{{ ticket.id }}">
+    <div class="maintenance-card-body" data-ticket-body="{{ ticket.id }}">
         <form method="POST" class="login-form" style="margin-top: 16px;">
             <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
 
+            <div class="maintenance-section-label">Ticket Settings</div>
             <div class="admin-task-grid">
                 <div class="form-group">
                     <label>Store</label>
@@ -332,6 +354,7 @@
                 </div>
             </div>
 
+            <div class="maintenance-section-label">Task Details</div>
             <div class="form-group">
                 <label>Task Title</label>
                 <input type="text" name="title" value="{{ ticket.title }}" required>
@@ -342,6 +365,7 @@
                 <textarea name="details" rows="4">{{ ticket.details or '' }}</textarea>
             </div>
 
+            <div class="maintenance-section-label">Actions</div>
             <div class="admin-check-row compact-actions">
                 <button type="submit" name="action" value="update" class="btn-primary">Save Task</button>
 
@@ -379,9 +403,9 @@
     </button>
 
     <div id="maintenance-open-body" style="display: block; margin-top: 16px;">
-        <div class="maintenance-row-list">
+        <div class="maintenance-card-list">
             {% for ticket in open_tickets %}
-                {{ render_ticket_row(ticket, stores, user_role) }}
+                {{ render_ticket_card(ticket, stores, user_role) }}
             {% else %}
                 <div class="maintenance-empty">No open maintenance tasks.</div>
             {% endfor %}
@@ -405,9 +429,9 @@
     </button>
 
     <div id="maintenance-assigned-body" style="display: none; margin-top: 16px;">
-        <div class="maintenance-row-list">
+        <div class="maintenance-card-list">
             {% for ticket in assigned_tickets %}
-                {{ render_ticket_row(ticket, stores, user_role) }}
+                {{ render_ticket_card(ticket, stores, user_role) }}
             {% else %}
                 <div class="maintenance-empty">No assigned maintenance tasks.</div>
             {% endfor %}
@@ -431,9 +455,9 @@
     </button>
 
     <div id="maintenance-progress-body" style="display: block; margin-top: 16px;">
-        <div class="maintenance-row-list">
+        <div class="maintenance-card-list">
             {% for ticket in in_progress_tickets %}
-                {{ render_ticket_row(ticket, stores, user_role) }}
+                {{ render_ticket_card(ticket, stores, user_role) }}
             {% else %}
                 <div class="maintenance-empty">No in-progress maintenance tasks.</div>
             {% endfor %}
@@ -457,9 +481,9 @@
     </button>
 
     <div id="maintenance-complete-body" style="display: none; margin-top: 16px;">
-        <div class="maintenance-row-list">
+        <div class="maintenance-card-list">
             {% for ticket in complete_tickets %}
-                {{ render_ticket_row(ticket, stores, user_role) }}
+                {{ render_ticket_card(ticket, stores, user_role) }}
             {% else %}
                 <div class="maintenance-empty">No completed maintenance tasks.</div>
             {% endfor %}
