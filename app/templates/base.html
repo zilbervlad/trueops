@@ -53,12 +53,17 @@
 
                     {% if session.get('user_role') == 'manager' %}
                     <a href="{{ url_for('cash.index') }}"
-                       class="{% if request.endpoint and request.endpoint.startswith('cash') %}active{% endif %}">
+                       class="{% if request.endpoint and request.endpoint.startswith('cash') and not request.endpoint.startswith('cash_review') %}active{% endif %}">
                         Cash Control
                     </a>
                     {% endif %}
 
                     {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                    <a href="{{ url_for('cash_review.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('cash_review') %}active{% endif %}">
+                        Cash Review
+                    </a>
+
                     <a href="{{ url_for('reports.index') }}"
                        class="{% if request.endpoint and request.endpoint.startswith('reports') %}active{% endif %}">
                         Reports

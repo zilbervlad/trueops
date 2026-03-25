@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Cash Review | BPI Ops{% endblock %}
+{% block header %}Cash Review{% endblock %}
+
+{% block content %}
+<div class="command-bar panel" style="margin-bottom: 24px;">
+    <div class="command-bar-left">
+        <div class="command-eyebrow">CASH REVIEW</div>
+        <h2 class="command-title">Cash Review Board</h2>
+        <p class="command-subtitle">
+            Review midshift accountability, scan recent cash logs, and spot closing-to-opening handoff differences fast.
+        </p>
+    </div>
+    <div class="command-bar-right">
+        <div class="command-chip">{{ logs|length }} Logs</div>
+        <div class="command-chip">{{ stores|length }} Stores</div>
+    </div>
+</div>
+
+<div class="content-grid" style="margin-bottom: 24px;">
+    <section class="panel premium-panel">
+        <div class="panel-head">
+            <div>
+                <h3>Filters</h3>
+                <div class="area-subtitle">Refine cash review visibility</div>
+            </div>
+            <span class="summary-pill">Read Only</span>
+        </div>
+
+        <form method="GET" class="login-form">
+            <div class="form-group">
+                <label for="store">Store</label>
+                <select id="store" name="store">
+                    <option value="">All Stores</option>
+                    {% for store in stores %}
+                    <option value="{{ store.store_number }}" {% if store.store_number == store_filter %}selected{% endif %}>
+                        {{ store.store_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="shift">Shift</label>
+                <select id="shift" name="shift">
+                    <option value="">All Shifts</option>
+                    <option value="opening" {% if shift_filter == 'opening' %}selected{% endif %}>Opening</option>
+                    <option value="midshift" {% if shift_filter == 'midshift' %}selected{% endif %}>Midshift</option>
+                    <option value="closing" {% if shift_filter == 'closing' %}selected{% endif %}>Closing</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" value="{{ date_filter }}">
+            </div>
+
+            <div class="admin-check-row">
+                <button type="submit" class="btn-primary">Apply Filters</button>
+                <a href="{{ url_for('cash_review.index') }}" class="action-btn" style="max-width: 180px;">Reset Filters</a>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="panel premium-panel" style="margin-bottom: 24px;">
+    <button
+        type="button"
+        id="midshift-exceptions-toggle"
+        class="panel-head"
+        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+        aria-expanded="true"
+    >
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="margin: 0;">Midshift Exceptions</h3>
+            <span class="summary-pill">{{ midshift_logs|length }} logs</span>
+        </div>
+        <span id="midshift-exceptions-chevron" class="summary-pill">Hide ▲</span>
+    </button>
+
+    <div id="midshift-exceptions-body" style="display: block; margin-top: 16px;">
+        <div class="table-wrap premium-table-wrap">
+            <table class="data-table premium-table">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Date</th>
+                        <th>Total Cash</th>
+                        <th>Account For</th>
+                        <th>Over / Short</th>
+                        <th>Manager</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in midshift_logs %}
+                    <tr>
+                        <td>{{ log.store_number }}</td>
+                        <td>{{ log.log_date.strftime('%m/%d/%Y') }}</td>
+                        <td>${{ "%.2f"|format(log.total_cash or 0) }}</td>
+                        <td>${{ "%.2f"|format(log.amount_to_account_for or 0) }}</td>
+                        <td>
+                            <span class="table-badge {% if (log.cash_over_short or 0) == 0 %}badge-success{% elif (log.cash_over_short or 0) > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                                ${{ "%.2f"|format(log.cash_over_short or 0) }}
+                            </span>
+                        </td>
+                        <td>{{ log.manager_name or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6">No midshift cash logs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="panel premium-panel" style="margin-bottom: 24px;">
+    <button
+        type="button"
+        id="closing-opening-toggle"
+        class="panel-head"
+        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+        aria-expanded="true"
+    >
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="margin: 0;">Closing → Opening Differences</h3>
+            <span class="summary-pill">{{ closing_opening_diffs|length }} pairs</span>
+        </div>
+        <span id="closing-opening-chevron" class="summary-pill">Hide ▲</span>
+    </button>
+
+    <div id="closing-opening-body" style="display: block; margin-top: 16px;">
+        <div class="table-wrap premium-table-wrap">
+            <table class="data-table premium-table">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Closing Date</th>
+                        <th>Closing Total</th>
+                        <th>Opening Date</th>
+                        <th>Opening Total</th>
+                        <th>Difference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in closing_opening_diffs %}
+                    <tr>
+                        <td>{{ row.store_number }}</td>
+                        <td>{{ row.closing_date.strftime('%m/%d/%Y') }}</td>
+                        <td>${{ "%.2f"|format(row.closing_total or 0) }}</td>
+                        <td>{{ row.opening_date.strftime('%m/%d/%Y') }}</td>
+                        <td>${{ "%.2f"|format(row.opening_total or 0) }}</td>
+                        <td>
+                            <span class="table-badge {% if row.difference == 0 %}badge-success{% elif row.difference > 0 %}badge-warning{% else %}badge-danger{% endif %}">
+                                ${{ "%.2f"|format(row.difference or 0) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6">No closing-to-opening pairs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="panel premium-panel">
+    <button
+        type="button"
+        id="recent-cash-toggle"
+        class="panel-head"
+        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+        aria-expanded="false"
+    >
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="margin: 0;">Recent Cash Logs</h3>
+            <span class="summary-pill">{{ logs|length }} logs</span>
+        </div>
+        <span id="recent-cash-chevron" class="summary-pill">Show ▼</span>
+    </button>
+
+    <div id="recent-cash-body" style="display: none; margin-top: 16px;">
+        <div class="table-wrap premium-table-wrap">
+            <table class="data-table premium-table">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Date</th>
+                        <th>Shift</th>
+                        <th>Back</th>
+                        <th>Front</th>
+                        <th>Driver</th>
+                        <th>Total</th>
+                        <th>Account For</th>
+                        <th>Over / Short</th>
+                        <th>Manager</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.store_number }}</td>
+                        <td>{{ log.log_date.strftime('%m/%d/%Y') }}</td>
+                        <td>{{ log.shift_type|title }}</td>
+                        <td>${{ "%.2f"|format(log.back_till or 0) }}</td>
+                        <td>${{ "%.2f"|format(log.front_till or 0) }}</td>
+                        <td>${{ "%.2f"|format(log.driver_banks or 0) }}</td>
+                        <td>${{ "%.2f"|format(log.total_cash or 0) }}</td>
+                        <td>
+                            {% if log.amount_to_account_for is not none %}
+                                ${{ "%.2f"|format(log.amount_to_account_for) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.cash_over_short is not none %}
+                                ${{ "%.2f"|format(log.cash_over_short) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ log.manager_name or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10">No cash logs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function bindToggle(toggleId, bodyId, chevronId) {
+        const toggle = document.getElementById(toggleId);
+        const body = document.getElementById(bodyId);
+        const chevron = document.getElementById(chevronId);
+
+        if (!toggle || !body || !chevron) return;
+
+        toggle.addEventListener("click", function () {
+            const isHidden = body.style.display === "none";
+            body.style.display = isHidden ? "block" : "none";
+            toggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+            chevron.textContent = isHidden ? "Hide ▲" : "Show ▼";
+        });
+    }
+
+    bindToggle("midshift-exceptions-toggle", "midshift-exceptions-body", "midshift-exceptions-chevron");
+    bindToggle("closing-opening-toggle", "closing-opening-body", "closing-opening-chevron");
+    bindToggle("recent-cash-toggle", "recent-cash-body", "recent-cash-chevron");
+});
+</script>
+{% endblock %}

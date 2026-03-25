@@ -20,6 +20,7 @@ def create_app():
     from app.reports.routes import reports_bp
     from app.nightly_numbers.routes import nightly_numbers_bp
     from app.cash.routes import cash_bp
+    from app.cash_review.routes import cash_review_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -30,6 +31,7 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(nightly_numbers_bp)
     app.register_blueprint(cash_bp)
+    app.register_blueprint(cash_review_bp)
 
     @app.route("/create-db")
     def create_db():
