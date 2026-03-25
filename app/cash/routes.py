@@ -60,18 +60,6 @@ def index():
 
         total_cash = back_till + front_till + driver_banks
 
-        amount_to_account_for = None
-        cash_over_short = None
-
-        if shift_type == "midshift":
-            try:
-                amount_to_account_for = float(request.form.get("amount_to_account_for") or 0)
-            except ValueError:
-                flash("Amount to account for must be a valid number.", "error")
-                return redirect(url_for("cash.index"))
-
-            cash_over_short = total_cash - amount_to_account_for
-
         if edit_log_id:
             log = CashLog.query.get(edit_log_id)
 
@@ -90,8 +78,6 @@ def index():
             log.front_till = front_till
             log.driver_banks = driver_banks
             log.total_cash = total_cash
-            log.amount_to_account_for = amount_to_account_for
-            log.cash_over_short = cash_over_short
 
             db.session.commit()
             flash("Cash log updated successfully.", "success")
@@ -105,8 +91,6 @@ def index():
             front_till=front_till,
             driver_banks=driver_banks,
             total_cash=total_cash,
-            amount_to_account_for=amount_to_account_for,
-            cash_over_short=cash_over_short,
             manager_name=manager_name,
         )
 
