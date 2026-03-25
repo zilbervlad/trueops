@@ -1,7 +1,12 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
+from io import BytesIO
 
-from flask import Blueprint, render_template, request, session
+from flask import Blueprint, render_template, request, session, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+
 from app.auth.routes import login_required, role_required
 from app.models import CashLog, Store
 
@@ -73,10 +78,7 @@ def build_closing_to_opening_diffs(logs):
     return diff_rows
 
 
-@cash_review_bp.route("/", methods=["GET"])
-@login_required
-@role_required("admin", "supervisor")
-def index():
+def build_cash_review_payload():
     visible_stores = get_visible_stores()
     visible_store_numbers = {store.store_number for store in visible_stores}
 
@@ -134,13 +136,199 @@ def index():
     diff_logs = diff_base_query.all()
     closing_opening_diffs = build_closing_to_opening_diffs(diff_logs)
 
+    summary = {
+        "log_count": len(logs),
+        "midshift_count": len(midshift_logs),
+        "diff_pair_count": len(closing_opening_diffs),
+        "stores_in_scope": len(visible_stores),
+    }
+
+    return {
+        "stores": visible_stores,
+        "logs": logs,
+        "midshift_logs": midshift_logs,
+        "closing_opening_diffs": closing_opening_diffs,
+        "store_filter": store_filter,
+        "shift_filter": shift_filter,
+        "date_filter": date_filter,
+        "summary": summary,
+    }
+
+
+def autosize_worksheet_columns(worksheet):
+    for column_cells in worksheet.columns:
+        max_length = 0
+        column_letter = get_column_letter(column_cells[0].column)
+
+        for cell in column_cells:
+            try:
+                cell_value = "" if cell.value is None else str(cell.value)
+                max_length = max(max_length, len(cell_value))
+            except Exception:
+                pass
+
+        worksheet.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 40)
+
+
+def style_header_row(worksheet, row_number=1):
+    header_fill = PatternFill(fill_type="solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    for cell in worksheet[row_number]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+
+def create_cash_review_excel(payload):
+    wb = Workbook()
+
+    summary_ws = wb.active
+    summary_ws.title = "Summary"
+    summary_ws.append(["Metric", "Value"])
+
+    summary_rows = [
+        ("Selected Store", payload["store_filter"] or "All"),
+        ("Selected Shift", payload["shift_filter"] or "All"),
+        ("Selected Date", payload["date_filter"] or "All"),
+        ("Stores In Scope", payload["summary"]["stores_in_scope"]),
+        ("Recent Cash Logs", payload["summary"]["log_count"]),
+        ("Midshift Exceptions", payload["summary"]["midshift_count"]),
+        ("Closing to Opening Pairs", payload["summary"]["diff_pair_count"]),
+    ]
+
+    for row in summary_rows:
+        summary_ws.append(row)
+
+    style_header_row(summary_ws)
+    autosize_worksheet_columns(summary_ws)
+
+    logs_ws = wb.create_sheet(title="Recent Cash Logs")
+    logs_ws.append([
+        "Store",
+        "Date",
+        "Shift",
+        "Back Till",
+        "Front Till",
+        "Driver Banks",
+        "Total Cash",
+        "Amount To Account For",
+        "Cash Over / Short",
+        "Manager",
+    ])
+
+    for log in payload["logs"]:
+        logs_ws.append([
+            log.store_number,
+            log.log_date.strftime("%Y-%m-%d") if log.log_date else "",
+            log.shift_type.title() if log.shift_type else "",
+            log.back_till if log.back_till is not None else "",
+            log.front_till if log.front_till is not None else "",
+            log.driver_banks if log.driver_banks is not None else "",
+            log.total_cash if log.total_cash is not None else "",
+            log.amount_to_account_for if log.amount_to_account_for is not None else "",
+            log.cash_over_short if log.cash_over_short is not None else "",
+            log.manager_name or "",
+        ])
+
+    style_header_row(logs_ws)
+    autosize_worksheet_columns(logs_ws)
+
+    midshift_ws = wb.create_sheet(title="Midshift Exceptions")
+    midshift_ws.append([
+        "Store",
+        "Date",
+        "Total Cash",
+        "Amount To Account For",
+        "Cash Over / Short",
+        "Manager",
+    ])
+
+    for log in payload["midshift_logs"]:
+        midshift_ws.append([
+            log.store_number,
+            log.log_date.strftime("%Y-%m-%d") if log.log_date else "",
+            log.total_cash if log.total_cash is not None else "",
+            log.amount_to_account_for if log.amount_to_account_for is not None else "",
+            log.cash_over_short if log.cash_over_short is not None else "",
+            log.manager_name or "",
+        ])
+
+    style_header_row(midshift_ws)
+    autosize_worksheet_columns(midshift_ws)
+
+    diff_ws = wb.create_sheet(title="Closing Opening Diff")
+    diff_ws.append([
+        "Store",
+        "Closing Date",
+        "Closing Total",
+        "Closing Manager",
+        "Opening Date",
+        "Opening Total",
+        "Opening Manager",
+        "Difference",
+    ])
+
+    for row in payload["closing_opening_diffs"]:
+        diff_ws.append([
+            row["store_number"],
+            row["closing_date"].strftime("%Y-%m-%d") if row["closing_date"] else "",
+            row["closing_total"],
+            row["closing_manager"] or "",
+            row["opening_date"].strftime("%Y-%m-%d") if row["opening_date"] else "",
+            row["opening_total"],
+            row["opening_manager"] or "",
+            row["difference"],
+        ])
+
+    style_header_row(diff_ws)
+    autosize_worksheet_columns(diff_ws)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+@cash_review_bp.route("/", methods=["GET"])
+@login_required
+@role_required("admin", "supervisor")
+def index():
+    payload = build_cash_review_payload()
+
     return render_template(
         "cash_review.html",
-        stores=visible_stores,
-        logs=logs,
-        midshift_logs=midshift_logs,
-        closing_opening_diffs=closing_opening_diffs,
-        store_filter=store_filter,
-        shift_filter=shift_filter,
-        date_filter=date_filter,
+        stores=payload["stores"],
+        logs=payload["logs"],
+        midshift_logs=payload["midshift_logs"],
+        closing_opening_diffs=payload["closing_opening_diffs"],
+        store_filter=payload["store_filter"],
+        shift_filter=payload["shift_filter"],
+        date_filter=payload["date_filter"],
+        summary=payload["summary"],
+    )
+
+
+@cash_review_bp.route("/export/excel", methods=["GET"])
+@login_required
+@role_required("admin", "supervisor")
+def export_excel():
+    payload = build_cash_review_payload()
+    workbook_stream = create_cash_review_excel(payload)
+
+    filename_parts = ["cash_review"]
+    if payload["store_filter"]:
+        filename_parts.append(payload["store_filter"])
+    if payload["shift_filter"]:
+        filename_parts.append(payload["shift_filter"])
+    if payload["date_filter"]:
+        filename_parts.append(payload["date_filter"])
+
+    filename = "_".join(filename_parts) + ".xlsx"
+
+    return send_file(
+        workbook_stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
