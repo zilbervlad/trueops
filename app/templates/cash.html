@@ -83,6 +83,32 @@
                 >
             </div>
 
+            <div id="midshift-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="amount_to_account_for">Amount to Account For</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        id="amount_to_account_for"
+                        name="amount_to_account_for"
+                        min="0"
+                        value="{{ '%.2f'|format(edit_log.amount_to_account_for if edit_log and edit_log.amount_to_account_for is not none else 0) }}"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="cash_over_short">Cash Over / Short</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        id="cash_over_short"
+                        name="cash_over_short"
+                        value="{{ '%.2f'|format(edit_log.cash_over_short if edit_log and edit_log.cash_over_short is not none else 0) }}"
+                        readonly
+                    >
+                </div>
+            </div>
+
             <button type="submit" class="btn-primary" style="width: 100%;">
                 {% if edit_log %}Update Cash Log{% else %}Submit Cash Log{% endif %}
             </button>
@@ -111,6 +137,8 @@
                         <th>Front</th>
                         <th>Driver</th>
                         <th>Total</th>
+                        <th>Account For</th>
+                        <th>Over / Short</th>
                         <th>Manager</th>
                         <th>Action</th>
                     </tr>
@@ -124,6 +152,20 @@
                         <td>${{ "%.2f"|format(log.front_till or 0) }}</td>
                         <td>${{ "%.2f"|format(log.driver_banks or 0) }}</td>
                         <td>${{ "%.2f"|format(log.total_cash or 0) }}</td>
+                        <td>
+                            {% if log.shift_type == 'midshift' and log.amount_to_account_for is not none %}
+                                ${{ "%.2f"|format(log.amount_to_account_for) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.shift_type == 'midshift' and log.cash_over_short is not none %}
+                                ${{ "%.2f"|format(log.cash_over_short) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td>{{ log.manager_name or '—' }}</td>
                         <td>
                             <a href="{{ url_for('cash.index', edit=log.id) }}" class="action-btn" style="padding: 8px 12px;">
@@ -133,7 +175,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8">No cash logs yet.</td>
+                        <td colspan="10">No cash logs yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -141,4 +183,59 @@
         </div>
     </section>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const shiftType = document.getElementById("shift_type");
+    const midshiftFields = document.getElementById("midshift-fields");
+    const backTill = document.getElementById("back_till");
+    const frontTill = document.getElementById("front_till");
+    const driverBanks = document.getElementById("driver_banks");
+    const amountToAccountFor = document.getElementById("amount_to_account_for");
+    const cashOverShort = document.getElementById("cash_over_short");
+
+    function num(value) {
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
+    function updateMidshiftVisibility() {
+        const isMidshift = shiftType && shiftType.value === "midshift";
+        if (midshiftFields) {
+            midshiftFields.style.display = isMidshift ? "block" : "none";
+        }
+        if (!isMidshift && amountToAccountFor) {
+            amountToAccountFor.value = "0.00";
+        }
+        updateCashOverShort();
+    }
+
+    function updateCashOverShort() {
+        if (!cashOverShort) return;
+
+        const totalCash = num(backTill ? backTill.value : 0)
+            + num(frontTill ? frontTill.value : 0)
+            + num(driverBanks ? driverBanks.value : 0);
+
+        if (shiftType && shiftType.value === "midshift") {
+            const accountFor = num(amountToAccountFor ? amountToAccountFor.value : 0);
+            cashOverShort.value = (totalCash - accountFor).toFixed(2);
+        } else {
+            cashOverShort.value = "0.00";
+        }
+    }
+
+    if (shiftType) {
+        shiftType.addEventListener("change", updateMidshiftVisibility);
+    }
+
+    [backTill, frontTill, driverBanks, amountToAccountFor].forEach(function (el) {
+        if (el) {
+            el.addEventListener("input", updateCashOverShort);
+        }
+    });
+
+    updateMidshiftVisibility();
+});
+</script>
 {% endblock %}

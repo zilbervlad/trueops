@@ -333,6 +333,9 @@ class CashLog(db.Model):
     driver_banks = db.Column(db.Float, nullable=True)
     total_cash = db.Column(db.Float, nullable=True)
 
+    amount_to_account_for = db.Column(db.Float, nullable=True)
+    cash_over_short = db.Column(db.Float, nullable=True)
+
     manager_name = db.Column(db.String(120), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
