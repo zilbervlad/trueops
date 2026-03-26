@@ -4,374 +4,692 @@
 {% block header %}Checklist Admin{% endblock %}
 
 {% block content %}
-<div class="admin-page">
+<style>
+    .checklist-admin-page {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
 
-    <!-- INTEGRITY SETTINGS -->
-    <section class="panel premium-panel" style="margin-bottom: 24px;">
-        <div class="panel-head">
-            <div>
-                <h3>Integrity Settings</h3>
-                <div class="area-subtitle">
-                    Control which section is used for checklist integrity scoring, how completion vs timing are weighted, how burst completion is detected, and how timing scores are graded.
-                </div>
-            </div>
-            <span class="summary-pill">Integrity</span>
-        </div>
+    .checklist-admin-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
 
-        <form method="POST" class="login-form">
-            <input type="hidden" name="action" value="update_integrity">
+    .checklist-admin-panel {
+        padding: 22px;
+    }
 
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label>Integrity Section</label>
-                    <select name="integrity_section" required>
-                        {% for section in section_options %}
-                        <option value="{{ section }}"
-                            {% if integrity_settings and integrity_settings.integrity_section == section %}selected{% endif %}>
-                            {{ section }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+    .checklist-admin-panel .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
 
-                <div class="svr-value-card">
-                    <div class="svr-value-label">Current Rule</div>
-                    <div class="svr-value-text">
-                        Integrity is based on required tasks in the selected section. Completion and timing are blended using the weights below. Burst detection prevents rapid checkbox dumping from earning timing credit.
+    .checklist-admin-panel h3 {
+        margin: 0 0 6px 0;
+    }
+
+    .checklist-admin-muted {
+        color: rgba(255, 255, 255, 0.74);
+        font-size: 0.95rem;
+        line-height: 1.45;
+    }
+
+    .checklist-admin-command {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        padding: 22px;
+    }
+
+    .checklist-admin-command h2 {
+        margin: 4px 0 6px 0;
+    }
+
+    .checklist-admin-chip-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .checklist-admin-chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.88rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .checklist-admin-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .checklist-admin-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .checklist-admin-note-card {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .checklist-admin-note-card-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 6px;
+        color: rgba(255, 255, 255, 0.62);
+        font-weight: 700;
+    }
+
+    .checklist-admin-note-card-text {
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.5;
+        font-size: 0.94rem;
+    }
+
+    .checklist-admin-helper {
+        margin-top: 6px;
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.6);
+        line-height: 1.4;
+    }
+
+    .checklist-admin-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .checklist-admin-toolbar {
+        position: sticky;
+        top: 10px;
+        z-index: 5;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(14, 18, 27, 0.92);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 18px;
+    }
+
+    .checklist-admin-toolbar-grid {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .checklist-admin-toolbar-stats {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .checklist-admin-stat {
+        padding: 9px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .checklist-admin-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .checklist-task-card {
+        padding: 18px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+    }
+
+    .checklist-task-card:hover {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.055);
+    }
+
+    .checklist-task-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+
+    .checklist-task-card-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .checklist-task-card-title {
+        font-size: 0.86rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.62);
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .checklist-task-card-subtitle {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.92);
+        line-height: 1.4;
+    }
+
+    .checklist-task-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .checklist-task-flags {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .checklist-empty-state {
+        padding: 24px;
+        border-radius: 16px;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .checklist-section-divider {
+        height: 1px;
+        background: linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.12),
+            rgba(255, 255, 255, 0.04)
+        );
+        margin: 2px 0;
+    }
+
+    .checklist-admin-form-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .checklist-inline-note {
+        margin-top: -4px;
+        margin-bottom: 2px;
+        color: rgba(255, 255, 255, 0.66);
+        font-size: 0.84rem;
+    }
+
+    @media (max-width: 980px) {
+        .checklist-admin-grid,
+        .checklist-admin-grid-3,
+        .checklist-admin-toolbar-grid,
+        .checklist-admin-command {
+            grid-template-columns: 1fr;
+        }
+
+        .checklist-admin-chip-row,
+        .checklist-admin-toolbar-stats {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<div class="admin-page checklist-admin-page">
+    <div class="checklist-admin-shell">
+
+        <section class="panel premium-panel checklist-admin-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Integrity Settings</h3>
+                    <div class="checklist-admin-muted">
+                        Control which section drives integrity scoring, how completion and timing are weighted, how burst completion is detected, and how timing score bands are applied.
                     </div>
                 </div>
+                <span class="summary-pill">Integrity</span>
             </div>
 
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="completion_weight">Completion Weight</label>
-                    <input
-                        type="number"
-                        id="completion_weight"
-                        name="completion_weight"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value="{{ integrity_settings.completion_weight if integrity_settings else '0.60' }}"
-                        required
-                    >
-                </div>
+            <form method="POST" class="login-form checklist-admin-form-stack">
+                <input type="hidden" name="action" value="update_integrity">
 
-                <div class="form-group">
-                    <label for="timing_weight">Timing Weight</label>
-                    <input
-                        type="number"
-                        id="timing_weight"
-                        name="timing_weight"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value="{{ integrity_settings.timing_weight if integrity_settings else '0.40' }}"
-                        required
-                    >
-                </div>
-            </div>
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="burst_threshold">Burst Threshold</label>
-                    <input
-                        type="number"
-                        id="burst_threshold"
-                        name="burst_threshold"
-                        min="2"
-                        value="{{ integrity_settings.burst_threshold if integrity_settings else '4' }}"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="burst_window_seconds">Burst Window Seconds</label>
-                    <input
-                        type="number"
-                        id="burst_window_seconds"
-                        name="burst_window_seconds"
-                        min="1"
-                        value="{{ integrity_settings.burst_window_seconds if integrity_settings else '60' }}"
-                        required
-                    >
-                </div>
-            </div>
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="full_score_ratio">Full Score Ratio</label>
-                    <input
-                        type="number"
-                        id="full_score_ratio"
-                        name="full_score_ratio"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value="{{ integrity_settings.full_score_ratio if integrity_settings else '0.70' }}"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="medium_score_ratio">Medium Score Ratio</label>
-                    <input
-                        type="number"
-                        id="medium_score_ratio"
-                        name="medium_score_ratio"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value="{{ integrity_settings.medium_score_ratio if integrity_settings else '0.50' }}"
-                        required
-                    >
-                </div>
-            </div>
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="low_score_ratio">Low Score Ratio</label>
-                    <input
-                        type="number"
-                        id="low_score_ratio"
-                        name="low_score_ratio"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value="{{ integrity_settings.low_score_ratio if integrity_settings else '0.30' }}"
-                        required
-                    >
-                </div>
-
-                <div class="svr-value-card">
-                    <div class="svr-value-label">Timing Grade Example</div>
-                    <div class="svr-value-text">
-                        If elapsed ÷ expected time is at least the full score ratio, timing earns 100.
-                        If it misses that but clears the medium score ratio, timing earns 75.
-                        If it misses that but clears the low score ratio, timing earns 40.
-                    </div>
-                </div>
-            </div>
-
-            <div class="svr-value-card" style="margin-top: 4px;">
-                <div class="svr-value-label">Tips</div>
-                <div class="svr-value-text">
-                    Best practice is for completion weight + timing weight to equal 1.00.
-                    Example: 0.60 and 0.40.
-                    Burst example: if 4 tasks are completed within 60 seconds, timing score is forced to 0.
-                    Best practice for timing ratios is descending order: full > medium > low.
-                </div>
-            </div>
-
-            <div class="admin-check-row" style="margin-top: 12px;">
-                <button type="submit" class="btn-primary">Save Integrity Settings</button>
-            </div>
-        </form>
-    </section>
-
-    <div class="command-bar panel" style="margin-bottom: 24px;">
-        <div class="command-bar-left">
-            <div class="command-eyebrow">ADMIN</div>
-            <h2 class="command-title">Checklist Template Manager</h2>
-            <p class="command-subtitle">
-                Add new tasks, update existing ones, and keep your checklist clean and organized.
-            </p>
-        </div>
-        <div class="command-bar-right">
-            <div class="command-chip">{{ items|length }} Tasks</div>
-            <div class="command-chip">{{ section_options|length }} Sections</div>
-        </div>
-    </div>
-
-    <section class="panel premium-panel" style="margin-bottom: 24px;">
-        <div class="panel-head">
-            <div>
-                <h3>Add New Task</h3>
-                <div class="area-subtitle">
-                    Create a new checklist item and assign it to the correct section.
-                </div>
-            </div>
-            <span class="summary-pill">New</span>
-        </div>
-
-        <form method="POST" class="login-form">
-            <input type="hidden" name="action" value="create">
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="section_name">Section</label>
-                    <select id="section_name" name="section_name" required>
-                        {% for section in section_options %}
-                        <option value="{{ section }}">{{ section }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="task_text">Task Text</label>
-                    <input type="text" id="task_text" name="task_text" required>
-                </div>
-            </div>
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="expected_minutes">Expected Minutes</label>
-                    <input type="number" id="expected_minutes" name="expected_minutes" value="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="sort_order">Sort Order</label>
-                    <input type="number" id="sort_order" name="sort_order" value="999" required>
-                </div>
-            </div>
-
-            <div class="admin-check-row" style="margin-top: 8px;">
-                <label class="checkbox-inline">
-                    <input type="checkbox" name="is_required" checked>
-                    Required for integrity/completion
-                </label>
-            </div>
-
-            <div class="admin-check-row" style="margin-top: 10px;">
-                <button type="submit" class="btn-primary">Add Task</button>
-            </div>
-        </form>
-    </section>
-
-    <section class="panel premium-panel">
-        <div class="panel-head" style="margin-bottom: 16px;">
-            <div>
-                <h3>Checklist Template</h3>
-                <div class="area-subtitle">
-                    Edit tasks below. Each card saves independently.
-                </div>
-            </div>
-            <span class="summary-pill">{{ items|length }} Items</span>
-        </div>
-
-        <div class="admin-task-grid" style="margin-bottom: 18px;">
-            <div class="form-group">
-                <label for="section_filter">Filter by Section</label>
-                <select id="section_filter">
-                    <option value="all">All Sections</option>
-                    {% for section in section_options %}
-                    <option value="{{ section }}">{{ section }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="svr-value-card">
-                <div class="svr-value-label">Quick Filter</div>
-                <div class="svr-value-text">
-                    Choose a section to show only those tasks. This does not affect saving and does not change task data.
-                </div>
-            </div>
-        </div>
-
-        <div class="admin-task-list" id="admin-task-list">
-            {% for item in items %}
-            <form method="POST" class="admin-task-card" data-section="{{ item.section_name }}">
-                <input type="hidden" name="action" value="update">
-                <input type="hidden" name="item_id" value="{{ item.id }}">
-
-                <div class="admin-task-top">
-                    <span class="summary-pill">ID {{ item.id }}</span>
-                    <span class="summary-pill">{{ item.section_name }}</span>
-
-                    {% if item.is_active %}
-                    <span class="table-badge badge-success">Active</span>
-                    {% else %}
-                    <span class="table-badge badge-neutral">Inactive</span>
-                    {% endif %}
-
-                    {% if item.is_required %}
-                    <span class="table-badge badge-danger">Required</span>
-                    {% else %}
-                    <span class="table-badge badge-neutral">Optional</span>
-                    {% endif %}
-                </div>
-
-                <div class="admin-task-grid">
+                <div class="checklist-admin-grid">
                     <div class="form-group">
-                        <label>Section</label>
-                        <select name="section_name" required>
+                        <label for="integrity_section">Integrity Section</label>
+                        <select id="integrity_section" name="integrity_section" required>
                             {% for section in section_options %}
-                            <option value="{{ section }}" {% if item.section_name == section %}selected{% endif %}>
+                            <option value="{{ section }}"
+                                {% if integrity_settings and integrity_settings.integrity_section == section %}selected{% endif %}>
                                 {{ section }}
                             </option>
+                            {% endfor %}
+                        </select>
+                        <div class="checklist-admin-helper">
+                            Only required tasks in this section are used for integrity scoring.
+                        </div>
+                    </div>
+
+                    <div class="checklist-admin-note-card">
+                        <div class="checklist-admin-note-card-title">Current Rule</div>
+                        <div class="checklist-admin-note-card-text">
+                            Integrity blends completion and timing. Burst detection prevents fast checkbox dumping from earning timing credit.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checklist-section-divider"></div>
+
+                <div class="checklist-admin-grid">
+                    <div class="form-group">
+                        <label for="completion_weight">Completion Weight</label>
+                        <input
+                            type="number"
+                            id="completion_weight"
+                            name="completion_weight"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value="{{ integrity_settings.completion_weight if integrity_settings else '0.60' }}"
+                            required
+                        >
+                        <div class="checklist-admin-helper">Best practice: keep this aligned with timing weight so total equals 1.00.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="timing_weight">Timing Weight</label>
+                        <input
+                            type="number"
+                            id="timing_weight"
+                            name="timing_weight"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value="{{ integrity_settings.timing_weight if integrity_settings else '0.40' }}"
+                            required
+                        >
+                        <div class="checklist-admin-helper">Example split: completion 0.60 and timing 0.40.</div>
+                    </div>
+                </div>
+
+                <div class="checklist-admin-grid">
+                    <div class="form-group">
+                        <label for="burst_threshold">Burst Threshold</label>
+                        <input
+                            type="number"
+                            id="burst_threshold"
+                            name="burst_threshold"
+                            min="2"
+                            value="{{ integrity_settings.burst_threshold if integrity_settings else '4' }}"
+                            required
+                        >
+                        <div class="checklist-admin-helper">Number of tasks completed inside the burst window before timing is zeroed out.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="burst_window_seconds">Burst Window Seconds</label>
+                        <input
+                            type="number"
+                            id="burst_window_seconds"
+                            name="burst_window_seconds"
+                            min="1"
+                            value="{{ integrity_settings.burst_window_seconds if integrity_settings else '60' }}"
+                            required
+                        >
+                        <div class="checklist-admin-helper">Example: 4 tasks within 60 seconds triggers burst behavior.</div>
+                    </div>
+                </div>
+
+                <div class="checklist-section-divider"></div>
+
+                <div class="checklist-admin-grid-3">
+                    <div class="form-group">
+                        <label for="full_score_ratio">Full Score Ratio</label>
+                        <input
+                            type="number"
+                            id="full_score_ratio"
+                            name="full_score_ratio"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value="{{ integrity_settings.full_score_ratio if integrity_settings else '0.70' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="medium_score_ratio">Medium Score Ratio</label>
+                        <input
+                            type="number"
+                            id="medium_score_ratio"
+                            name="medium_score_ratio"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value="{{ integrity_settings.medium_score_ratio if integrity_settings else '0.50' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="low_score_ratio">Low Score Ratio</label>
+                        <input
+                            type="number"
+                            id="low_score_ratio"
+                            name="low_score_ratio"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            value="{{ integrity_settings.low_score_ratio if integrity_settings else '0.30' }}"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="checklist-admin-grid">
+                    <div class="checklist-admin-note-card">
+                        <div class="checklist-admin-note-card-title">Timing Grade Example</div>
+                        <div class="checklist-admin-note-card-text">
+                            If elapsed ÷ expected time meets the full ratio, timing earns 100. If it misses full but meets medium, timing earns 75. If it misses medium but meets low, timing earns 40.
+                        </div>
+                    </div>
+
+                    <div class="checklist-admin-note-card">
+                        <div class="checklist-admin-note-card-title">Tips</div>
+                        <div class="checklist-admin-note-card-text">
+                            Best practice is descending ratios: full &gt; medium &gt; low. Keep weight totals clean and predictable so stores are scored consistently.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checklist-admin-actions">
+                    <button type="submit" class="btn-primary">Save Integrity Settings</button>
+                </div>
+            </form>
+        </section>
+
+        <div class="command-bar panel checklist-admin-command">
+            <div>
+                <div class="command-eyebrow">ADMIN</div>
+                <h2 class="command-title">Checklist Template Manager</h2>
+                <p class="command-subtitle">
+                    Add new tasks, clean up old ones, and keep the checklist structured so managers can move through it faster.
+                </p>
+            </div>
+
+            <div class="checklist-admin-chip-row">
+                <div class="checklist-admin-chip">{{ items|length }} Tasks</div>
+                <div class="checklist-admin-chip">{{ section_options|length }} Sections</div>
+            </div>
+        </div>
+
+        <section class="panel premium-panel checklist-admin-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Add New Task</h3>
+                    <div class="checklist-admin-muted">
+                        Create a new checklist item and place it in the correct section with the expected timing and sort order.
+                    </div>
+                </div>
+                <span class="summary-pill">New</span>
+            </div>
+
+            <form method="POST" class="login-form checklist-admin-form-stack">
+                <input type="hidden" name="action" value="create">
+
+                <div class="checklist-admin-grid">
+                    <div class="form-group">
+                        <label for="section_name">Section</label>
+                        <select id="section_name" name="section_name" required>
+                            {% for section in section_options %}
+                            <option value="{{ section }}">{{ section }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Task Text</label>
-                        <input type="text" name="task_text" value="{{ item.task_text }}" required>
+                        <label for="task_text">Task Text</label>
+                        <input type="text" id="task_text" name="task_text" required>
                     </div>
                 </div>
 
-                <div class="admin-task-grid">
+                <div class="checklist-admin-grid">
                     <div class="form-group">
-                        <label>Expected Minutes</label>
-                        <input type="number" name="expected_minutes" value="{{ item.expected_minutes }}" required>
+                        <label for="expected_minutes">Expected Minutes</label>
+                        <input type="number" id="expected_minutes" name="expected_minutes" value="0" required>
+                        <div class="checklist-admin-helper">Use 0 if you do not want timing expectations applied yet.</div>
                     </div>
 
                     <div class="form-group">
-                        <label>Sort Order</label>
-                        <input type="number" name="sort_order" value="{{ item.sort_order }}" required>
+                        <label for="sort_order">Sort Order</label>
+                        <input type="number" id="sort_order" name="sort_order" value="999" required>
+                        <div class="checklist-admin-helper">Lower numbers appear first inside the section.</div>
                     </div>
                 </div>
 
-                <div class="admin-check-row">
+                <div class="admin-check-row" style="margin-top: 2px;">
                     <label class="checkbox-inline">
-                        <input type="checkbox" name="is_required" {% if item.is_required %}checked{% endif %}>
-                        Required
-                    </label>
-
-                    <label class="checkbox-inline">
-                        <input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}>
-                        Active
+                        <input type="checkbox" name="is_required" checked>
+                        Required for integrity/completion
                     </label>
                 </div>
 
-                <div class="admin-check-row compact-actions">
-                    <button type="submit" class="btn-primary">Save Task</button>
+                <div class="checklist-admin-actions">
+                    <button type="submit" class="btn-primary">Add Task</button>
                 </div>
             </form>
-            {% else %}
-            <div class="admin-task-card">
-                No checklist template items found.
-            </div>
-            {% endfor %}
-        </div>
-    </section>
+        </section>
 
+        <section class="panel premium-panel checklist-admin-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Checklist Template</h3>
+                    <div class="checklist-admin-muted">
+                        Filter or search the template below. Each card still saves independently.
+                    </div>
+                </div>
+                <span class="summary-pill">{{ items|length }} Items</span>
+            </div>
+
+            <div class="checklist-admin-toolbar">
+                <div class="checklist-admin-toolbar-grid">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="section_filter">Filter by Section</label>
+                        <select id="section_filter">
+                            <option value="all">All Sections</option>
+                            {% for section in section_options %}
+                            <option value="{{ section }}">{{ section }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="task_search">Search Tasks</label>
+                        <input
+                            type="text"
+                            id="task_search"
+                            placeholder="Search by task text or section..."
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="checklist-admin-toolbar-stats">
+                        <div class="checklist-admin-stat"><span id="visible_task_count">{{ items|length }}</span> Showing</div>
+                        <div class="checklist-admin-stat">{{ items|length }} Total</div>
+                    </div>
+                </div>
+
+                <div class="checklist-inline-note">
+                    Quick filter only changes what you see on this page. It does not change task data or affect saving.
+                </div>
+            </div>
+
+            <div class="checklist-admin-list" id="admin-task-list">
+                {% for item in items %}
+                <form
+                    method="POST"
+                    class="admin-task-card checklist-task-card"
+                    data-section="{{ item.section_name }}"
+                    data-task-text="{{ item.task_text|lower }}"
+                >
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+
+                    <div class="checklist-task-card-head">
+                        <div>
+                            <div class="checklist-task-card-title">Template Item</div>
+                            <div class="checklist-task-card-subtitle">
+                                ID {{ item.id }} • {{ item.section_name }}
+                            </div>
+                        </div>
+
+                        <div class="checklist-task-card-meta">
+                            {% if item.is_active %}
+                            <span class="table-badge badge-success">Active</span>
+                            {% else %}
+                            <span class="table-badge badge-neutral">Inactive</span>
+                            {% endif %}
+
+                            {% if item.is_required %}
+                            <span class="table-badge badge-danger">Required</span>
+                            {% else %}
+                            <span class="table-badge badge-neutral">Optional</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="checklist-task-card-body">
+                        <div class="checklist-admin-grid">
+                            <div class="form-group">
+                                <label>Section</label>
+                                <select name="section_name" required>
+                                    {% for section in section_options %}
+                                    <option value="{{ section }}" {% if item.section_name == section %}selected{% endif %}>
+                                        {{ section }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Task Text</label>
+                                <input type="text" name="task_text" value="{{ item.task_text }}" required>
+                            </div>
+                        </div>
+
+                        <div class="checklist-admin-grid">
+                            <div class="form-group">
+                                <label>Expected Minutes</label>
+                                <input type="number" name="expected_minutes" value="{{ item.expected_minutes }}" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Sort Order</label>
+                                <input type="number" name="sort_order" value="{{ item.sort_order }}" required>
+                            </div>
+                        </div>
+
+                        <div class="checklist-task-flags">
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="is_required" {% if item.is_required %}checked{% endif %}>
+                                Required
+                            </label>
+
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}>
+                                Active
+                            </label>
+                        </div>
+
+                        <div class="admin-check-row compact-actions">
+                            <button type="submit" class="btn-primary">Save Task</button>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="checklist-empty-state">
+                    No checklist template items found.
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const sectionFilter = document.getElementById("section_filter");
+    const taskSearch = document.getElementById("task_search");
+    const visibleTaskCount = document.getElementById("visible_task_count");
     const taskCards = document.querySelectorAll(".admin-task-card[data-section]");
 
-    function applySectionFilter() {
-        if (!sectionFilter) return;
-
-        const selected = sectionFilter.value;
+    function applyTaskFilters() {
+        const selectedSection = sectionFilter ? sectionFilter.value : "all";
+        const searchValue = taskSearch ? taskSearch.value.trim().toLowerCase() : "";
+        let visibleCount = 0;
 
         taskCards.forEach(function (card) {
-            const section = card.getAttribute("data-section");
+            const section = (card.getAttribute("data-section") || "").toLowerCase();
+            const taskText = (card.getAttribute("data-task-text") || "").toLowerCase();
 
-            if (selected === "all" || section === selected) {
-                card.style.display = "";
-            } else {
-                card.style.display = "none";
+            const matchesSection =
+                selectedSection === "all" ||
+                section === selectedSection.toLowerCase();
+
+            const matchesSearch =
+                !searchValue ||
+                taskText.includes(searchValue) ||
+                section.includes(searchValue);
+
+            const shouldShow = matchesSection && matchesSearch;
+
+            card.style.display = shouldShow ? "" : "none";
+
+            if (shouldShow) {
+                visibleCount += 1;
             }
         });
+
+        if (visibleTaskCount) {
+            visibleTaskCount.textContent = visibleCount;
+        }
     }
 
     if (sectionFilter) {
-        sectionFilter.addEventListener("change", applySectionFilter);
-        applySectionFilter();
+        sectionFilter.addEventListener("change", applyTaskFilters);
     }
+
+    if (taskSearch) {
+        taskSearch.addEventListener("input", applyTaskFilters);
+    }
+
+    applyTaskFilters();
 });
 </script>
 {% endblock %}
