@@ -1,7 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from io import BytesIO
-from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, session, send_file
 from openpyxl import Workbook
@@ -12,19 +11,6 @@ from app.auth.routes import login_required, role_required
 from app.models import CashLog, Store
 
 cash_review_bp = Blueprint("cash_review", __name__, url_prefix="/cash-review")
-
-APP_TZ = ZoneInfo("America/New_York")
-
-
-def now_et():
-    return datetime.now(APP_TZ)
-
-
-def current_ops_date():
-    now = now_et()
-    if now.hour < 5:
-        return now.date() - timedelta(days=1)
-    return now.date()
 
 
 def get_visible_stores():
@@ -100,7 +86,7 @@ def build_cash_review_payload():
     shift_filter = (request.args.get("shift") or "").strip()
     date_filter = (request.args.get("date") or "").strip()
 
-    today = current_ops_date()
+    today = datetime.today().date()
     selected_date = None
 
     if date_filter:
