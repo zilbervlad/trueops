@@ -9,7 +9,7 @@
         <div class="command-eyebrow">MAINTENANCE</div>
         <h2 class="command-title">Maintenance Command Board</h2>
         <p class="command-subtitle">
-            Scan work fast, update status quickly, and only expand the ticket you actually want to edit.
+            See what is broken fast, then open only the ticket you need to update.
         </p>
     </div>
     <div class="command-bar-right">
@@ -142,9 +142,26 @@
 
     .maintenance-card {
         border: 1px solid rgba(255, 255, 255, 0.08);
+        border-left-width: 5px;
         border-radius: 18px;
         background: rgba(255, 255, 255, 0.03);
         overflow: hidden;
+    }
+
+    .maintenance-card.status-open {
+        border-left-color: #ff4d4f;
+    }
+
+    .maintenance-card.status-assigned {
+        border-left-color: #f0c419;
+    }
+
+    .maintenance-card.status-in_progress {
+        border-left-color: #3b82f6;
+    }
+
+    .maintenance-card.status-complete {
+        border-left-color: #22c55e;
     }
 
     .maintenance-card-summary {
@@ -155,7 +172,7 @@
         cursor: pointer;
         padding: 18px;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
         text-align: left;
@@ -163,30 +180,27 @@
 
     .maintenance-card-left {
         display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 10px;
         flex: 1;
         min-width: 0;
     }
 
-    .maintenance-title-wrap {
-        min-width: 0;
+    .maintenance-store-line {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.72;
     }
 
     .maintenance-title-main {
-        font-weight: 800;
-        font-size: 15px;
+        font-size: 20px;
+        font-weight: 900;
         line-height: 1.2;
-        margin-bottom: 2px;
+        letter-spacing: 0.2px;
         word-break: break-word;
-    }
-
-    .maintenance-title-sub {
-        font-size: 12px;
-        opacity: 0.72;
-        line-height: 1.25;
-        word-break: break-word;
+        min-width: 0;
     }
 
     .maintenance-card-right {
@@ -197,14 +211,45 @@
         justify-content: flex-end;
     }
 
+    .maintenance-status-pill {
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.05);
+    }
+
+    .maintenance-status-pill.status-open {
+        background: rgba(255, 77, 79, 0.14);
+        color: #ffb3b5;
+    }
+
+    .maintenance-status-pill.status-assigned {
+        background: rgba(240, 196, 25, 0.14);
+        color: #ffe38a;
+    }
+
+    .maintenance-status-pill.status-in_progress {
+        background: rgba(59, 130, 246, 0.14);
+        color: #9ac5ff;
+    }
+
+    .maintenance-status-pill.status-complete {
+        background: rgba(34, 197, 94, 0.14);
+        color: #9df0bb;
+    }
+
     .maintenance-quick-btn {
         background: transparent;
         border: 1px solid rgba(255, 255, 255, 0.12);
         color: inherit;
         border-radius: 999px;
-        padding: 6px 10px;
+        padding: 7px 12px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
     }
 
@@ -243,8 +288,8 @@
 
     @media (max-width: 900px) {
         .maintenance-card-summary {
-            align-items: flex-start;
             flex-direction: column;
+            align-items: flex-start;
         }
 
         .maintenance-card-right {
@@ -254,8 +299,27 @@
     }
 </style>
 
+{% macro problem_icon(title) %}
+    {% set lower_title = (title or '')|lower %}
+    {% if 'walk-in' in lower_title or 'cooler' in lower_title or 'freezer' in lower_title or 'cold' in lower_title %}
+        ❄️
+    {% elif 'oven' in lower_title or 'heat' in lower_title %}
+        🔥
+    {% elif 'sink' in lower_title or 'leak' in lower_title or 'bathroom' in lower_title or 'water' in lower_title %}
+        🚰
+    {% elif 'light' in lower_title or 'bulb' in lower_title or 'electric' in lower_title %}
+        💡
+    {% elif 'door' in lower_title or 'lock' in lower_title %}
+        🚪
+    {% elif 'pest' in lower_title %}
+        🚨
+    {% else %}
+        ⚠️
+    {% endif %}
+{% endmacro %}
+
 {% macro render_ticket_card(ticket, stores, user_role) %}
-<div class="maintenance-card">
+<div class="maintenance-card status-{{ ticket.status }}">
     <button
         type="button"
         class="maintenance-card-summary"
@@ -263,33 +327,18 @@
         aria-expanded="false"
     >
         <div class="maintenance-card-left">
-            <span class="summary-pill">Store {{ ticket.store_number }}</span>
+            <div class="maintenance-store-line">Store {{ ticket.store_number }}</div>
 
-            <span class="status-badge
-                {% if ticket.status == 'complete' %}status-completed
-                {% elif ticket.status == 'in_progress' %}status-progress
-                {% elif ticket.status == 'assigned' %}status-progress
-                {% else %}status-not-started{% endif %}">
-                {{ ticket.status.replace('_', ' ')|title }}
-            </span>
-
-            <span class="summary-pill">{{ ticket.source_type|upper }}</span>
-
-            <div class="maintenance-title-wrap">
-                <div class="maintenance-title-main">{{ ticket.title }}</div>
-                <div class="maintenance-title-sub">
-                    {{ ticket.created_at.strftime('%b %d, %Y %I:%M %p') if ticket.created_at else '' }}
-                    {% if ticket.svr_report_id %}
-                    | Linked SVR #{{ ticket.svr_report_id }}
-                    {% endif %}
-                    {% if ticket.details %}
-                    | {{ ticket.details[:90] }}{% if ticket.details|length > 90 %}...{% endif %}
-                    {% endif %}
-                </div>
+            <div class="maintenance-title-main">
+                {{ problem_icon(ticket.title) }} {{ ticket.title }}
             </div>
         </div>
 
         <div class="maintenance-card-right">
+            <span class="maintenance-status-pill status-{{ ticket.status }}">
+                {{ ticket.status.replace('_', ' ')|title }}
+            </span>
+
             {% if ticket.status == "open" %}
             <form method="POST" onclick="event.stopPropagation();">
                 <input type="hidden" name="action" value="update">
@@ -298,7 +347,7 @@
                 <input type="hidden" name="title" value="{{ ticket.title }}">
                 <input type="hidden" name="details" value="{{ ticket.details or '' }}">
                 <input type="hidden" name="status" value="assigned">
-                <button type="submit" class="maintenance-quick-btn">Assign</button>
+                <button type="submit" class="maintenance-quick-btn">Start Fix</button>
             </form>
             {% elif ticket.status == "assigned" %}
             <form method="POST" onclick="event.stopPropagation();">
@@ -308,7 +357,7 @@
                 <input type="hidden" name="title" value="{{ ticket.title }}">
                 <input type="hidden" name="details" value="{{ ticket.details or '' }}">
                 <input type="hidden" name="status" value="in_progress">
-                <button type="submit" class="maintenance-quick-btn">Start</button>
+                <button type="submit" class="maintenance-quick-btn">Start Fix</button>
             </form>
             {% elif ticket.status == "in_progress" %}
             <form method="POST" onclick="event.stopPropagation();">
@@ -318,7 +367,7 @@
                 <input type="hidden" name="title" value="{{ ticket.title }}">
                 <input type="hidden" name="details" value="{{ ticket.details or '' }}">
                 <input type="hidden" name="status" value="complete">
-                <button type="submit" class="maintenance-quick-btn">Complete</button>
+                <button type="submit" class="maintenance-quick-btn">Mark Done</button>
             </form>
             {% endif %}
 
