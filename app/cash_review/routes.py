@@ -29,6 +29,18 @@ def get_visible_stores():
     return []
 
 
+def current_cash_review_date():
+    # Safe, minimal-change version:
+    # Render/server time is typically UTC. Convert to current Eastern time using UTC-4
+    # and keep the 5 AM ops-day cutoff behavior.
+    eastern_now = datetime.utcnow() - timedelta(hours=4)
+
+    if eastern_now.hour < 5:
+        return eastern_now.date() - timedelta(days=1)
+
+    return eastern_now.date()
+
+
 def build_closing_to_opening_diffs(logs):
     by_store = defaultdict(list)
 
@@ -86,7 +98,7 @@ def build_cash_review_payload():
     shift_filter = (request.args.get("shift") or "").strip()
     date_filter = (request.args.get("date") or "").strip()
 
-    today = datetime.today().date()
+    today = current_cash_review_date()
     selected_date = None
 
     if date_filter:
