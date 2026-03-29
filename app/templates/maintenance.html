@@ -159,75 +159,109 @@
         margin-top: 16px;
     }
 
-    .maintenance-card-list {
+    .maintenance-row-list {
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        width: 100%;
-    }
-
-    .maintenance-card {
+        gap: 0;
         width: 100%;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-left-width: 5px;
         border-radius: 18px;
-        background: rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    .maintenance-row {
+        width: 100%;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: transparent;
         overflow: hidden;
     }
 
-    .maintenance-card.status-open {
-        border-left-color: #ff4d4f;
+    .maintenance-row:last-child {
+        border-bottom: none;
     }
 
-    .maintenance-card.status-assigned {
-        border-left-color: #f0c419;
+    .maintenance-row.is-open {
+        background: rgba(255, 255, 255, 0.04);
     }
 
-    .maintenance-card.status-in_progress {
-        border-left-color: #3b82f6;
-    }
-
-    .maintenance-card.status-complete {
-        border-left-color: #22c55e;
-    }
-
-    .maintenance-card-summary {
+    .maintenance-row-summary {
         width: 100%;
         background: transparent;
         border: none;
         color: inherit;
         cursor: pointer;
-        padding: 18px;
+        padding: 14px 18px;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
         text-align: left;
+        transition: background 0.16s ease;
     }
 
-    .maintenance-card-left {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+    .maintenance-row-summary:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .maintenance-row-left {
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
         flex: 1;
         min-width: 0;
     }
 
+    .maintenance-store-block {
+        min-width: 0;
+    }
+
     .maintenance-store-line {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         opacity: 0.72;
+        margin-bottom: 4px;
+    }
+
+    .maintenance-source-line {
+        font-size: 11px;
+        opacity: 0.6;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .maintenance-title-wrap {
+        min-width: 0;
+    }
+
+    .maintenance-title-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
     }
 
     .maintenance-title-main {
-        font-size: 20px;
-        font-weight: 900;
-        line-height: 1.2;
-        letter-spacing: 0.2px;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.25;
+        letter-spacing: 0.1px;
         word-break: break-word;
         min-width: 0;
+        margin: 0;
+    }
+
+    .maintenance-row-meta {
+        font-size: 12px;
+        line-height: 1.35;
+        opacity: 0.68;
+        word-break: break-word;
     }
 
     .maintenance-card-right {
@@ -236,6 +270,7 @@
         gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
+        flex-shrink: 0;
     }
 
     .maintenance-status-pill {
@@ -270,7 +305,7 @@
     }
 
     .maintenance-quick-btn {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.02);
         border: 1px solid rgba(255, 255, 255, 0.12);
         color: inherit;
         border-radius: 999px;
@@ -278,10 +313,12 @@
         font-size: 12px;
         font-weight: 800;
         cursor: pointer;
+        transition: background 0.16s ease, border-color 0.16s ease;
     }
 
     .maintenance-quick-btn:hover {
         background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.18);
     }
 
     .maintenance-expand-chip {
@@ -291,8 +328,9 @@
 
     .maintenance-card-body {
         display: none;
-        padding: 0 18px 18px 18px;
+        padding: 16px 18px 18px 152px;
         border-top: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
     }
 
     .maintenance-section-label {
@@ -308,21 +346,27 @@
     .maintenance-empty {
         width: 100%;
         padding: 18px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
         opacity: 0.8;
     }
 
     @media (max-width: 900px) {
-        .maintenance-card-summary {
+        .maintenance-row-summary {
             flex-direction: column;
             align-items: flex-start;
+        }
+
+        .maintenance-row-left {
+            grid-template-columns: 1fr;
+            width: 100%;
         }
 
         .maintenance-card-right {
             width: 100%;
             justify-content: flex-start;
+        }
+
+        .maintenance-card-body {
+            padding: 16px 18px 18px 18px;
         }
     }
 </style>
@@ -347,26 +391,43 @@
 {% endmacro %}
 
 {% macro render_ticket_card(ticket, stores, user_role) %}
-<div class="maintenance-card status-{{ ticket.status }}">
+<div class="maintenance-row" data-ticket-card="{{ ticket.id }}">
     <button
         type="button"
-        class="maintenance-card-summary"
+        class="maintenance-row-summary"
         data-ticket-toggle="{{ ticket.id }}"
         aria-expanded="false"
     >
-        <div class="maintenance-card-left">
-            <div class="maintenance-store-line">Store {{ ticket.store_number }}</div>
+        <div class="maintenance-row-left">
+            <div class="maintenance-store-block">
+                <div class="maintenance-store-line">Store {{ ticket.store_number }}</div>
+                <div class="maintenance-source-line">{{ ticket.source_type|upper }}</div>
+            </div>
 
-            <div class="maintenance-title-main">
-                {{ problem_icon(ticket.title) }} {{ ticket.title }}
+            <div class="maintenance-title-wrap">
+                <div class="maintenance-title-line">
+                    <div class="maintenance-title-main">
+                        {{ problem_icon(ticket.title) }} {{ ticket.title }}
+                    </div>
+
+                    <span class="maintenance-status-pill status-{{ ticket.status }}">
+                        {{ ticket.status.replace('_', ' ')|title }}
+                    </span>
+                </div>
+
+                <div class="maintenance-row-meta">
+                    {{ ticket.created_at.strftime('%b %d, %Y %I:%M %p') if ticket.created_at else '' }}
+                    {% if ticket.svr_report_id %}
+                    | Linked SVR #{{ ticket.svr_report_id }}
+                    {% endif %}
+                    {% if ticket.details %}
+                    | {{ ticket.details[:90] }}{% if ticket.details|length > 90 %}...{% endif %}
+                    {% endif %}
+                </div>
             </div>
         </div>
 
         <div class="maintenance-card-right">
-            <span class="maintenance-status-pill status-{{ ticket.status }}">
-                {{ ticket.status.replace('_', ' ')|title }}
-            </span>
-
             {% if ticket.status == "open" %}
             <form method="POST" onclick="event.stopPropagation();">
                 <input type="hidden" name="action" value="update">
@@ -480,7 +541,7 @@
         </button>
 
         <div id="maintenance-open-body" class="maintenance-status-body" style="display: block;">
-            <div class="maintenance-card-list">
+            <div class="maintenance-row-list">
                 {% for ticket in open_tickets %}
                     {{ render_ticket_card(ticket, stores, user_role) }}
                 {% else %}
@@ -505,7 +566,7 @@
         </button>
 
         <div id="maintenance-assigned-body" class="maintenance-status-body" style="display: none;">
-            <div class="maintenance-card-list">
+            <div class="maintenance-row-list">
                 {% for ticket in assigned_tickets %}
                     {{ render_ticket_card(ticket, stores, user_role) }}
                 {% else %}
@@ -530,7 +591,7 @@
         </button>
 
         <div id="maintenance-progress-body" class="maintenance-status-body" style="display: block;">
-            <div class="maintenance-card-list">
+            <div class="maintenance-row-list">
                 {% for ticket in in_progress_tickets %}
                     {{ render_ticket_card(ticket, stores, user_role) }}
                 {% else %}
@@ -555,7 +616,7 @@
         </button>
 
         <div id="maintenance-complete-body" class="maintenance-status-body" style="display: none;">
-            <div class="maintenance-card-list">
+            <div class="maintenance-row-list">
                 {% for ticket in complete_tickets %}
                     {{ render_ticket_card(ticket, stores, user_role) }}
                 {% else %}
@@ -589,8 +650,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 const ticketId = this.getAttribute("data-ticket-toggle");
                 const targetBody = document.querySelector(`[data-ticket-body="${ticketId}"]`);
                 const targetChevron = document.querySelector(`[data-ticket-chevron="${ticketId}"]`);
+                const targetCard = document.querySelector(`[data-ticket-card="${ticketId}"]`);
 
-                if (!targetBody || !targetChevron) return;
+                if (!targetBody || !targetChevron || !targetCard) return;
 
                 const isOpening = targetBody.style.display === "none" || targetBody.style.display === "";
 
@@ -606,10 +668,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     btn.setAttribute("aria-expanded", "false");
                 });
 
+                document.querySelectorAll("[data-ticket-card]").forEach(card => {
+                    card.classList.remove("is-open");
+                });
+
                 if (isOpening) {
                     targetBody.style.display = "block";
                     targetChevron.textContent = "Close ▲";
                     this.setAttribute("aria-expanded", "true");
+                    targetCard.classList.add("is-open");
                 }
             });
         });
