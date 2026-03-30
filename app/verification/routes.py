@@ -133,10 +133,12 @@ def new_report():
                 val = (request.form.get(field.field_key) or "").strip()
                 body += f"{field.field_label}:\n{val or '—'}\n\n"
 
+            # ORIGINAL recipient logic (unchanged)
             to_email = (os.getenv("EMAIL_FROM", "") or os.getenv("EMAIL_USER", "")).strip()
             if not to_email:
                 raise ValueError("Missing EMAIL_FROM / EMAIL_USER in environment settings.")
 
+            # Supervisor email (unchanged)
             supervisor_email = None
             user_id = session.get("user_id")
             if user_id:
@@ -144,12 +146,30 @@ def new_report():
                 if submitting_user:
                     supervisor_email = submitting_user.get_notification_email()
 
+            # ✅ ADD ADMIN CC (ONLY CHANGE)
+            admin_users = User.query.filter_by(role="admin", is_active=True).all()
+            admin_emails = [
+                user.get_notification_email()
+                for user in admin_users
+                if user.get_notification_email()
+            ]
+
+            cc_list = []
+
+            if supervisor_email:
+                cc_list.append(supervisor_email)
+
+            for email in admin_emails:
+                if email and email not in cc_list and email != to_email:
+                    cc_list.append(email)
+
             send_email(
                 to_email=to_email,
                 subject=f"Verification - Store {store_number}",
                 body=body,
-                cc_emails=supervisor_email if supervisor_email else None
+                cc_emails=cc_list if cc_list else None
             )
+
         except Exception as e:
             print("Email failed:", e)
 
