@@ -339,3 +339,53 @@ class CashLog(db.Model):
     manager_name = db.Column(db.String(120), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class VerificationTemplateField(db.Model):
+    __tablename__ = "verification_template_fields"
+
+    id = db.Column(db.Integer, primary_key=True)
+    field_key = db.Column(db.String(100), unique=True, nullable=False)
+    field_label = db.Column(db.String(255), nullable=False)
+    field_type = db.Column(db.String(50), nullable=False, default="textarea")
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+
+class VerificationReport(db.Model):
+    __tablename__ = "verification_reports"
+
+    id = db.Column(db.Integer, primary_key=True)
+    store_number = db.Column(db.String(10), nullable=False)
+    report_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    supervisor_name = db.Column(db.String(120), nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_by = db.relationship("User")
+
+    values = db.relationship(
+        "VerificationReportValue",
+        backref="report",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+
+class VerificationReportValue(db.Model):
+    __tablename__ = "verification_report_values"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    report_id = db.Column(db.Integer, db.ForeignKey("verification_reports.id"), nullable=False)
+    template_field_id = db.Column(db.Integer, db.ForeignKey("verification_template_fields.id"), nullable=False)
+
+    field_key = db.Column(db.String(100), nullable=False)
+    field_label = db.Column(db.String(255), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+    value_text = db.Column(db.Text, nullable=True)
+
+    template_field = db.relationship("VerificationTemplateField")   
+   
