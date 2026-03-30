@@ -307,6 +307,7 @@ def home():
     if user_role in ["admin", "supervisor"]:
         quick_actions.append({"label": "Action Board", "url": "/action-board"})
         quick_actions.append({"label": "Open SVR", "url": "/svr/"})
+        quick_actions.append({"label": "Verification", "url": "/verification/new"})
 
     if user_role == "admin":
         quick_actions.append({"label": "Manage Users", "url": "/users"})
