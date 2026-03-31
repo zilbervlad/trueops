@@ -64,7 +64,8 @@ def calculate_section_stats(daily, section_name):
             "status_text": "Not Started",
         }
 
-    section_items = [item for item in daily.items if item.section_name == section_name]
+    items = daily.items or []
+    section_items = [item for item in items if item.section_name == section_name]
     total = len(section_items)
 
     if total == 0:
@@ -93,44 +94,6 @@ def calculate_section_stats(daily, section_name):
     }
 
 
-def build_heat_map(today):
-    stores = Store.query.filter_by(is_active=True).order_by(
-        Store.area_name.asc(),
-        Store.store_number.asc()
-    ).all()
-
-    heat_map = []
-
-    for store in stores:
-        daily = DailyChecklist.query.filter_by(
-            store_number=store.store_number,
-            checklist_date=today
-        ).first()
-
-        percent = int(round(daily.percent_complete)) if daily else 0
-        status = daily.status if daily else "not_started"
-
-        if status == "completed":
-            tile_class = "tile-green"
-            status_label = "Completed"
-        elif status == "in_progress":
-            tile_class = "tile-red"
-            status_label = "In Progress"
-        else:
-            tile_class = "tile-gray"
-            status_label = "Not Started"
-
-        heat_map.append({
-            "store_number": store.store_number,
-            "percent": percent,
-            "status": status,
-            "status_label": status_label,
-            "tile_class": tile_class,
-        })
-
-    return heat_map
-
-
 @store_dashboard_bp.route("/")
 @login_required
 def index():
@@ -141,13 +104,13 @@ def index():
         abort(403)
 
     if role == "manager":
-        return redirect(
-            url_for("store_dashboard.detail", store_number=session.get("user_store"))
-        )
+        user_store = session.get("user_store")
+        if not user_store:
+            abort(403)
+        return redirect(url_for("store_dashboard.detail", store_number=user_store))
 
-    selected_store = visible_stores[0]
     return redirect(
-        url_for("store_dashboard.detail", store_number=selected_store.store_number)
+        url_for("store_dashboard.detail", store_number=visible_stores[0].store_number)
     )
 
 
@@ -165,17 +128,30 @@ def detail(store_number):
         is_active=True
     ).first_or_404()
 
-    daily = DailyChecklist.query.filter_by(
-        store_number=store_number,
+    all_stores = Store.query.filter_by(is_active=True).order_by(
+        Store.area_name.asc(),
+        Store.store_number.asc()
+    ).all()
+
+    all_daily = DailyChecklist.query.filter_by(
         checklist_date=today
-    ).first()
+    ).all()
 
-    overall_completion = int(round(daily.percent_complete)) if daily else 0
-    checklist_status = (daily.status or "not_started") if daily else "not_started"
-    manager_name = None
+    daily_by_store = {row.store_number: row for row in all_daily}
 
-    if daily:
-        manager_name = daily.manager_on_duty or daily.opening_manager or daily.closing_manager
+    selected_daily = daily_by_store.get(store_number)
+
+    overall_completion = int(round(selected_daily.percent_complete)) if selected_daily else 0
+    checklist_status = (selected_daily.status or "not_started") if selected_daily else "not_started"
+
+    manager_name = "Not Set"
+    if selected_daily:
+        manager_name = (
+            selected_daily.manager_on_duty
+            or selected_daily.opening_manager
+            or selected_daily.closing_manager
+            or "Not Set"
+        )
 
     if checklist_status == "completed":
         checklist_status_label = "Completed"
@@ -184,29 +160,44 @@ def detail(store_number):
     else:
         checklist_status_label = "Not Started"
 
-    cleaning_items = WeeklyFocusItem.query.filter_by(
+    open_focus_items = WeeklyFocusItem.query.filter_by(
         store_number=store_number,
-        item_type="cleaning",
         is_completed=False
     ).order_by(
         WeeklyFocusItem.created_at.asc(),
         WeeklyFocusItem.id.asc()
     ).all()
 
-    goal_items = WeeklyFocusItem.query.filter_by(
-        store_number=store_number,
-        item_type="goal",
-        is_completed=False
-    ).order_by(
-        WeeklyFocusItem.created_at.asc(),
-        WeeklyFocusItem.id.asc()
-    ).all()
+    cleaning_items = [item for item in open_focus_items if item.item_type == "cleaning"]
+    goal_items = [item for item in open_focus_items if item.item_type == "goal"]
 
-    before_open_stats = calculate_section_stats(daily, "Before Open / Before 10:30")
-    restock_stats = calculate_section_stats(daily, "3-O'Clock Restock")
-    manager_walk_stats = calculate_section_stats(daily, "Manager's Walk")
+    before_open_stats = calculate_section_stats(selected_daily, "Before Open / Before 10:30")
+    restock_stats = calculate_section_stats(selected_daily, "3-O'Clock Restock")
+    manager_walk_stats = calculate_section_stats(selected_daily, "Manager's Walk")
 
-    heat_map = build_heat_map(today)
+    heat_map = []
+    for store in all_stores:
+        daily = daily_by_store.get(store.store_number)
+
+        percent = int(round(daily.percent_complete)) if daily else 0
+        status = daily.status if daily else "not_started"
+
+        if status == "completed":
+            tile_class = "tile-green"
+            status_label = "Completed"
+        elif status == "in_progress":
+            tile_class = "tile-red"
+            status_label = "In Progress"
+        else:
+            tile_class = "tile-gray"
+            status_label = "Not Started"
+
+        heat_map.append({
+            "store_number": store.store_number,
+            "percent": percent,
+            "status_label": status_label,
+            "tile_class": tile_class,
+        })
 
     return render_template(
         "store_dashboard/index.html",
@@ -215,7 +206,7 @@ def detail(store_number):
         selected_store=selected_store,
         overall_completion=overall_completion,
         checklist_status_label=checklist_status_label,
-        manager_name=manager_name or "Not Set",
+        manager_name=manager_name,
         cleaning_items=cleaning_items,
         goal_items=goal_items,
         before_open_stats=before_open_stats,
