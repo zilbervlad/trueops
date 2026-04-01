@@ -7,13 +7,15 @@
     <style>
         :root {
             --bg: #dfe4ec;
-            --panel: #f7f9fc;
+            --panel: rgba(255,255,255,0.78);
             --card: #ffffff;
             --border: #d4dce8;
             --text: #17233d;
             --muted: #5f6f8c;
             --chip-bg: #dfe7fb;
             --chip-text: #294894;
+            --shadow-soft: 0 8px 24px rgba(16, 30, 58, 0.08);
+            --shadow-tile: 0 6px 16px rgba(20, 34, 64, 0.16);
         }
 
         * {
@@ -26,41 +28,44 @@
             width: 100%;
             min-height: 100%;
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #dfe4ec;
+            background:
+                radial-gradient(circle at top left, rgba(255,255,255,0.55), transparent 30%),
+                radial-gradient(circle at top right, rgba(255,255,255,0.35), transparent 22%),
+                linear-gradient(180deg, #e6ebf2 0%, #dfe4ec 100%);
             color: var(--text);
         }
 
         body {
-            padding: 10px;
+            padding: 12px;
         }
 
         .tv-shell {
             display: grid;
-            gap: 10px;
+            gap: 12px;
         }
 
         .tv-topbar {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 12px;
+            gap: 14px;
             flex-wrap: wrap;
         }
 
         .tv-title {
             margin: 0;
-            font-size: 3.1rem;
-            line-height: 1;
-            font-weight: 900;
-            letter-spacing: -0.03em;
-            color: #16233e;
+            font-size: 3.35rem;
+            line-height: 0.95;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+            color: #14203a;
         }
 
         .tv-subtitle {
-            margin: 4px 0 0 0;
+            margin: 6px 0 0 0;
             font-size: 1.05rem;
-            font-weight: 700;
-            color: #5f6f8c;
+            font-weight: 800;
+            color: #60718e;
         }
 
         .tv-actions {
@@ -74,47 +79,56 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 8px 14px;
+            padding: 9px 16px;
             border-radius: 999px;
             background: var(--chip-bg);
             color: var(--chip-text);
-            font-size: 0.96rem;
-            font-weight: 800;
+            font-size: 0.98rem;
+            font-weight: 900;
+            box-shadow: inset 0 0 0 1px rgba(41,72,148,0.06);
         }
 
         .tv-button {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 8px 14px;
-            border-radius: 12px;
+            padding: 9px 16px;
+            border-radius: 14px;
             border: 1px solid #bcc7d9;
-            background: #ffffff;
+            background: rgba(255,255,255,0.92);
             color: #1f2e4e;
             text-decoration: none;
-            font-weight: 800;
-            box-shadow: 0 1px 2px rgba(18, 35, 74, 0.05);
+            font-weight: 900;
+            box-shadow: 0 3px 8px rgba(18, 35, 74, 0.08);
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .tv-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(18, 35, 74, 0.12);
         }
 
         .tv-summary {
-            background: rgba(255,255,255,0.72);
+            background: var(--panel);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 12px 14px;
+            border-radius: 22px;
+            padding: 15px 18px;
+            box-shadow: var(--shadow-soft);
         }
 
         .tv-summary-title {
             margin: 0;
-            font-size: 1.05rem;
-            font-weight: 900;
-            color: #16233e;
+            font-size: 1.18rem;
+            font-weight: 950;
+            color: #15223d;
         }
 
         .tv-summary-subtitle {
-            margin: 2px 0 10px 0;
-            font-size: 0.98rem;
-            color: #5f6f8c;
-            font-weight: 700;
+            margin: 3px 0 12px 0;
+            font-size: 1rem;
+            color: #61708b;
+            font-weight: 800;
         }
 
         .tv-pill-row {
@@ -127,37 +141,41 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 7px 13px;
+            padding: 8px 14px;
             border-radius: 999px;
-            background: var(--chip-bg);
-            color: var(--chip-text);
-            font-size: 0.95rem;
-            font-weight: 800;
+            background: linear-gradient(180deg, #e7eefc 0%, #dbe5fb 100%);
+            color: #27458f;
+            font-size: 0.96rem;
+            font-weight: 900;
+            box-shadow: inset 0 0 0 1px rgba(39,69,143,0.05);
         }
 
         .tv-main-grid {
             display: grid;
-            grid-template-columns: 2.8fr 1fr;
-            gap: 10px;
+            grid-template-columns: 2.9fr 1fr;
+            gap: 12px;
             align-items: start;
         }
 
         .tv-panel {
-            background: rgba(255,255,255,0.72);
+            background: var(--panel);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border);
-            border-radius: 18px;
+            border-radius: 22px;
             overflow: hidden;
+            box-shadow: var(--shadow-soft);
         }
 
         .tv-panel-header {
-            padding: 10px 12px 8px;
+            padding: 12px 14px 10px;
         }
 
         .tv-panel-title {
             margin: 0;
-            font-size: 1rem;
-            font-weight: 900;
+            font-size: 1.05rem;
+            font-weight: 950;
             color: #16233e;
+            letter-spacing: -0.01em;
         }
 
         .tv-panel-body {
@@ -166,113 +184,147 @@
 
         .tv-heat-grid {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 4px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
             align-items: start;
         }
 
         .tv-tile {
             display: block;
             text-decoration: none;
-            min-height: 56px;
-            padding: 8px 10px;
-            border-radius: 10px;
+            min-height: 92px;
+            padding: 10px 12px;
+            border-radius: 16px;
             color: #ffffff;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 1px 4px rgba(24, 38, 71, 0.14);
+            box-shadow:
+                inset 0 0 0 1px rgba(255,255,255,0.14),
+                inset 0 12px 24px rgba(255,255,255,0.06),
+                var(--shadow-tile);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tv-tile::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.00) 42%);
+            pointer-events: none;
+        }
+
+        .tv-tile:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.02);
+            box-shadow:
+                inset 0 0 0 1px rgba(255,255,255,0.16),
+                inset 0 12px 24px rgba(255,255,255,0.07),
+                0 10px 18px rgba(20, 34, 64, 0.22);
         }
 
         .tv-tile.active {
-            outline: 3px solid #1d2743;
-            outline-offset: -2px;
+            outline: 4px solid #1d2743;
+            outline-offset: -3px;
         }
 
         .tile-gray {
-            background: linear-gradient(180deg, #9eacc3 0%, #7b8ca8 100%);
+            background: linear-gradient(180deg, #a5b2c8 0%, #7f8faa 100%);
         }
 
         .tile-red {
-            background: linear-gradient(180deg, #ff565c 0%, #e92628 100%);
+            background: linear-gradient(180deg, #ff6b70 0%, #ea2d2f 100%);
         }
 
         .tile-green {
-            background: linear-gradient(180deg, #45c78d 0%, #239c66 100%);
+            background: linear-gradient(180deg, #56d79b 0%, #249c66 100%);
         }
 
         .tv-tile-store {
-            font-size: 1rem;
+            font-size: 1.15rem;
             line-height: 1;
-            font-weight: 900;
-            margin-bottom: 4px;
+            font-weight: 950;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
         }
 
         .tv-tile-percent {
-            font-size: 1.35rem;
+            font-size: 1.9rem;
             line-height: 1;
-            font-weight: 900;
-            margin-bottom: 3px;
+            font-weight: 950;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
         }
 
         .tv-tile-status {
-            font-size: 0.74rem;
+            font-size: 0.76rem;
             line-height: 1.05;
-            font-weight: 900;
+            font-weight: 950;
             text-transform: uppercase;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.04em;
+            position: relative;
+            z-index: 1;
+            opacity: 0.96;
         }
 
         .tv-side {
             display: grid;
-            gap: 10px;
+            gap: 12px;
             align-content: start;
         }
 
         .tv-scroll-box {
             padding: 0 10px 10px 10px;
-            height: 118px;
-            overflow-y: auto;
+            height: 260px;
+            overflow: hidden;
+            position: relative;
         }
 
-        .tv-list {
+        .tv-scroll-track {
             display: grid;
             gap: 8px;
+            will-change: transform;
         }
 
         .tv-list-item {
-            border: 1px dashed #cfd8e5;
-            border-radius: 10px;
-            background: #f9fbff;
-            padding: 10px 12px;
-            color: #617392;
-            font-weight: 700;
+            border: 1px solid #d8e0ec;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+            padding: 11px 12px;
+            color: #4f6284;
+            font-weight: 800;
             line-height: 1.25;
+            box-shadow: 0 2px 6px rgba(18, 35, 74, 0.05);
         }
 
         .tv-empty {
             border: 1px dashed #cfd8e5;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #f9fbff;
-            padding: 10px 12px;
+            padding: 12px;
             color: #617392;
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .tv-bottom {
             display: grid;
-            grid-template-columns: 2.8fr 1fr;
-            gap: 10px;
+            grid-template-columns: 2.9fr 1fr;
+            gap: 12px;
         }
 
         .tv-progress-stack {
             display: grid;
-            gap: 8px;
+            gap: 10px;
             padding: 0 10px 10px 10px;
         }
 
         .tv-progress-card {
             border: 1px solid #d7dfea;
-            border-radius: 12px;
-            background: #fbfcff;
-            padding: 10px 12px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,255,0.92) 100%);
+            padding: 12px 14px;
+            box-shadow: 0 2px 8px rgba(18, 35, 74, 0.05);
         }
 
         .tv-progress-top {
@@ -284,41 +336,77 @@
         }
 
         .tv-progress-title {
-            font-size: 0.98rem;
-            font-weight: 900;
+            font-size: 1rem;
+            font-weight: 950;
             color: #1a2741;
         }
 
         .tv-progress-metric {
-            font-size: 0.95rem;
-            font-weight: 800;
+            font-size: 0.96rem;
+            font-weight: 900;
             color: #455a7c;
         }
 
         .tv-progress-bar {
             width: 100%;
-            height: 12px;
+            height: 14px;
             border-radius: 999px;
             background: #dbe3ef;
             overflow: hidden;
             margin-bottom: 8px;
+            box-shadow: inset 0 1px 3px rgba(16, 30, 58, 0.08);
         }
 
         .tv-progress-fill {
             height: 100%;
             border-radius: 999px;
-            background: #c4cfdf;
+            background: linear-gradient(90deg, #cfd8e8 0%, #a9bad9 100%);
         }
 
         .tv-progress-status {
             font-size: 0.94rem;
             color: #647799;
-            font-weight: 700;
+            font-weight: 800;
+        }
+
+        @media (min-width: 1900px) {
+            body {
+                padding: 16px;
+            }
+
+            .tv-title {
+                font-size: 4rem;
+            }
+
+            .tv-subtitle {
+                font-size: 1.15rem;
+            }
+
+            .tv-heat-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+
+            .tv-tile {
+                min-height: 108px;
+                padding: 12px 14px;
+            }
+
+            .tv-tile-store {
+                font-size: 1.28rem;
+            }
+
+            .tv-tile-percent {
+                font-size: 2.2rem;
+            }
+
+            .tv-scroll-box {
+                height: 300px;
+            }
         }
 
         @media (max-width: 1400px) {
             .tv-heat-grid {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
             }
         }
 
@@ -348,6 +436,10 @@
 
             .tv-side {
                 grid-template-columns: 1fr;
+            }
+
+            .tv-scroll-box {
+                height: 200px;
             }
         }
 
@@ -417,7 +509,10 @@
                     </div>
                     <div class="tv-scroll-box">
                         {% if cleaning_items %}
-                        <div class="tv-list">
+                        <div class="tv-scroll-track auto-scroll" data-duplicate="true">
+                            {% for item in cleaning_items %}
+                            <div class="tv-list-item">{{ item.item_text }}</div>
+                            {% endfor %}
                             {% for item in cleaning_items %}
                             <div class="tv-list-item">{{ item.item_text }}</div>
                             {% endfor %}
@@ -434,7 +529,10 @@
                     </div>
                     <div class="tv-scroll-box">
                         {% if goal_items %}
-                        <div class="tv-list">
+                        <div class="tv-scroll-track auto-scroll" data-duplicate="true">
+                            {% for item in goal_items %}
+                            <div class="tv-list-item">{{ item.item_text }}</div>
+                            {% endfor %}
                             {% for item in goal_items %}
                             <div class="tv-list-item">{{ item.item_text }}</div>
                             {% endfor %}
@@ -497,5 +595,34 @@
             <div></div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            function setupAutoScroll(container) {
+                if (!container) return;
+
+                const contentHeight = container.scrollHeight / 2;
+                if (!contentHeight || contentHeight <= container.parentElement.clientHeight) {
+                    return;
+                }
+
+                let position = 0;
+                const speed = 0.35;
+
+                function step() {
+                    position += speed;
+                    if (position >= contentHeight) {
+                        position = 0;
+                    }
+                    container.style.transform = `translateY(-${position}px)`;
+                    requestAnimationFrame(step);
+                }
+
+                requestAnimationFrame(step);
+            }
+
+            document.querySelectorAll(".auto-scroll").forEach(setupAutoScroll);
+        })();
+    </script>
 </body>
 </html>
