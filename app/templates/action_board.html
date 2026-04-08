@@ -5,181 +5,345 @@
 
 {% block content %}
 <style>
-    .action-board-grid {
+    .action-center-shell {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 18px;
         align-items: start;
     }
 
-    .action-store-tile {
-        border-radius: 16px;
-        padding: 12px;
+    .action-sidebar {
+        position: sticky;
+        top: 18px;
+    }
+
+    .action-sidebar-panel,
+    .action-main-panel {
+        border-radius: 18px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(255, 255, 255, 0.02);
         box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
-        transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-        align-self: start;
-        height: auto;
     }
 
-    .action-store-tile:hover {
-        border-color: rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.035);
-        transform: translateY(-1px);
+    .action-sidebar-panel {
+        padding: 16px;
     }
 
-    .action-store-tile.tile-red {
-        border-left: 4px solid #ef4444;
+    .action-sidebar-section + .action-sidebar-section {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .action-store-tile.tile-yellow {
-        border-left: 4px solid #f59e0b;
+    .action-sidebar-title {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.7;
+        margin-bottom: 10px;
     }
 
-    .action-store-tile.tile-green {
-        border-left: 4px solid #22c55e;
-    }
-
-    .action-store-tile.tile-gray {
-        border-left: 4px solid rgba(255, 255, 255, 0.18);
-    }
-
-    .action-store-toggle {
-        width: 100%;
-        background: transparent;
-        border: none;
-        color: inherit;
-        padding: 0;
-        cursor: pointer;
-        text-align: left;
-    }
-
-    .action-store-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
+    .action-stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
     }
 
-    .action-store-number {
-        font-size: 19px;
+    .action-stat-card {
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .action-stat-number {
+        font-size: 20px;
         font-weight: 800;
         line-height: 1;
     }
 
-    .action-store-sub {
+    .action-stat-label {
         font-size: 11px;
         opacity: 0.68;
-        margin-top: 4px;
+        margin-top: 6px;
     }
 
-    .action-store-right {
+    .action-sidebar-stack {
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
-        gap: 6px;
+        gap: 8px;
     }
 
-    .action-store-counts {
+    .action-sidebar-btn {
+        width: 100%;
+        border-radius: 12px;
+        padding: 10px 12px;
+        text-align: left;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        color: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .action-sidebar-btn:hover {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .action-sidebar-btn.is-active {
+        background: rgba(59, 130, 246, 0.14);
+        border-color: rgba(59, 130, 246, 0.28);
+    }
+
+    .action-main-panel {
+        overflow: hidden;
+    }
+
+    .action-main-top {
+        padding: 18px 18px 14px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .action-main-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .action-main-subtitle {
+        margin-top: 6px;
+        font-size: 13px;
+        opacity: 0.72;
+    }
+
+    .action-toolbar {
         display: flex;
-        gap: 6px;
         flex-wrap: wrap;
-        justify-content: flex-end;
+        gap: 8px;
+        align-items: center;
+        margin-top: 14px;
+    }
+
+    .action-toolbar .summary-pill {
+        cursor: pointer;
+    }
+
+    .action-list-head {
+        display: grid;
+        grid-template-columns: 120px 1.1fr 140px 140px 140px 120px;
+        gap: 12px;
+        padding: 12px 18px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.62;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .action-store-row {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .action-store-row:last-child {
+        border-bottom: none;
+    }
+
+    .action-store-summary {
+        display: grid;
+        grid-template-columns: 120px 1.1fr 140px 140px 140px 120px;
+        gap: 12px;
+        align-items: start;
+        padding: 14px 18px;
+        cursor: pointer;
+        transition: background 0.16s ease;
+    }
+
+    .action-store-summary:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .action-store-number {
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .action-store-name {
+        font-size: 11px;
+        opacity: 0.68;
+        margin-top: 5px;
+    }
+
+    .action-preview-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .action-preview-item {
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.3;
+        background: rgba(255, 255, 255, 0.04);
+        border-left: 3px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .action-preview-item.cleaning {
+        border-left-color: #f59e0b;
+    }
+
+    .action-preview-item.goal {
+        border-left-color: #22c55e;
+    }
+
+    .action-preview-empty {
+        font-size: 13px;
+        opacity: 0.5;
+        padding-top: 2px;
+    }
+
+    .action-count-col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+        justify-content: center;
+        min-height: 100%;
     }
 
     .action-count-pill {
         border-radius: 999px;
-        padding: 4px 8px;
+        padding: 5px 9px;
         font-size: 11px;
-        font-weight: 700;
-        background: rgba(255, 255, 255, 0.06);
+        font-weight: 800;
+        white-space: nowrap;
     }
 
     .action-count-pill.open {
+        background: rgba(239, 68, 68, 0.16);
+        color: #fca5a5;
+    }
+
+    .action-count-pill.cleaning {
         background: rgba(245, 158, 11, 0.16);
         color: #fbbf24;
     }
 
-    .action-count-pill.completed {
+    .action-count-pill.goal {
         background: rgba(34, 197, 94, 0.14);
         color: #86efac;
     }
 
-    .action-chevron {
-        font-size: 11px;
-        font-weight: 700;
-        opacity: 0.85;
+    .action-count-pill.completed {
+        background: rgba(148, 163, 184, 0.16);
+        color: #cbd5e1;
     }
 
-    .action-store-body {
+    .action-store-toggle-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .action-toggle-btn {
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: inherit;
+        cursor: pointer;
+    }
+
+    .action-store-detail {
         display: none;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        padding: 0 18px 18px 18px;
     }
 
-    .action-store-body.open {
+    .action-store-detail.open {
         display: block;
     }
 
-    .action-tile-section {
-        margin-top: 10px;
+    .action-detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding-top: 4px;
     }
 
-    .action-tile-section:first-child {
-        margin-top: 0;
+    .action-detail-card {
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .action-tile-section-title {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+    .action-detail-card.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .action-detail-title {
         font-size: 11px;
         font-weight: 800;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        opacity: 0.82;
-        margin-bottom: 8px;
+        opacity: 0.78;
+        margin-bottom: 10px;
     }
 
     .action-task-stack {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
     }
 
     .action-task-chip {
         border-radius: 10px;
-        padding: 8px 10px;
+        padding: 9px 10px;
         background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        line-height: 1.3;
+        border-left: 3px solid rgba(255, 255, 255, 0.18);
+        line-height: 1.35;
         font-size: 13px;
         font-weight: 600;
     }
 
     .action-task-chip.cleaning {
-        border-left: 3px solid #f59e0b;
+        border-left-color: #f59e0b;
     }
 
     .action-task-chip.goal {
-        border-left: 3px solid #22c55e;
+        border-left-color: #22c55e;
     }
 
     .action-task-chip.completed {
-        background: rgba(0, 0, 0, 0.24);
-        opacity: 0.58;
+        opacity: 0.62;
         text-decoration: line-through;
+        background: rgba(0, 0, 0, 0.22);
     }
 
     .action-task-meta {
         display: block;
-        margin-top: 4px;
+        margin-top: 5px;
         font-size: 10px;
-        font-weight: 600;
+        font-weight: 700;
         opacity: 0.65;
         text-decoration: none;
+    }
+
+    .action-completed-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        cursor: pointer;
     }
 
     .action-empty-state {
@@ -191,218 +355,403 @@
         font-size: 13px;
     }
 
-    .action-board-toolbar {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap;
+    .action-hidden {
+        display: none !important;
     }
 
-    @media (max-width: 760px) {
-        .action-store-head {
-            flex-direction: column;
+    @media (max-width: 1100px) {
+        .action-center-shell {
+            grid-template-columns: 1fr;
         }
 
-        .action-store-right {
-            align-items: flex-start;
+        .action-sidebar {
+            position: static;
         }
 
-        .action-store-counts {
+        .action-list-head,
+        .action-store-summary {
+            grid-template-columns: 110px 1fr 120px 120px 120px 100px;
+        }
+    }
+
+    @media (max-width: 860px) {
+        .action-list-head {
+            display: none;
+        }
+
+        .action-store-summary {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .action-store-toggle-wrap {
             justify-content: flex-start;
+        }
+
+        .action-detail-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
 
-<div class="panel premium-panel" style="margin-bottom: 24px;">
-    <div class="panel-head">
-        <h3>Supervisor / Admin Action Board</h3>
-        <div class="action-board-toolbar">
-            <button type="button" class="summary-pill" id="expand-all-btn">Expand All</button>
-            <button type="button" class="summary-pill" id="collapse-all-btn">Collapse All</button>
-            <button type="button" class="summary-pill" id="select-all-completed-btn">Select Completed</button>
-        </div>
-    </div>
-    <p class="subtitle" style="margin: 0 0 16px 0;">
-        Open items stay front and center. Completed items remain visible in a dimmed state until leadership clears them.
-    </p>
+{% set ns = namespace(
+    total_open=0,
+    total_completed=0,
+    stores_with_open=0,
+    stores_done=0
+) %}
 
-    <form method="POST" action="{{ url_for('dashboard.clear_weekly_focus_items') }}">
-        <div style="margin-bottom: 16px;">
-            <button type="submit" class="btn-primary">Clear Selected Completed</button>
-        </div>
+{% for tile in store_tiles %}
+    {% set open_cleaning_count = tile.open_cleaning|length %}
+    {% set open_goal_count = tile.open_goal|length %}
+    {% set completed_count = (tile.completed_cleaning|length) + (tile.completed_goal|length) %}
+    {% set total_open = open_cleaning_count + open_goal_count %}
+    {% set ns.total_open = ns.total_open + total_open %}
+    {% set ns.total_completed = ns.total_completed + completed_count %}
+    {% if total_open > 0 %}
+        {% set ns.stores_with_open = ns.stores_with_open + 1 %}
+    {% else %}
+        {% set ns.stores_done = ns.stores_done + 1 %}
+    {% endif %}
+{% endfor %}
 
-        {% if store_tiles %}
-        <div class="action-board-grid">
-            {% for tile in store_tiles %}
-            <div class="action-store-tile {{ tile.tile_class }}">
-                <button
-                    type="button"
-                    class="action-store-toggle"
-                    aria-expanded="false"
-                >
-                    <div class="action-store-head">
-                        <div>
-                            <div class="action-store-number">{{ tile.store_number }}</div>
-                            <div class="action-store-sub">{{ tile.store_name }}</div>
-                        </div>
-
-                        <div class="action-store-right">
-                            <div class="action-store-counts">
-                                <span class="action-count-pill open">{{ tile.open_total }} open</span>
-                                <span class="action-count-pill completed">{{ tile.completed_total }} done</span>
-                            </div>
-                            <span class="action-chevron">Show ▼</span>
-                        </div>
+<div class="action-center-shell">
+    <aside class="action-sidebar">
+        <div class="action-sidebar-panel">
+            <div class="action-sidebar-section">
+                <div class="action-sidebar-title">Board Snapshot</div>
+                <div class="action-stat-grid">
+                    <div class="action-stat-card">
+                        <div class="action-stat-number">{{ ns.total_open }}</div>
+                        <div class="action-stat-label">Open Items</div>
                     </div>
-                </button>
-
-                <div class="action-store-body">
-                    {% if tile.open_cleaning %}
-                    <div class="action-tile-section">
-                        <div class="action-tile-section-title">Cleaning</div>
-                        <div class="action-task-stack">
-                            {% for item in tile.open_cleaning %}
-                            <div class="action-task-chip cleaning">
-                                {{ item.item_text }}
-                                <span class="action-task-meta">
-                                    Open • {{ item.created_at.strftime('%b %d, %Y %I:%M %p') if item.created_at else 'No date' }}
-                                </span>
-                            </div>
-                            {% endfor %}
-                        </div>
+                    <div class="action-stat-card">
+                        <div class="action-stat-number">{{ ns.total_completed }}</div>
+                        <div class="action-stat-label">Completed Items</div>
                     </div>
-                    {% endif %}
-
-                    {% if tile.open_goal %}
-                    <div class="action-tile-section">
-                        <div class="action-tile-section-title">Goals</div>
-                        <div class="action-task-stack">
-                            {% for item in tile.open_goal %}
-                            <div class="action-task-chip goal">
-                                {{ item.item_text }}
-                                <span class="action-task-meta">
-                                    Open • {{ item.created_at.strftime('%b %d, %Y %I:%M %p') if item.created_at else 'No date' }}
-                                </span>
-                            </div>
-                            {% endfor %}
-                        </div>
+                    <div class="action-stat-card">
+                        <div class="action-stat-number">{{ ns.stores_with_open }}</div>
+                        <div class="action-stat-label">Stores With Open</div>
                     </div>
-                    {% endif %}
-
-                    {% if tile.completed_cleaning or tile.completed_goal %}
-                    <div class="action-tile-section">
-                        <div class="action-tile-section-title">Completed</div>
-                        <div class="action-task-stack">
-                            {% for item in tile.completed_cleaning %}
-                            <div class="action-task-chip cleaning completed">
-                                <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
-                                    <input
-                                        type="checkbox"
-                                        name="item_ids"
-                                        value="{{ item.id }}"
-                                        class="completed-item-box"
-                                    >
-                                    <span style="display:block;">
-                                        {{ item.item_text }}
-                                        <span class="action-task-meta">
-                                            Cleaning • {{ item.completed_at.strftime('%b %d, %Y %I:%M %p') if item.completed_at else 'Completed' }}
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                            {% endfor %}
-
-                            {% for item in tile.completed_goal %}
-                            <div class="action-task-chip goal completed">
-                                <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
-                                    <input
-                                        type="checkbox"
-                                        name="item_ids"
-                                        value="{{ item.id }}"
-                                        class="completed-item-box"
-                                    >
-                                    <span style="display:block;">
-                                        {{ item.item_text }}
-                                        <span class="action-task-meta">
-                                            Goal • {{ item.completed_at.strftime('%b %d, %Y %I:%M %p') if item.completed_at else 'Completed' }}
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                            {% endfor %}
-                        </div>
+                    <div class="action-stat-card">
+                        <div class="action-stat-number">{{ store_tiles|length }}</div>
+                        <div class="action-stat-label">Stores Visible</div>
                     </div>
-                    {% endif %}
-
-                    {% if not tile.open_cleaning and not tile.open_goal and not tile.completed_cleaning and not tile.completed_goal %}
-                    <div class="action-empty-state">No tasks for this store.</div>
-                    {% endif %}
                 </div>
             </div>
-            {% endfor %}
+
+            <div class="action-sidebar-section">
+                <div class="action-sidebar-title">Quick Views</div>
+                <div class="action-sidebar-stack">
+                    <button type="button" class="action-sidebar-btn is-active" data-view-filter="all">All Stores</button>
+                    <button type="button" class="action-sidebar-btn" data-view-filter="with_open">Stores With Open</button>
+                    <button type="button" class="action-sidebar-btn" data-view-filter="done_only">Stores Fully Done</button>
+                </div>
+            </div>
+
+            <div class="action-sidebar-section">
+                <div class="action-sidebar-title">Actions</div>
+                <div class="action-sidebar-stack">
+                    <button type="button" class="action-sidebar-btn" id="expand-all-btn">Expand All</button>
+                    <button type="button" class="action-sidebar-btn" id="collapse-all-btn">Collapse All</button>
+                    <button type="button" class="action-sidebar-btn" id="select-all-completed-btn">Select Completed</button>
+                    <button type="submit" form="action-board-form" class="action-sidebar-btn">Clear Selected Completed</button>
+                </div>
+            </div>
         </div>
-        {% else %}
-        <div class="action-empty-state">No action items found.</div>
-        {% endif %}
-    </form>
+    </aside>
+
+    <div class="action-main-panel">
+        <div class="action-main-top">
+            <h3 class="action-main-title">Supervisor / Admin Action Center</h3>
+            <div class="action-main-subtitle">
+                File-center style list. Preview the real work fast, then expand a store only when you need detail.
+            </div>
+
+            <div class="action-toolbar">
+                <div class="summary-pill" id="visible-store-count">{{ store_tiles|length }} stores</div>
+                <div class="summary-pill">Open work stays front and center</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('dashboard.clear_weekly_focus_items') }}" id="action-board-form">
+            {% if store_tiles %}
+                <div class="action-list-head">
+                    <div>Store</div>
+                    <div>Open Preview</div>
+                    <div>Open Cleaning</div>
+                    <div>Open Goals</div>
+                    <div>Completed</div>
+                    <div style="text-align:right;">Details</div>
+                </div>
+
+                {% for tile in store_tiles %}
+                    {% set open_cleaning_count = tile.open_cleaning|length %}
+                    {% set open_goal_count = tile.open_goal|length %}
+                    {% set completed_count = (tile.completed_cleaning|length) + (tile.completed_goal|length) %}
+                    {% set total_open = open_cleaning_count + open_goal_count %}
+                    <div
+                        class="action-store-row"
+                        data-store-filter="{{ 'with_open' if total_open > 0 else 'done_only' }}"
+                    >
+                        <div
+                            class="action-store-summary"
+                            data-store-row-toggle
+                        >
+                            <div>
+                                <div class="action-store-number">{{ tile.store_number }}</div>
+                                <div class="action-store-name">{{ tile.store_name }}</div>
+                            </div>
+
+                            <div>
+                                {% set preview_open_items = [] %}
+                                <div class="action-preview-stack">
+                                    {% if tile.open_cleaning %}
+                                        <div class="action-preview-item cleaning">
+                                            {{ tile.open_cleaning[0].item_text }}
+                                        </div>
+                                    {% endif %}
+                                    {% if tile.open_goal %}
+                                        <div class="action-preview-item goal">
+                                            {{ tile.open_goal[0].item_text }}
+                                        </div>
+                                    {% endif %}
+                                    {% if not tile.open_cleaning and not tile.open_goal %}
+                                        <div class="action-preview-empty">No open items.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="action-count-col">
+                                <span class="action-count-pill cleaning">{{ open_cleaning_count }} cleaning</span>
+                            </div>
+
+                            <div class="action-count-col">
+                                <span class="action-count-pill goal">{{ open_goal_count }} goals</span>
+                            </div>
+
+                            <div class="action-count-col">
+                                {% if completed_count > 0 %}
+                                    <span class="action-count-pill completed">{{ completed_count }} done</span>
+                                {% else %}
+                                    <span class="action-count-pill open">0 done</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="action-store-toggle-wrap">
+                                <button type="button" class="action-toggle-btn" data-store-toggle-btn>Show ▼</button>
+                            </div>
+                        </div>
+
+                        <div class="action-store-detail" data-store-detail>
+                            <div class="action-detail-grid">
+                                <div class="action-detail-card">
+                                    <div class="action-detail-title">Open Cleaning</div>
+                                    {% if tile.open_cleaning %}
+                                        <div class="action-task-stack">
+                                            {% for item in tile.open_cleaning %}
+                                                <div class="action-task-chip cleaning">
+                                                    {{ item.item_text }}
+                                                    <span class="action-task-meta">
+                                                        Open • {{ item.created_at.strftime('%b %d, %Y %I:%M %p') if item.created_at else 'No date' }}
+                                                    </span>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="action-empty-state">No open cleaning items.</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="action-detail-card">
+                                    <div class="action-detail-title">Open Goals</div>
+                                    {% if tile.open_goal %}
+                                        <div class="action-task-stack">
+                                            {% for item in tile.open_goal %}
+                                                <div class="action-task-chip goal">
+                                                    {{ item.item_text }}
+                                                    <span class="action-task-meta">
+                                                        Open • {{ item.created_at.strftime('%b %d, %Y %I:%M %p') if item.created_at else 'No date' }}
+                                                    </span>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="action-empty-state">No open goals.</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="action-detail-card full-width">
+                                    <div class="action-detail-title">Completed Items</div>
+                                    {% if tile.completed_cleaning or tile.completed_goal %}
+                                        <div class="action-task-stack">
+                                            {% for item in tile.completed_cleaning %}
+                                                <div class="action-task-chip cleaning completed">
+                                                    <label class="action-completed-label">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="item_ids"
+                                                            value="{{ item.id }}"
+                                                            class="completed-item-box"
+                                                        >
+                                                        <span style="display:block;">
+                                                            {{ item.item_text }}
+                                                            <span class="action-task-meta">
+                                                                Cleaning • {{ item.completed_at.strftime('%b %d, %Y %I:%M %p') if item.completed_at else 'Completed' }}
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+
+                                            {% for item in tile.completed_goal %}
+                                                <div class="action-task-chip goal completed">
+                                                    <label class="action-completed-label">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="item_ids"
+                                                            value="{{ item.id }}"
+                                                            class="completed-item-box"
+                                                        >
+                                                        <span style="display:block;">
+                                                            {{ item.item_text }}
+                                                            <span class="action-task-meta">
+                                                                Goal • {{ item.completed_at.strftime('%b %d, %Y %I:%M %p') if item.completed_at else 'Completed' }}
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="action-empty-state">No completed items to clear.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="action-empty-state" style="margin: 18px;">No action items found.</div>
+            {% endif %}
+        </form>
+    </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const selectCompletedBtn = document.getElementById("select-all-completed-btn");
     const expandAllBtn = document.getElementById("expand-all-btn");
     const collapseAllBtn = document.getElementById("collapse-all-btn");
+    const selectCompletedBtn = document.getElementById("select-all-completed-btn");
     const completedBoxes = Array.from(document.querySelectorAll(".completed-item-box"));
-    const toggles = Array.from(document.querySelectorAll(".action-store-toggle"));
+    const filterButtons = Array.from(document.querySelectorAll("[data-view-filter]"));
+    const storeRows = Array.from(document.querySelectorAll(".action-store-row"));
+    const visibleStoreCount = document.getElementById("visible-store-count");
 
-    function setTileState(toggle, shouldOpen) {
-        const tile = toggle.closest(".action-store-tile");
-        if (!tile) return;
-
-        const body = tile.querySelector(".action-store-body");
-        const chevron = toggle.querySelector(".action-chevron");
-
-        if (!body || !chevron) return;
-
-        body.classList.toggle("open", shouldOpen);
-        toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
-        chevron.textContent = shouldOpen ? "Hide ▲" : "Show ▼";
+    function getDetail(row) {
+        return row.querySelector("[data-store-detail]");
     }
 
-    if (selectCompletedBtn) {
-        selectCompletedBtn.addEventListener("click", function () {
-            const allChecked = completedBoxes.length > 0 && completedBoxes.every(box => box.checked);
-            completedBoxes.forEach(box => {
-                box.checked = !allChecked;
+    function getToggleBtn(row) {
+        return row.querySelector("[data-store-toggle-btn]");
+    }
+
+    function setRowOpen(row, shouldOpen) {
+        const detail = getDetail(row);
+        const btn = getToggleBtn(row);
+
+        if (!detail || !btn) return;
+
+        detail.classList.toggle("open", shouldOpen);
+        btn.textContent = shouldOpen ? "Hide ▲" : "Show ▼";
+    }
+
+    function updateVisibleCount() {
+        const visible = storeRows.filter(row => !row.classList.contains("action-hidden")).length;
+        if (visibleStoreCount) {
+            visibleStoreCount.textContent = `${visible} stores`;
+        }
+    }
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener("click", function () {
+            const filter = this.dataset.viewFilter || "all";
+
+            filterButtons.forEach(other => other.classList.remove("is-active"));
+            this.classList.add("is-active");
+
+            storeRows.forEach(row => {
+                const rowFilter = row.dataset.storeFilter || "";
+                const shouldShow =
+                    filter === "all" ||
+                    (filter === "with_open" && rowFilter === "with_open") ||
+                    (filter === "done_only" && rowFilter === "done_only");
+
+                row.classList.toggle("action-hidden", !shouldShow);
+
+                if (!shouldShow) {
+                    setRowOpen(row, false);
+                }
             });
+
+            updateVisibleCount();
         });
-    }
+    });
+
+    storeRows.forEach(row => {
+        const summary = row.querySelector("[data-store-row-toggle]");
+        const toggleBtn = row.querySelector("[data-store-toggle-btn]");
+
+        if (summary) {
+            summary.addEventListener("click", function (e) {
+                if (e.target.closest("button, input, label")) return;
+                const detail = getDetail(row);
+                const isOpen = detail && detail.classList.contains("open");
+                setRowOpen(row, !isOpen);
+            });
+        }
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                const detail = getDetail(row);
+                const isOpen = detail && detail.classList.contains("open");
+                setRowOpen(row, !isOpen);
+            });
+        }
+    });
 
     if (expandAllBtn) {
         expandAllBtn.addEventListener("click", function () {
-            toggles.forEach(toggle => setTileState(toggle, true));
+            storeRows.forEach(row => {
+                if (!row.classList.contains("action-hidden")) {
+                    setRowOpen(row, true);
+                }
+            });
         });
     }
 
     if (collapseAllBtn) {
         collapseAllBtn.addEventListener("click", function () {
-            toggles.forEach(toggle => setTileState(toggle, false));
+            storeRows.forEach(row => setRowOpen(row, false));
         });
     }
 
-    toggles.forEach(toggle => {
-        toggle.addEventListener("click", function () {
-            const isOpen = this.getAttribute("aria-expanded") === "true";
-
-            toggles.forEach(otherToggle => {
-                if (otherToggle !== this) {
-                    setTileState(otherToggle, false);
-                }
+    if (selectCompletedBtn) {
+        selectCompletedBtn.addEventListener("click", function () {
+            const visibleBoxes = completedBoxes.filter(box => {
+                const row = box.closest(".action-store-row");
+                return row && !row.classList.contains("action-hidden");
             });
 
-            setTileState(this, !isOpen);
+            const allChecked = visibleBoxes.length > 0 && visibleBoxes.every(box => box.checked);
+            visibleBoxes.forEach(box => {
+                box.checked = !allChecked;
+            });
         });
-    });
+    }
+
+    updateVisibleCount();
 });
 </script>
 {% endblock %}
