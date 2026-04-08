@@ -22,6 +22,14 @@ import os
 verification_bp = Blueprint("verification", __name__, url_prefix="/verification")
 
 
+CORE_VERIFICATION_KEYS = {
+    "bad_orders",
+    "suspicious_activity",
+    "csr_program",
+    "dumpster_check",
+}
+
+
 def today_et():
     from zoneinfo import ZoneInfo
     return datetime.now(ZoneInfo("America/New_York")).date()
@@ -52,16 +60,9 @@ def ensure_default_template():
     ]
 
     existing = {f.field_key: f for f in VerificationTemplateField.query.all()}
-    active_keys = {key for key, _, _ in defaults}
 
     for i, (key, label, ftype) in enumerate(defaults, start=1):
-        if key in existing:
-            field = existing[key]
-            field.field_label = label
-            field.field_type = ftype
-            field.sort_order = i
-            field.is_active = True
-        else:
+        if key not in existing:
             db.session.add(
                 VerificationTemplateField(
                     field_key=key,
@@ -71,10 +72,6 @@ def ensure_default_template():
                     is_active=True
                 )
             )
-
-    for field in existing.values():
-        if field.field_key not in active_keys:
-            field.is_active = field.is_active
 
     db.session.commit()
 
@@ -497,6 +494,23 @@ def admin():
             flash("Verification field created.", "success")
             return redirect(url_for("verification.admin"))
 
+        if action == "delete":
+            field_id = (request.form.get("field_id") or "").strip()
+            field = VerificationTemplateField.query.get(field_id)
+
+            if not field:
+                flash("Field not found.", "error")
+                return redirect(url_for("verification.admin"))
+
+            if field.field_key in CORE_VERIFICATION_KEYS:
+                flash("Core verification fields cannot be deleted. You can deactivate them instead.", "error")
+                return redirect(url_for("verification.admin"))
+
+            db.session.delete(field)
+            db.session.commit()
+            flash("Verification field deleted.", "success")
+            return redirect(url_for("verification.admin"))
+
         if action == "update":
             field_id = (request.form.get("field_id") or "").strip()
             field = VerificationTemplateField.query.get(field_id)
@@ -515,7 +529,7 @@ def admin():
                 flash("Sort order must be a number.", "error")
                 return redirect(url_for("verification.admin"))
 
-            field.is_active = request.form.get("is_active") == "on"
+            field.is_active = "is_active" in request.form
 
             duplicate = VerificationTemplateField.query.filter(
                 VerificationTemplateField.field_key == field.field_key,
@@ -538,4 +552,8 @@ def admin():
         VerificationTemplateField.id.asc()
     ).all()
 
-    return render_template("verification_admin.html", fields=fields)
+    return render_template(
+        "verification_admin.html",
+        fields=fields,
+        core_field_keys=CORE_VERIFICATION_KEYS
+    )

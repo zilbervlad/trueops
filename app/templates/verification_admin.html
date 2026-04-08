@@ -92,6 +92,24 @@
                 </div>
 
                 <button type="submit" class="btn-primary" style="width: 100%;">Save Field</button>
+
+                {% if field.field_key not in core_field_keys %}
+                <button
+                    type="submit"
+                    name="action"
+                    value="delete"
+                    class="btn-danger"
+                    style="width: 100%; margin-top: 10px;"
+                    formnovalidate
+                    onclick="return confirm('Delete this verification field?')"
+                >
+                    Delete Field
+                </button>
+                {% else %}
+                <div class="summary-pill" style="margin-top: 10px; width: 100%; text-align: center;">
+                    Core Field
+                </div>
+                {% endif %}
             </form>
             {% else %}
             <div class="summary-pill">No verification fields yet.</div>
