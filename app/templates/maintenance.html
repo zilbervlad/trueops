@@ -668,7 +668,6 @@
 
         <div class="maintenance-modal-body">
             <form method="POST" id="maintenance-modal-form">
-                <input type="hidden" name="action" value="update">
                 <input type="hidden" name="ticket_id" id="modal_ticket_id">
 
                 <div class="maintenance-modal-grid">
@@ -715,7 +714,7 @@
                         Delete
                     </button>
                     {% endif %}
-                    <button type="submit" class="btn-primary">Save Task</button>
+                    <button type="submit" name="action" value="update" class="btn-primary">Save Task</button>
                 </div>
             </form>
         </div>
