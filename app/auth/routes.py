@@ -23,7 +23,6 @@ def role_required(*allowed_roles):
             if "user_id" not in session:
                 return redirect(url_for("auth.login"))
 
-            # platform admins get admin-level access everywhere in phase 1
             if session.get("is_platform_admin"):
                 return view(*args, **kwargs)
 
@@ -77,6 +76,30 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
+@auth_bp.route("/switch-company", methods=["POST"])
+@login_required
+def switch_company():
+    if not session.get("is_platform_admin"):
+        flash("You do not have permission to switch companies.", "error")
+        return redirect(url_for("dashboard.home"))
+
+    company_id = request.form.get("company_id", "").strip()
+    if not company_id.isdigit():
+        flash("Invalid company selection.", "error")
+        return redirect(url_for("dashboard.home"))
+
+    company = Company.query.filter_by(id=int(company_id), is_active=True).first()
+    if not company:
+        flash("Company not found.", "error")
+        return redirect(url_for("dashboard.home"))
+
+    session["current_company_id"] = company.id
+    session["current_company_name"] = company.name
+
+    flash(f"Switched to {company.name}.", "success")
+    return redirect(url_for("dashboard.home"))
+
+
 @auth_bp.route("/users", methods=["GET", "POST"])
 @login_required
 @role_required("admin")
@@ -87,8 +110,6 @@ def manage_users():
     if request.method == "POST":
         action = request.form.get("action", "").strip()
 
-        # platform admin can pass company_id later when the UI supports it.
-        # for now everything defaults to the current selected company.
         form_company_id = request.form.get("company_id", "").strip()
         target_company_id = int(form_company_id) if (is_platform_admin and form_company_id.isdigit()) else selected_company_id
 
@@ -96,9 +117,6 @@ def manage_users():
             flash("No company is selected for this action.", "error")
             return redirect(url_for("auth.manage_users"))
 
-        # -------------------------
-        # CREATE USER
-        # -------------------------
         if action == "create":
             name = request.form.get("name", "").strip()
             username = request.form.get("username", "").strip()
@@ -159,9 +177,6 @@ def manage_users():
             flash("User created successfully.", "success")
             return redirect(url_for("auth.manage_users"))
 
-        # -------------------------
-        # UPDATE USER
-        # -------------------------
         if action == "update":
             user_id = request.form.get("user_id", "").strip()
             user = User.query.get(user_id)
@@ -186,7 +201,6 @@ def manage_users():
 
             valid_roles = {"admin", "supervisor", "manager", "maintenance", "platform_admin"}
 
-            # Protected admin/platform-admin logic
             if user.role in {"admin", "platform_admin"}:
                 user.email = email
                 user.notification_email = notification_email
@@ -249,9 +263,6 @@ def manage_users():
             flash("User updated successfully.", "success")
             return redirect(url_for("auth.manage_users"))
 
-        # -------------------------
-        # DEACTIVATE USER
-        # -------------------------
         if action == "deactivate":
             user_id = request.form.get("user_id", "").strip()
             user = User.query.get(user_id)
@@ -274,9 +285,6 @@ def manage_users():
             flash("User deactivated.", "success")
             return redirect(url_for("auth.manage_users"))
 
-        # -------------------------
-        # REACTIVATE USER
-        # -------------------------
         if action == "activate":
             user_id = request.form.get("user_id", "").strip()
             user = User.query.get(user_id)

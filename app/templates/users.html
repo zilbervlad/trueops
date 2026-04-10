@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Users | BPI Ops{% endblock %}
+{% block title %}Users | TrueOps{% endblock %}
 {% block header %}User Management{% endblock %}
 
 {% block content %}
@@ -14,6 +14,9 @@
     </div>
     <div class="command-bar-right">
         <div class="command-chip">{{ users|length }} Users</div>
+        {% if session.get('current_company_name') %}
+        <div class="command-chip">{{ session.get('current_company_name') }}</div>
+        {% endif %}
         <div class="command-chip">Admin Only</div>
     </div>
 </div>
@@ -37,6 +40,20 @@
         <div id="create-user-body" style="display: none; margin-top: 16px;">
             <form method="POST" class="login-form">
                 <input type="hidden" name="action" value="create">
+
+                {% if is_platform_admin %}
+                <div class="form-group">
+                    <label for="create_company_id">Company</label>
+                    <select id="create_company_id" name="company_id" required>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}"
+                                {% if company.id == selected_company_id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
 
                 <div class="admin-task-grid">
                     <div class="form-group">
@@ -63,6 +80,9 @@
                             <option value="supervisor">Supervisor</option>
                             <option value="maintenance">Maintenance</option>
                             <option value="admin">Admin</option>
+                            {% if is_platform_admin %}
+                            <option value="platform_admin">Platform Admin</option>
+                            {% endif %}
                         </select>
                     </div>
                 </div>
@@ -231,10 +251,14 @@
                         {{ "Active" if user.is_active else "Inactive" }}
                     </span>
 
-                    <span class="summary-pill">{{ user.role|title }}</span>
+                    <span class="summary-pill">{{ user.role|replace('_', ' ')|title }}</span>
 
-                    {% if user.role == 'admin' %}
+                    {% if user.role in ['admin', 'platform_admin'] %}
                     <span class="summary-pill protected-pill">Protected</span>
+                    {% endif %}
+
+                    {% if user.company %}
+                    <span class="summary-pill">{{ user.company.name }}</span>
                     {% endif %}
 
                     <div class="user-name-wrap">
@@ -263,6 +287,21 @@
                 <form method="POST" class="login-form" style="margin-top: 16px;">
                     <input type="hidden" name="user_id" value="{{ user.id }}">
 
+                    {% if is_platform_admin %}
+                    <div class="user-section-label">Company</div>
+                    <div class="form-group compact-group">
+                        <label>Company</label>
+                        <select name="company_id">
+                            {% for company in companies %}
+                            <option value="{{ company.id }}"
+                                    {% if user.company_id == company.id %}selected{% endif %}>
+                                {{ company.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <div class="user-section-label">Identity</div>
                     <div class="admin-task-grid compact-grid">
                         <div class="form-group compact-group">
@@ -270,7 +309,7 @@
                             <input type="text"
                                    name="name"
                                    value="{{ user.name }}"
-                                   {% if user.role == 'admin' %}disabled{% endif %}
+                                   {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}
                                    required>
                         </div>
 
@@ -279,7 +318,7 @@
                             <input type="text"
                                    name="username"
                                    value="{{ user.username }}"
-                                   {% if user.role == 'admin' %}disabled{% endif %}
+                                   {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}
                                    required>
                         </div>
                     </div>
@@ -292,17 +331,20 @@
                                     class="edit-role-select"
                                     data-user-id="{{ user.id }}"
                                     onchange="toggleEditFields({{ user.id }})"
-                                    {% if user.role == 'admin' %}disabled{% endif %}
+                                    {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}
                                     required>
                                 <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Manager</option>
                                 <option value="supervisor" {% if user.role == 'supervisor' %}selected{% endif %}>Supervisor</option>
                                 <option value="maintenance" {% if user.role == 'maintenance' %}selected{% endif %}>Maintenance</option>
                                 <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                                {% if is_platform_admin %}
+                                <option value="platform_admin" {% if user.role == 'platform_admin' %}selected{% endif %}>Platform Admin</option>
+                                {% endif %}
                             </select>
                         </div>
 
                         <div class="form-group compact-group">
-                            <label>{% if user.role == 'admin' %}Reset Admin Password{% else %}Reset Password{% endif %}</label>
+                            <label>{% if user.role in ['admin', 'platform_admin'] %}Reset Admin Password{% else %}Reset Password{% endif %}</label>
                             <input type="password"
                                    name="password"
                                    placeholder="Leave blank">
@@ -318,7 +360,7 @@
                                    name="area_name"
                                    value="{{ user.area_name or '' }}"
                                    placeholder="Example: Area 2"
-                                   {% if user.role == 'admin' %}disabled{% endif %}>
+                                   {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}>
                         </div>
 
                         <div class="form-group compact-group edit-store-field"
@@ -329,7 +371,7 @@
                                    name="store_number"
                                    value="{{ user.store_number or '' }}"
                                    placeholder="Example: 3209"
-                                   {% if user.role == 'admin' %}disabled{% endif %}>
+                                   {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}>
                         </div>
                     </div>
 
@@ -362,7 +404,7 @@
 
                     <div class="user-section-label">Actions</div>
                     <div class="admin-check-row compact-actions">
-                        {% if user.role == 'admin' %}
+                        {% if user.role in ['admin', 'platform_admin'] %}
                         <button type="submit"
                                 name="action"
                                 value="update"

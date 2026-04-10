@@ -1,3 +1,4 @@
+from flask import session
 from app.config import Config
 from app.extensions import db, migrate
 
@@ -8,11 +9,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Import blueprints
     from app.auth.routes import auth_bp
     from app.dashboard.routes import dashboard_bp
     from app.checklist.routes import checklist_bp
@@ -26,7 +25,6 @@ def create_app():
     from app.verification.routes import verification_bp
     from app.store_dashboard import store_dashboard_bp
 
-    # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(checklist_bp)
@@ -40,13 +38,20 @@ def create_app():
     app.register_blueprint(verification_bp)
     app.register_blueprint(store_dashboard_bp)
 
+    @app.context_processor
+    def inject_companies():
+        if session.get("user_id") and session.get("is_platform_admin"):
+            from app.models import Company
+            companies = Company.query.filter_by(is_active=True).order_by(Company.name.asc()).all()
+            return {"companies": companies}
+        return {"companies": []}
+
     @app.route("/create-db")
     def create_db():
         from app import models
         db.create_all()
         return "Database tables created"
 
-    # Seed data + ensure tables exist
     with app.app_context():
         from app import models
         db.create_all()
@@ -88,6 +93,10 @@ def seed_admin(default_company):
 
         if not existing.company_id:
             existing.company_id = default_company.id
+            updated = True
+
+        if existing.role == "admin":
+            existing.role = "platform_admin"
             updated = True
 
         if updated:
