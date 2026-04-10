@@ -133,6 +133,11 @@
                         Store Admin
                     </a>
 
+                    <a href="{{ url_for('company_admin.index') }}"
+                       class="{% if request.endpoint and request.endpoint.startswith('company_admin') %}active{% endif %}">
+                        Companies
+                    </a>
+
                     <a href="{{ url_for('auth.manage_users') }}"
                        class="{% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
                         Users

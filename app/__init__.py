@@ -18,6 +18,7 @@ def create_app():
     from app.svr.routes import svr_bp
     from app.maintenance.routes import maintenance_bp
     from app.store_admin.routes import store_admin_bp
+    from app.company_admin.routes import company_admin_bp
     from app.reports.routes import reports_bp
     from app.nightly_numbers.routes import nightly_numbers_bp
     from app.cash.routes import cash_bp
@@ -31,6 +32,7 @@ def create_app():
     app.register_blueprint(svr_bp)
     app.register_blueprint(maintenance_bp)
     app.register_blueprint(store_admin_bp)
+    app.register_blueprint(company_admin_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(nightly_numbers_bp)
     app.register_blueprint(cash_bp)

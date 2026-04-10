@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Companies | TrueOps{% endblock %}
+{% block header %}Company Management{% endblock %}
+
+{% block content %}
+<div class="command-bar panel" style="margin-bottom: 24px;">
+    <div class="command-bar-left">
+        <div class="command-eyebrow">PLATFORM ADMIN</div>
+        <h2 class="command-title">Companies</h2>
+        <p class="command-subtitle">
+            Create and manage companies that run inside the TrueOps platform.
+        </p>
+    </div>
+    <div class="command-bar-right">
+        <div class="command-chip">{{ companies|length }} Companies</div>
+        <div class="command-chip">Platform Only</div>
+    </div>
+</div>
+
+<div class="content-grid" style="margin-bottom: 24px;">
+    <section class="panel premium-panel">
+        <button
+            type="button"
+            id="create-company-toggle"
+            class="panel-head"
+            style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+            aria-expanded="false"
+        >
+            <div>
+                <h3 style="margin: 0;">Create Company</h3>
+                <div class="area-subtitle">Add a new company to the platform</div>
+            </div>
+            <span id="create-company-chevron" class="summary-pill">Show ▼</span>
+        </button>
+
+        <div id="create-company-body" style="display: none; margin-top: 16px;">
+            <form method="POST" class="login-form">
+                <input type="hidden" name="action" value="create">
+
+                <div class="admin-task-grid">
+                    <div class="form-group">
+                        <label for="create_name">Company Name</label>
+                        <input type="text" id="create_name" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create_slug">Slug</label>
+                        <input type="text" id="create_slug" name="slug" placeholder="example-company" required>
+                    </div>
+                </div>
+
+                <div class="admin-task-grid">
+                    <div class="form-group">
+                        <label for="create_accent_color">Accent Color</label>
+                        <input type="text" id="create_accent_color" name="accent_color" placeholder="#38bdf8">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create_logo_filename">Logo Filename</label>
+                        <input type="text" id="create_logo_filename" name="logo_filename" placeholder="trueops-logo.png">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Create Company</button>
+            </form>
+        </div>
+    </section>
+</div>
+
+<style>
+    .company-card-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .company-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+    }
+
+    .company-card-summary {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        text-align: left;
+    }
+
+    .company-card-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .company-name-wrap {
+        min-width: 0;
+    }
+
+    .company-name-main {
+        font-weight: 800;
+        font-size: 15px;
+        line-height: 1.2;
+        margin-bottom: 2px;
+        word-break: break-word;
+    }
+
+    .company-name-sub {
+        font-size: 12px;
+        opacity: 0.72;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .company-card-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .company-card-body {
+        display: none;
+        padding: 0 18px 18px 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .company-section-label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.72;
+        margin-bottom: 10px;
+        margin-top: 14px;
+    }
+
+    .company-expand-chip {
+        min-width: 88px;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .company-card-summary {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .company-card-right {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<section class="panel premium-panel">
+    <div class="panel-head">
+        <div>
+            <h3>Existing Companies</h3>
+            <div class="area-subtitle">Expand a company card to edit settings</div>
+        </div>
+        <span class="summary-pill">{{ companies|length }} total</span>
+    </div>
+
+    <div class="company-card-list" style="margin-top: 16px;">
+        {% for company in companies %}
+        <div class="company-card">
+            <button
+                type="button"
+                class="company-card-summary"
+                data-company-toggle="{{ company.id }}"
+                aria-expanded="false"
+            >
+                <div class="company-card-left">
+                    <span class="summary-pill">ID {{ company.id }}</span>
+
+                    <span class="status-badge {% if company.is_active %}status-completed{% else %}status-not-started{% endif %}">
+                        {{ "Active" if company.is_active else "Inactive" }}
+                    </span>
+
+                    {% if company.accent_color %}
+                    <span class="summary-pill">{{ company.accent_color }}</span>
+                    {% endif %}
+
+                    <div class="company-name-wrap">
+                        <div class="company-name-main">{{ company.name }}</div>
+                        <div class="company-name-sub">
+                            slug: {{ company.slug }}
+                            {% if company.logo_filename %}
+                            | logo: {{ company.logo_filename }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="company-card-right">
+                    <span class="summary-pill company-expand-chip" data-company-chevron="{{ company.id }}">Edit ▼</span>
+                </div>
+            </button>
+
+            <div class="company-card-body" data-company-body="{{ company.id }}">
+                <form method="POST" class="login-form" style="margin-top: 16px;">
+                    <input type="hidden" name="company_id" value="{{ company.id }}">
+
+                    <div class="company-section-label">Company Details</div>
+                    <div class="admin-task-grid compact-grid">
+                        <div class="form-group compact-group">
+                            <label>Name</label>
+                            <input type="text" name="name" value="{{ company.name }}" required>
+                        </div>
+
+                        <div class="form-group compact-group">
+                            <label>Slug</label>
+                            <input type="text" name="slug" value="{{ company.slug }}" required>
+                        </div>
+                    </div>
+
+                    <div class="admin-task-grid compact-grid">
+                        <div class="form-group compact-group">
+                            <label>Accent Color</label>
+                            <input type="text" name="accent_color" value="{{ company.accent_color or '' }}" placeholder="#38bdf8">
+                        </div>
+
+                        <div class="form-group compact-group">
+                            <label>Logo Filename</label>
+                            <input type="text" name="logo_filename" value="{{ company.logo_filename or '' }}" placeholder="trueops-logo.png">
+                        </div>
+                    </div>
+
+                    <div class="admin-check-row compact-actions">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" name="is_active" {% if company.is_active %}checked{% endif %}>
+                            Company Active
+                        </label>
+                    </div>
+
+                    <div class="company-section-label">Actions</div>
+                    <div class="admin-check-row compact-actions">
+                        <button type="submit"
+                                name="action"
+                                value="update"
+                                class="btn-primary">
+                            Save Company
+                        </button>
+
+                        {% if company.is_active %}
+                        <button type="submit"
+                                name="action"
+                                value="deactivate"
+                                class="btn-danger"
+                                formnovalidate>
+                            Deactivate
+                        </button>
+                        {% else %}
+                        <button type="submit"
+                                name="action"
+                                value="activate"
+                                class="btn-primary"
+                                formnovalidate>
+                            Activate
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function bindToggle(toggleId, bodyId, chevronId) {
+        const toggle = document.getElementById(toggleId);
+        const body = document.getElementById(bodyId);
+        const chevron = document.getElementById(chevronId);
+
+        if (!toggle || !body || !chevron) return;
+
+        toggle.addEventListener("click", function () {
+            const isHidden = body.style.display === "none";
+            body.style.display = isHidden ? "block" : "none";
+            toggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+            chevron.textContent = isHidden ? "Hide ▲" : "Show ▼";
+        });
+    }
+
+    function bindCompanyEditors() {
+        document.querySelectorAll("[data-company-toggle]").forEach(toggle => {
+            toggle.addEventListener("click", function () {
+                const companyId = this.getAttribute("data-company-toggle");
+                const targetBody = document.querySelector(`[data-company-body="${companyId}"]`);
+                const targetChevron = document.querySelector(`[data-company-chevron="${companyId}"]`);
+
+                if (!targetBody || !targetChevron) return;
+
+                const isOpening = targetBody.style.display === "none" || targetBody.style.display === "";
+
+                document.querySelectorAll("[data-company-body]").forEach(body => {
+                    body.style.display = "none";
+                });
+
+                document.querySelectorAll("[data-company-chevron]").forEach(chevron => {
+                    chevron.textContent = "Edit ▼";
+                });
+
+                document.querySelectorAll("[data-company-toggle]").forEach(btn => {
+                    btn.setAttribute("aria-expanded", "false");
+                });
+
+                if (isOpening) {
+                    targetBody.style.display = "block";
+                    targetChevron.textContent = "Close ▲";
+                    this.setAttribute("aria-expanded", "true");
+                }
+            });
+        });
+    }
+
+    bindToggle("create-company-toggle", "create-company-body", "create-company-chevron");
+    bindCompanyEditors();
+});
+</script>
+
+{% endblock %}
