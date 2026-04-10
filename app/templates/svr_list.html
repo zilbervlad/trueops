@@ -4,6 +4,18 @@
 {% block header %}SVR Reports{% endblock %}
 
 {% block content %}
+
+<style>
+@media (max-width: 768px) {
+    .svr-report-table th:nth-child(3),
+    .svr-report-table td:nth-child(3),
+    .svr-report-table th:nth-child(4),
+    .svr-report-table td:nth-child(4) {
+        display: none;
+    }
+}
+</style>
+
 <div class="panel premium-panel" style="margin-bottom: 24px;">
     <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
         <div>
@@ -96,7 +108,7 @@
     </div>
 
     <div class="table-wrap premium-table-wrap">
-        <table class="data-table premium-table">
+        <table class="data-table premium-table svr-report-table">
             <thead>
                 <tr>
                     <th>Date</th>
