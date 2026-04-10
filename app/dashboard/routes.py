@@ -34,25 +34,32 @@ def business_date_et():
     return now.date()
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
     user_store = session.get("user_store")
+    company_id = current_company_id()
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(
-            Store.area_name.asc(),
-            Store.store_number.asc()
-        ).all()
+        query = Store.query.filter_by(is_active=True)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(Store.area_name.asc(), Store.store_number.asc()).all()
 
     if role == "supervisor":
         return Store.query.filter_by(
+            company_id=company_id,
             area_name=user_area,
             is_active=True
         ).order_by(Store.area_name.asc(), Store.store_number.asc()).all()
 
     if role == "manager":
         return Store.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
             is_active=True
         ).order_by(Store.store_number.asc()).all()

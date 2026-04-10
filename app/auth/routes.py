@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.models import User
+from app.models import User, Company
 from app.extensions import db
 from app.services.email_service import send_email
 
@@ -23,6 +23,10 @@ def role_required(*allowed_roles):
             if "user_id" not in session:
                 return redirect(url_for("auth.login"))
 
+            # platform admins get admin-level access everywhere in phase 1
+            if session.get("is_platform_admin"):
+                return view(*args, **kwargs)
+
             user_role = session.get("user_role")
             if user_role not in allowed_roles:
                 flash("You do not have permission to view that page.", "error")
@@ -31,6 +35,10 @@ def role_required(*allowed_roles):
             return view(*args, **kwargs)
         return wrapped_view
     return decorator
+
+
+def current_company_id():
+    return session.get("current_company_id")
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -42,11 +50,20 @@ def login():
         user = User.query.filter_by(username=username, is_active=True).first()
 
         if user and user.check_password(password):
+            effective_role = "admin" if user.role == "platform_admin" else user.role
+
             session["user_id"] = user.id
             session["user_name"] = user.name
-            session["user_role"] = user.role
+            session["user_role"] = effective_role
+            session["actual_role"] = user.role
+            session["is_platform_admin"] = user.role == "platform_admin"
+
             session["user_area"] = user.area_name
             session["user_store"] = user.store_number
+
+            session["current_company_id"] = user.company_id
+            session["current_company_name"] = user.company.name if user.company else None
+
             return redirect(url_for("dashboard.home"))
 
         flash("Invalid username or password.", "error")
@@ -64,8 +81,20 @@ def logout():
 @login_required
 @role_required("admin")
 def manage_users():
+    selected_company_id = current_company_id()
+    is_platform_admin = session.get("is_platform_admin", False)
+
     if request.method == "POST":
         action = request.form.get("action", "").strip()
+
+        # platform admin can pass company_id later when the UI supports it.
+        # for now everything defaults to the current selected company.
+        form_company_id = request.form.get("company_id", "").strip()
+        target_company_id = int(form_company_id) if (is_platform_admin and form_company_id.isdigit()) else selected_company_id
+
+        if not target_company_id:
+            flash("No company is selected for this action.", "error")
+            return redirect(url_for("auth.manage_users"))
 
         # -------------------------
         # CREATE USER
@@ -81,7 +110,7 @@ def manage_users():
             notification_email = request.form.get("notification_email", "").strip() or None
             email_enabled = request.form.get("email_enabled") == "on"
 
-            valid_roles = {"admin", "supervisor", "manager", "maintenance"}
+            valid_roles = {"admin", "supervisor", "manager", "maintenance", "platform_admin"}
 
             if not name or not username or not password or role not in valid_roles:
                 flash("Please complete all required fields correctly.", "error")
@@ -100,7 +129,7 @@ def manage_users():
                 flash("Managers must have a store assigned.", "error")
                 return redirect(url_for("auth.manage_users"))
 
-            if role in {"admin", "maintenance"}:
+            if role in {"admin", "maintenance", "platform_admin"}:
                 area_name = None
                 store_number = None
 
@@ -111,6 +140,7 @@ def manage_users():
                 area_name = None
 
             user = User(
+                company_id=target_company_id,
                 name=name,
                 username=username,
                 role=role,
@@ -140,6 +170,10 @@ def manage_users():
                 flash("User not found.", "error")
                 return redirect(url_for("auth.manage_users"))
 
+            if not is_platform_admin and user.company_id != selected_company_id:
+                flash("You do not have permission to edit that user.", "error")
+                return redirect(url_for("auth.manage_users"))
+
             name = request.form.get("name", "").strip()
             username = request.form.get("username", "").strip()
             role = request.form.get("role", "").strip()
@@ -150,12 +184,10 @@ def manage_users():
             email_enabled = request.form.get("email_enabled") == "on"
             new_password = request.form.get("password", "").strip()
 
-            valid_roles = {"admin", "supervisor", "manager", "maintenance"}
+            valid_roles = {"admin", "supervisor", "manager", "maintenance", "platform_admin"}
 
-            # -------------------------
-            # PROTECTED ADMIN LOGIC
-            # -------------------------
-            if user.role == "admin":
+            # Protected admin/platform-admin logic
+            if user.role in {"admin", "platform_admin"}:
                 user.email = email
                 user.notification_email = notification_email
                 user.email_enabled = email_enabled
@@ -190,7 +222,7 @@ def manage_users():
                 flash("Managers must have a store assigned.", "error")
                 return redirect(url_for("auth.manage_users"))
 
-            if role in {"admin", "maintenance"}:
+            if role in {"admin", "maintenance", "platform_admin"}:
                 area_name = None
                 store_number = None
 
@@ -200,6 +232,7 @@ def manage_users():
             if role == "manager":
                 area_name = None
 
+            user.company_id = target_company_id
             user.name = name
             user.username = username
             user.role = role
@@ -227,7 +260,11 @@ def manage_users():
                 flash("User not found.", "error")
                 return redirect(url_for("auth.manage_users"))
 
-            if user.role == "admin":
+            if not is_platform_admin and user.company_id != selected_company_id:
+                flash("You do not have permission to deactivate that user.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if user.role in {"admin", "platform_admin"}:
                 flash("Admin users cannot be deactivated here.", "error")
                 return redirect(url_for("auth.manage_users"))
 
@@ -248,14 +285,30 @@ def manage_users():
                 flash("User not found.", "error")
                 return redirect(url_for("auth.manage_users"))
 
+            if not is_platform_admin and user.company_id != selected_company_id:
+                flash("You do not have permission to activate that user.", "error")
+                return redirect(url_for("auth.manage_users"))
+
             user.is_active = True
             db.session.commit()
 
             flash("User activated.", "success")
             return redirect(url_for("auth.manage_users"))
 
-    users = User.query.order_by(User.name.asc()).all()
-    return render_template("users.html", users=users)
+    if is_platform_admin:
+        users = User.query.order_by(User.name.asc()).all()
+        companies = Company.query.filter_by(is_active=True).order_by(Company.name.asc()).all()
+    else:
+        users = User.query.filter_by(company_id=selected_company_id).order_by(User.name.asc()).all()
+        companies = Company.query.filter_by(id=selected_company_id).all()
+
+    return render_template(
+        "users.html",
+        users=users,
+        companies=companies,
+        selected_company_id=selected_company_id,
+        is_platform_admin=is_platform_admin,
+    )
 
 
 @auth_bp.route("/users/<int:user_id>/send-test-email", methods=["POST"])
@@ -263,6 +316,13 @@ def manage_users():
 @role_required("admin")
 def send_test_email_to_user(user_id):
     user = User.query.get_or_404(user_id)
+
+    selected_company_id = current_company_id()
+    is_platform_admin = session.get("is_platform_admin", False)
+
+    if not is_platform_admin and user.company_id != selected_company_id:
+        flash("You do not have permission to email that user.", "error")
+        return redirect(url_for("auth.manage_users"))
 
     to_email = user.get_notification_email()
     if not to_email:
@@ -272,10 +332,10 @@ def send_test_email_to_user(user_id):
     try:
         send_email(
             to_email=to_email,
-            subject="BPI Ops Test Email",
+            subject="TrueOps Test Email",
             body=(
                 f"Hello {user.name},\n\n"
-                "This is a test email from BPI Ops.\n\n"
+                "This is a test email from TrueOps.\n\n"
                 "If you received this, your email settings are working."
             ),
         )

@@ -24,8 +24,6 @@ def create_app():
     from app.cash.routes import cash_bp
     from app.cash_review.routes import cash_review_bp
     from app.verification.routes import verification_bp
-
-    # NEW
     from app.store_dashboard import store_dashboard_bp
 
     # Register blueprints
@@ -52,25 +50,56 @@ def create_app():
     with app.app_context():
         from app import models
         db.create_all()
-        seed_admin()
-        seed_stores()
+
+        default_company = seed_default_company()
+        seed_admin(default_company)
+        seed_stores(default_company)
         seed_checklist_template()
         seed_svr_template()
 
     return app
 
 
-def seed_admin():
+def seed_default_company():
+    from app.models import Company
+
+    company = Company.query.filter_by(slug="trueops").first()
+    if company:
+        return company
+
+    company = Company(
+        name="TrueOps",
+        slug="trueops",
+        accent_color="#38bdf8",
+        logo_filename="trueops-logo.png",
+        is_active=True,
+    )
+    db.session.add(company)
+    db.session.commit()
+    return company
+
+
+def seed_admin(default_company):
     from app.models import User
 
     existing = User.query.filter_by(username="admin").first()
     if existing:
+        updated = False
+
+        if not existing.company_id:
+            existing.company_id = default_company.id
+            updated = True
+
+        if updated:
+            db.session.commit()
+
         return
 
     admin = User(
+        company_id=default_company.id,
         name="Admin",
         username="admin",
-        role="admin",
+        role="platform_admin",
         is_active=True
     )
     admin.set_password("admin123")
@@ -79,10 +108,18 @@ def seed_admin():
     db.session.commit()
 
 
-def seed_stores():
+def seed_stores(default_company):
     from app.models import Store
 
-    if Store.query.count() > 0:
+    existing_company_stores = Store.query.filter_by(company_id=default_company.id).count()
+    if existing_company_stores > 0:
+        return
+
+    null_company_stores = Store.query.filter_by(company_id=None).all()
+    if null_company_stores:
+        for store in null_company_stores:
+            store.company_id = default_company.id
+        db.session.commit()
         return
 
     stores = [
@@ -118,6 +155,7 @@ def seed_stores():
     for store_number, store_name, area_name in stores:
         db.session.add(
             Store(
+                company_id=default_company.id,
                 store_number=store_number,
                 store_name=store_name,
                 area_name=area_name,

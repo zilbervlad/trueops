@@ -10,13 +10,31 @@ def today_et():
     return datetime.now(APP_TZ).date()
 
 
+class Company(db.Model):
+    __tablename__ = "companies"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    slug = db.Column(db.String(80), unique=True, nullable=False)
+
+    accent_color = db.Column(db.String(20), nullable=True)
+    logo_filename = db.Column(db.String(255), nullable=True)
+
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
     name = db.Column(db.String(120), nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+
+    # manager / supervisor / maintenance / admin / platform_admin
     role = db.Column(db.String(50), nullable=False, default="manager")
 
     area_name = db.Column(db.String(100), nullable=True)
@@ -28,14 +46,19 @@ class User(db.Model):
 
     is_active = db.Column(db.Boolean, default=True)
 
+    company = db.relationship("Company", backref=db.backref("users", lazy=True))
+
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str):
         return check_password_hash(self.password_hash, password)
 
+    def is_platform_admin(self):
+        return self.role == "platform_admin"
+
     def is_admin(self):
-        return self.role == "admin"
+        return self.role in {"admin", "platform_admin"}
 
     def is_supervisor(self):
         return self.role == "supervisor"
@@ -56,10 +79,16 @@ class Store(db.Model):
     __tablename__ = "stores"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
+    # keeping this globally unique for phase 1 so the rest of the app keeps working safely.
+    # In phase 2 we can relax this to company_id + store_number once all modules are company-scoped.
     store_number = db.Column(db.String(10), unique=True, nullable=False)
     store_name = db.Column(db.String(120), nullable=True)
     area_name = db.Column(db.String(120), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+
+    company = db.relationship("Company", backref=db.backref("stores", lazy=True))
 
 
 class ChecklistTemplateItem(db.Model):
@@ -339,7 +368,8 @@ class CashLog(db.Model):
     manager_name = db.Column(db.String(120), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+
 class VerificationTemplateField(db.Model):
     __tablename__ = "verification_template_fields"
 
@@ -387,5 +417,5 @@ class VerificationReportValue(db.Model):
 
     value_text = db.Column(db.Text, nullable=True)
 
-    template_field = db.relationship("VerificationTemplateField")   
+    template_field = db.relationship("VerificationTemplateField")
    

@@ -1,17 +1,31 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.auth.routes import login_required, role_required
 from app.extensions import db
-from app.models import Store
+from app.models import Store, Company
 
 store_admin_bp = Blueprint("store_admin", __name__, url_prefix="/store-admin")
+
+
+def current_company_id():
+    return session.get("current_company_id")
 
 
 @store_admin_bp.route("/", methods=["GET", "POST"])
 @login_required
 @role_required("admin")
 def index():
+    selected_company_id = current_company_id()
+    is_platform_admin = session.get("is_platform_admin", False)
+
     if request.method == "POST":
         action = request.form.get("action", "").strip()
+
+        form_company_id = request.form.get("company_id", "").strip()
+        target_company_id = int(form_company_id) if (is_platform_admin and form_company_id.isdigit()) else selected_company_id
+
+        if not target_company_id:
+            flash("No company is selected for this action.", "error")
+            return redirect(url_for("store_admin.index"))
 
         if action == "create":
             store_number = request.form.get("store_number", "").strip()
@@ -29,6 +43,7 @@ def index():
 
             db.session.add(
                 Store(
+                    company_id=target_company_id,
                     store_number=store_number,
                     store_name=store_name or f"Store {store_number}",
                     area_name=area_name,
@@ -48,6 +63,10 @@ def index():
                 flash("Store not found.", "error")
                 return redirect(url_for("store_admin.index"))
 
+            if not is_platform_admin and store.company_id != selected_company_id:
+                flash("You do not have permission to edit that store.", "error")
+                return redirect(url_for("store_admin.index"))
+
             new_store_number = request.form.get("store_number", "").strip()
             new_store_name = request.form.get("store_name", "").strip()
             new_area_name = request.form.get("area_name", "").strip()
@@ -65,6 +84,7 @@ def index():
                 flash("Another store already uses that store number.", "error")
                 return redirect(url_for("store_admin.index"))
 
+            store.company_id = target_company_id
             store.store_number = new_store_number
             store.store_name = new_store_name or f"Store {new_store_number}"
             store.area_name = new_area_name
@@ -74,14 +94,23 @@ def index():
             flash("Store updated successfully.", "success")
             return redirect(url_for("store_admin.index"))
 
-    stores = Store.query.order_by(Store.area_name.asc(), Store.store_number.asc()).all()
+    query = Store.query
+    if not is_platform_admin:
+        query = query.filter_by(company_id=selected_company_id)
+
+    stores = query.order_by(Store.area_name.asc(), Store.store_number.asc()).all()
 
     existing_areas = sorted(
         {store.area_name for store in stores if store.area_name}
     )
 
+    companies = Company.query.filter_by(is_active=True).order_by(Company.name.asc()).all() if is_platform_admin else []
+
     return render_template(
         "store_admin.html",
         stores=stores,
         existing_areas=existing_areas,
+        companies=companies,
+        selected_company_id=selected_company_id,
+        is_platform_admin=is_platform_admin,
     )
