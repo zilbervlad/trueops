@@ -30,6 +30,10 @@ def today_et():
     return now_et().date()
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def current_ops_date():
     now = now_et()
     if now.hour < 5:
@@ -297,18 +301,24 @@ def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
     user_store = session.get("user_store")
+    company_id = current_company_id()
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+        query = Store.query.filter_by(is_active=True)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(Store.store_number.asc()).all()
 
     if role == "supervisor":
         return Store.query.filter_by(
+            company_id=company_id,
             area_name=user_area,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
 
     if role == "manager":
         return Store.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
@@ -317,7 +327,10 @@ def get_visible_stores():
 
 
 def run_checklist_closeout(closeout_date: date):
-    active_stores = Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+    active_stores = Store.query.filter_by(
+        company_id=current_company_id(),
+        is_active=True
+    ).order_by(Store.store_number.asc()).all()
 
     created_count = 0
     skipped_count = 0
@@ -444,7 +457,16 @@ def send_store_summary_email(store_number: str):
     if not checklist:
         return {"success": False, "error": f"No checklist found for store {store_number} for today."}
 
+    store = Store.query.filter_by(
+        company_id=current_company_id(),
+        store_number=store_number
+    ).first()
+
+    if not store:
+        return {"success": False, "error": f"Store {store_number} is not in the selected company."}
+
     manager = User.query.filter_by(
+        company_id=current_company_id(),
         store_number=store_number,
         role="manager",
         is_active=True
@@ -457,15 +479,12 @@ def send_store_summary_email(store_number: str):
     if not manager_email:
         return {"success": False, "error": f"Manager email is not configured for store {store_number}."}
 
-    store = Store.query.filter_by(store_number=store_number).first()
-
-    supervisor = None
-    if store:
-        supervisor = User.query.filter_by(
-            area_name=store.area_name,
-            role="supervisor",
-            is_active=True
-        ).first()
+    supervisor = User.query.filter_by(
+        company_id=current_company_id(),
+        area_name=store.area_name,
+        role="supervisor",
+        is_active=True
+    ).first()
 
     supervisor_email = supervisor.get_notification_email() if supervisor else None
 
@@ -490,7 +509,7 @@ def send_store_summary_email(store_number: str):
             f"Opening Manager: {(checklist.opening_manager or '').strip() or 'Not set'}\n"
             f"Closing Manager: {(checklist.closing_manager or '').strip() or 'Not set'}\n\n"
             f"Missing Tasks:\n{missing_tasks_text}\n\n"
-            f"- BPI Ops"
+            f"- TrueOps"
         ),
         cc_emails=supervisor_email
     )
@@ -560,7 +579,7 @@ def send_owner_summary_email(user_id: int, visible_stores, send_results):
         failed_lines.append(f"- {result.get('store_number', 'Unknown')}: {result.get('error', 'Unknown error')}")
 
     body = (
-        f"BPI Ops Send-All Summary\n"
+        f"TrueOps Send-All Summary\n"
         f"Date: {ops_date.strftime('%B %d, %Y')}\n\n"
         f"Visible Stores: {total_visible}\n"
         f"Emails Sent: {sent_count}\n"
@@ -574,12 +593,12 @@ def send_owner_summary_email(user_id: int, visible_stores, send_results):
         f"{chr(10).join(lines) if lines else '- No successful sends'}\n\n"
         f"Failed Sends:\n"
         f"{chr(10).join(failed_lines) if failed_lines else '- None'}\n\n"
-        f"- BPI Ops"
+        f"- TrueOps"
     )
 
     send_email(
         to_email=owner_email,
-        subject=f"BPI Ops Send-All Recap - {ops_date.strftime('%b %d, %Y')}",
+        subject=f"TrueOps Send-All Recap - {ops_date.strftime('%b %d, %Y')}",
         body=body
     )
 
@@ -776,6 +795,11 @@ def delete_archive():
 
     if checklist_date >= current_ops_date():
         flash("Only archived past checklists can be deleted.", "error")
+        return redirect(url_for("checklist.overview"))
+
+    visible_store_numbers = {store.store_number for store in get_visible_stores()}
+    if store_number not in visible_store_numbers:
+        flash("You do not have access to that store.", "error")
         return redirect(url_for("checklist.overview"))
 
     daily = DailyChecklist.query.filter_by(

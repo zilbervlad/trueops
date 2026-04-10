@@ -40,6 +40,10 @@ def today_et():
     return now_et().date()
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def get_svr_week_range():
     today = today_et()
     week_offset_raw = (request.args.get("week_offset") or "0").strip()
@@ -84,12 +88,17 @@ DEFAULT_SVR_TEMPLATE = [
 def get_supervisor_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
+    company_id = current_company_id()
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+        query = Store.query.filter_by(is_active=True)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(Store.store_number.asc()).all()
 
     if role == "supervisor":
         return Store.query.filter_by(
+            company_id=company_id,
             area_name=user_area,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
@@ -311,7 +320,7 @@ def generate_svr_pdf(report, values, manager_summary, open_action_items, complet
 
     header_table = Table(
         [[
-            Paragraph("BPI Ops SVR Report", title_style),
+            Paragraph("TrueOps SVR Report", title_style),
             Paragraph(
                 f"SVR #{report.id}",
                 ParagraphStyle(
