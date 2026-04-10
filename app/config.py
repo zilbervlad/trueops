@@ -18,6 +18,6 @@ class Config:
     if database_url:
         SQLALCHEMY_DATABASE_URI = database_url
     else:
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{INSTANCE_DIR / 'bpi_ops.db'}"
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{INSTANCE_DIR / 'trueops.db'}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
