@@ -21,19 +21,28 @@ def business_date():
     return now.date()
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
     user_store = session.get("user_store")
+    company_id = current_company_id()
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(
+        query = Store.query.filter_by(is_active=True)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(
             Store.area_name.asc(),
             Store.store_number.asc()
         ).all()
 
     if role == "supervisor":
         return Store.query.filter_by(
+            company_id=company_id,
             area_name=user_area,
             is_active=True
         ).order_by(
@@ -43,6 +52,7 @@ def get_visible_stores():
 
     if role == "manager":
         return Store.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
@@ -94,21 +104,22 @@ def calculate_section_stats(daily, section_name):
     }
 
 
-def build_heat_map(today):
-    all_stores = Store.query.filter_by(is_active=True).order_by(
-        Store.area_name.asc(),
-        Store.store_number.asc()
-    ).all()
+def build_heat_map(today, visible_stores):
+    if not visible_stores:
+        return [], {}
 
-    all_daily = DailyChecklist.query.filter_by(
-        checklist_date=today
+    visible_store_numbers = [store.store_number for store in visible_stores]
+
+    all_daily = DailyChecklist.query.filter(
+        DailyChecklist.checklist_date == today,
+        DailyChecklist.store_number.in_(visible_store_numbers)
     ).all()
 
     daily_by_store = {row.store_number: row for row in all_daily}
 
     heat_map = []
 
-    for store in all_stores:
+    for store in visible_stores:
         daily = daily_by_store.get(store.store_number)
 
         percent = int(round(daily.percent_complete)) if daily else 0
@@ -143,12 +154,45 @@ def index():
     visible_stores = get_visible_stores()
 
     if not visible_stores:
-        abort(403)
+        # empty company / no assigned store / no visible stores
+        return render_template(
+            "store_dashboard/index.html",
+            today=business_date(),
+            visible_stores=[],
+            selected_store=None,
+            overall_completion=0,
+            checklist_status_label="Not Started",
+            manager_name="Not Set",
+            cleaning_items=[],
+            goal_items=[],
+            before_open_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+            restock_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+            manager_walk_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+            heat_map=[],
+            is_manager=(session.get("user_role") == "manager"),
+            empty_state=True,
+        )
 
     if role == "manager":
         user_store = session.get("user_store")
         if not user_store:
-            abort(403)
+            return render_template(
+                "store_dashboard/index.html",
+                today=business_date(),
+                visible_stores=[],
+                selected_store=None,
+                overall_completion=0,
+                checklist_status_label="Not Started",
+                manager_name="Not Set",
+                cleaning_items=[],
+                goal_items=[],
+                before_open_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+                restock_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+                manager_walk_stats={"completed": 0, "total": 0, "percent": 0, "status_text": "Not Started"},
+                heat_map=[],
+                is_manager=True,
+                empty_state=True,
+            )
         return redirect(url_for("store_dashboard.detail", store_number=user_store))
 
     return redirect(
@@ -159,18 +203,23 @@ def index():
 @store_dashboard_bp.route("/<store_number>")
 @login_required
 def detail(store_number):
+    visible_stores = get_visible_stores()
+
+    if not visible_stores:
+        return redirect(url_for("store_dashboard.index"))
+
     if not user_can_access(store_number):
         abort(403)
 
     today = business_date()
 
-    visible_stores = get_visible_stores()
     selected_store = Store.query.filter_by(
+        company_id=current_company_id(),
         store_number=store_number,
         is_active=True
     ).first_or_404()
 
-    heat_map, daily_by_store = build_heat_map(today)
+    heat_map, daily_by_store = build_heat_map(today, visible_stores)
     selected_daily = daily_by_store.get(store_number)
 
     overall_completion = int(round(selected_daily.percent_complete)) if selected_daily else 0
@@ -222,4 +271,5 @@ def detail(store_number):
         manager_walk_stats=manager_walk_stats,
         heat_map=heat_map,
         is_manager=(session.get("user_role") == "manager"),
+        empty_state=False,
     )
