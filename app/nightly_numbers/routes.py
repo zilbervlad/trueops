@@ -156,6 +156,10 @@ FIELD_META = {
 }
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def ensure_field_config_seeded():
     existing = {
         field.field_key: field
@@ -185,18 +189,24 @@ def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
     user_store = session.get("user_store")
+    company_id = current_company_id()
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+        query = Store.query.filter_by(is_active=True)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(Store.store_number.asc()).all()
 
     if role == "supervisor":
         return Store.query.filter_by(
+            company_id=company_id,
             area_name=user_area,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
 
     if role == "manager":
         return Store.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
             is_active=True
         ).order_by(Store.store_number.asc()).all()
@@ -244,7 +254,18 @@ def apply_form_value_to_report(report, field):
 
 
 def send_nightly_numbers_email(report: NightlyNumbersReport):
+    company_id = current_company_id()
+
+    store = Store.query.filter_by(
+        company_id=company_id,
+        store_number=report.store_number
+    ).first()
+
+    if not store:
+        raise ValueError(f"Store {report.store_number} is not in the selected company.")
+
     manager_user = User.query.filter_by(
+        company_id=company_id,
         store_number=report.store_number,
         role="manager",
         is_active=True
@@ -252,19 +273,21 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
 
     manager_email = manager_user.get_notification_email() if manager_user else None
 
-    store = Store.query.filter_by(store_number=report.store_number).first()
-
-    supervisor = None
-    if store:
-        supervisor = User.query.filter_by(
-            area_name=store.area_name,
-            role="supervisor",
-            is_active=True
-        ).first()
+    supervisor = User.query.filter_by(
+        company_id=company_id,
+        area_name=store.area_name,
+        role="supervisor",
+        is_active=True
+    ).first()
 
     supervisor_email = supervisor.get_notification_email() if supervisor else None
 
-    admin_users = User.query.filter_by(role="admin", is_active=True).all()
+    admin_users = User.query.filter(
+        User.company_id == company_id,
+        User.role.in_(["admin", "platform_admin"]),
+        User.is_active == True
+    ).all()
+
     admin_emails = []
     for admin in admin_users:
         email = admin.get_notification_email()
@@ -309,7 +332,7 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
         f"Bad Orders: {report.bad_orders or 'None'}\n"
         f"Cash +/-: {report.cash_diff if report.cash_diff is not None else 'Not provided'}\n"
         f"Food Order Placed: {'Yes' if report.food_order_placed else 'No'}\n\n"
-        f"- BPI Ops"
+        f"- TrueOps"
     )
 
     send_email(
@@ -332,12 +355,23 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
 def index():
     role = session.get("user_role")
     user_store = session.get("user_store")
+    company_id = current_company_id()
 
     if role != "manager":
         return redirect(url_for("nightly_numbers.admin"))
 
     if not user_store:
         flash("No store is assigned to this manager.", "error")
+        return redirect(url_for("dashboard.home"))
+
+    store = Store.query.filter_by(
+        company_id=company_id,
+        store_number=user_store,
+        is_active=True
+    ).first()
+
+    if not store:
+        flash("Your store is not in the selected company.", "error")
         return redirect(url_for("dashboard.home"))
 
     fields = get_field_config()
@@ -474,6 +508,11 @@ def admin():
 @role_required("admin")
 def edit_report(report_id):
     report = NightlyNumbersReport.query.get_or_404(report_id)
+
+    visible_store_numbers = {store.store_number for store in get_visible_stores()}
+    if report.store_number not in visible_store_numbers:
+        flash("You do not have access to that nightly report.", "error")
+        return redirect(url_for("nightly_numbers.admin"))
 
     if request.method == "POST":
         report_date_str = request.form.get("report_date", "").strip()
