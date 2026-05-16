@@ -1,12 +1,205 @@
 {% extends "base.html" %}
 
-{% block title %}SVR Admin | BPI Ops{% endblock %}
+{% block title %}SVR Admin | TrueOps{% endblock %}
 {% block header %}SVR Admin{% endblock %}
 
 {% block content %}
-<div class="admin-page">
+<style>
+    .svr-admin-page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-    <div class="command-bar panel" style="margin-bottom: 24px;">
+    .svr-admin-command {
+        margin-bottom: 0;
+    }
+
+    .svr-admin-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .svr-admin-panel {
+        padding: 12px;
+    }
+
+    .svr-admin-panel .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .svr-admin-panel h3 {
+        margin: 0 0 3px 0;
+        color: #0f172a;
+    }
+
+    .svr-admin-muted {
+        color: #64748b;
+        font-size: 0.84rem;
+        line-height: 1.3;
+    }
+
+    .svr-admin-create-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .svr-admin-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .svr-admin-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .svr-row {
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+    }
+
+    .svr-row:hover {
+        border-color: rgba(37, 99, 235, 0.14);
+        background: rgba(248, 250, 252, 0.96);
+    }
+
+    .svr-row.is-dirty {
+        border-color: rgba(245, 158, 11, 0.34);
+        box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08);
+        background: rgba(255, 251, 235, 0.95);
+    }
+
+    .svr-row.is-saving {
+        opacity: 0.82;
+    }
+
+    .svr-row.is-saved {
+        border-color: rgba(22, 163, 74, 0.3);
+        box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.08);
+        background: rgba(240, 253, 244, 0.95);
+    }
+
+    .svr-row-top {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr) 120px 100px auto;
+        gap: 8px;
+        align-items: end;
+    }
+
+    .svr-row-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .svr-row-left {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .svr-id {
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .svr-status {
+        font-size: 0.74rem;
+        color: #64748b;
+        min-height: 16px;
+        font-weight: 600;
+    }
+
+    .svr-empty {
+        padding: 16px;
+        border-radius: 12px;
+        text-align: center;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 0;
+        min-width: 0;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 6px 9px;
+        font-size: 0.84rem;
+        min-height: 34px;
+        color: #0f172a;
+        background: rgba(255,255,255,0.98);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: rgba(37, 99, 235, 0.35);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .checkbox-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .checkbox-inline input[type="checkbox"] {
+        accent-color: #2563eb;
+    }
+
+    @media (max-width: 980px) {
+        .svr-admin-grid,
+        .svr-row-top {
+            grid-template-columns: 1fr;
+        }
+
+        .svr-row-bottom {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="admin-page svr-admin-page">
+
+    <div class="command-bar panel svr-admin-command">
         <div class="command-bar-left">
             <div class="command-eyebrow">ADMIN</div>
             <h2 class="command-title">SVR Template Manager</h2>
@@ -19,132 +212,342 @@
         </div>
     </div>
 
-    <!-- ADD NEW FIELD -->
-    <section class="panel premium-panel" style="margin-bottom: 24px;">
-        <div class="panel-head">
-            <div>
-                <h3>Add SVR Field</h3>
-                <div class="area-subtitle">
-                    Create a new field for the SVR form and choose how it should behave.
+    <div class="svr-admin-layout">
+        <section class="panel premium-panel svr-admin-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>Add SVR Field</h3>
+                    <div class="svr-admin-muted">
+                        Create a new field for the SVR form and choose how it should behave.
+                    </div>
                 </div>
-            </div>
-            <span class="summary-pill">New</span>
-        </div>
-
-        <form method="POST" class="login-form">
-            <input type="hidden" name="action" value="create">
-
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="field_key">Field Key</label>
-                    <input type="text" id="field_key" name="field_key" placeholder="example_field_key" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="field_label">Field Label</label>
-                    <input type="text" id="field_label" name="field_label" required>
-                </div>
+                <span class="summary-pill">New</span>
             </div>
 
-            <div class="admin-task-grid">
-                <div class="form-group">
-                    <label for="field_type">Field Type</label>
-                    <select id="field_type" name="field_type" required>
-                        <option value="text">Text</option>
-                        <option value="textarea" selected>Textarea</option>
-                        <option value="yesno">Yes / No</option>
-                    </select>
-                </div>
+            <form method="POST" class="svr-admin-create-form">
+                <input type="hidden" name="action" value="create">
 
-                <div class="form-group">
-                    <label for="sort_order">Sort Order</label>
-                    <input type="number" id="sort_order" name="sort_order" value="999" required>
-                </div>
-            </div>
-
-            <div class="admin-check-row" style="margin-top: 10px;">
-                <button type="submit" class="btn-primary">Add Field</button>
-            </div>
-        </form>
-    </section>
-
-    <!-- EXISTING FIELDS -->
-    <section class="panel premium-panel">
-        <div class="panel-head">
-            <div>
-                <h3>SVR Template Fields</h3>
-                <div class="area-subtitle">
-                    Edit template fields below. Each card saves independently.
-                </div>
-            </div>
-            <span class="summary-pill">{{ fields|length }} Items</span>
-        </div>
-
-        <div class="admin-task-list">
-            {% for field in fields %}
-            <form method="POST" class="admin-task-card">
-                <input type="hidden" name="action" value="update">
-                <input type="hidden" name="field_id" value="{{ field.id }}">
-
-                <!-- TOP ROW -->
-                <div class="admin-task-top">
-                    <span class="summary-pill">ID {{ field.id }}</span>
-                    <span class="summary-pill">{{ field.field_type|title }}</span>
-
-                    {% if field.is_active %}
-                    <span class="table-badge badge-success">Active</span>
-                    {% else %}
-                    <span class="table-badge badge-neutral">Inactive</span>
-                    {% endif %}
-                </div>
-
-                <!-- MAIN FIELDS -->
-                <div class="admin-task-grid">
+                <div class="svr-admin-grid">
                     <div class="form-group">
-                        <label>Field Key</label>
-                        <input type="text" name="field_key" value="{{ field.field_key }}" required>
+                        <label for="field_key">Field Key</label>
+                        <input type="text" id="field_key" name="field_key" placeholder="example_field_key" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Field Label</label>
-                        <input type="text" name="field_label" value="{{ field.field_label }}" required>
+                        <label for="field_label">Field Label</label>
+                        <input type="text" id="field_label" name="field_label" required>
                     </div>
                 </div>
 
-                <!-- TYPE + ORDER -->
-                <div class="admin-task-grid">
+                <div class="svr-admin-grid">
                     <div class="form-group">
-                        <label>Field Type</label>
-                        <select name="field_type" required>
-                            <option value="text" {% if field.field_type == 'text' %}selected{% endif %}>Text</option>
-                            <option value="textarea" {% if field.field_type == 'textarea' %}selected{% endif %}>Textarea</option>
-                            <option value="yesno" {% if field.field_type == 'yesno' %}selected{% endif %}>Yes / No</option>
+                        <label for="field_type">Field Type</label>
+                        <select id="field_type" name="field_type" required>
+                            <option value="text">Text</option>
+                            <option value="textarea" selected>Textarea</option>
+                            <option value="yesno">Yes / No</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Sort Order</label>
-                        <input type="number" name="sort_order" value="{{ field.sort_order }}" required>
+                        <label for="sort_order">Sort Order</label>
+                        <input type="number" id="sort_order" name="sort_order" value="999" required>
                     </div>
                 </div>
 
-                <!-- ACTIONS -->
-                <div class="admin-check-row compact-actions">
-                    <label class="checkbox-inline">
-                        <input type="checkbox" name="is_active" {% if field.is_active %}checked{% endif %}>
-                        Active
-                    </label>
-
-                    <button type="submit" class="btn-primary">Save Field</button>
+                <div class="admin-check-row" style="margin-top: 8px;">
+                    <button type="submit" class="btn-primary">Add Field</button>
                 </div>
             </form>
-            {% else %}
-            <div class="admin-task-card">
-                No SVR template fields found.
+        </section>
+
+        <section class="panel premium-panel svr-admin-panel">
+            <div class="panel-head">
+                <div>
+                    <h3>SVR Template Fields</h3>
+                    <div class="svr-admin-muted">
+                        Auto-save is on. Text and number fields save when you leave them. Type and active save immediately.
+                    </div>
+                </div>
+                <span class="summary-pill">{{ fields|length }} Items</span>
             </div>
-            {% endfor %}
-        </div>
-    </section>
+
+            <div class="svr-admin-list">
+                {% for field in fields %}
+                <div
+                    class="svr-row ajax-svr-row"
+                    data-field-id="{{ field.id }}"
+                    data-last-saved-field-key="{{ field.field_key }}"
+                    data-last-saved-field-label="{{ field.field_label }}"
+                    data-last-saved-field-type="{{ field.field_type }}"
+                    data-last-saved-sort-order="{{ field.sort_order }}"
+                    data-last-saved-is-active="{{ 1 if field.is_active else 0 }}"
+                >
+                    <div class="svr-row-top">
+                        <div class="form-group">
+                            <label>Field Key</label>
+                            <input type="text" class="field-key-input" value="{{ field.field_key }}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Field Label</label>
+                            <input type="text" class="field-label-input" value="{{ field.field_label }}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Field Type</label>
+                            <select class="field-type-input" required>
+                                <option value="text" {% if field.field_type == 'text' %}selected{% endif %}>Text</option>
+                                <option value="textarea" {% if field.field_type == 'textarea' %}selected{% endif %}>Textarea</option>
+                                <option value="yesno" {% if field.field_type == 'yesno' %}selected{% endif %}>Yes / No</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Sort</label>
+                            <input type="number" class="field-sort-input" value="{{ field.sort_order }}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Active</label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" class="field-active-input" {% if field.is_active %}checked{% endif %}>
+                                Yes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="svr-row-bottom">
+                        <div class="svr-row-left">
+                            <span class="svr-id">ID {{ field.id }}</span>
+                            <span class="summary-pill field-type-pill">{{ field.field_type|title }}</span>
+
+                            {% if field.is_active %}
+                            <span class="table-badge badge-success field-active-badge">Active</span>
+                            {% else %}
+                            <span class="table-badge badge-neutral field-active-badge">Inactive</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="svr-status" aria-live="polite"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="svr-empty">
+                    No SVR template fields found.
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
 
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll(".ajax-svr-row");
+
+    function getRowState(row) {
+        return {
+            field_key: row.querySelector(".field-key-input")?.value || "",
+            field_label: row.querySelector(".field-label-input")?.value || "",
+            field_type: row.querySelector(".field-type-input")?.value || "textarea",
+            sort_order: row.querySelector(".field-sort-input")?.value || "999",
+            is_active: row.querySelector(".field-active-input")?.checked ? "1" : "0"
+        };
+    }
+
+    function getSavedState(row) {
+        return {
+            field_key: row.dataset.lastSavedFieldKey || "",
+            field_label: row.dataset.lastSavedFieldLabel || "",
+            field_type: row.dataset.lastSavedFieldType || "textarea",
+            sort_order: row.dataset.lastSavedSortOrder || "999",
+            is_active: row.dataset.lastSavedIsActive || "0"
+        };
+    }
+
+    function updateSavedState(row, state) {
+        row.dataset.lastSavedFieldKey = state.field_key;
+        row.dataset.lastSavedFieldLabel = state.field_label;
+        row.dataset.lastSavedFieldType = state.field_type;
+        row.dataset.lastSavedSortOrder = state.sort_order;
+        row.dataset.lastSavedIsActive = state.is_active;
+    }
+
+    function rowHasChanges(row) {
+        const current = getRowState(row);
+        const saved = getSavedState(row);
+
+        return (
+            current.field_key !== saved.field_key ||
+            current.field_label !== saved.field_label ||
+            current.field_type !== saved.field_type ||
+            current.sort_order !== saved.sort_order ||
+            current.is_active !== saved.is_active
+        );
+    }
+
+    function updateRowVisuals(row) {
+        const state = getRowState(row);
+        const activeBadge = row.querySelector(".field-active-badge");
+        const typePill = row.querySelector(".field-type-pill");
+
+        if (activeBadge) {
+            if (state.is_active === "1") {
+                activeBadge.textContent = "Active";
+                activeBadge.className = "table-badge badge-success field-active-badge";
+            } else {
+                activeBadge.textContent = "Inactive";
+                activeBadge.className = "table-badge badge-neutral field-active-badge";
+            }
+        }
+
+        if (typePill) {
+            if (state.field_type === "yesno") {
+                typePill.textContent = "Yesno";
+            } else {
+                typePill.textContent = state.field_type.charAt(0).toUpperCase() + state.field_type.slice(1);
+            }
+        }
+
+        if (rowHasChanges(row)) {
+            row.classList.add("is-dirty");
+        } else {
+            row.classList.remove("is-dirty");
+        }
+    }
+
+    async function saveRow(row) {
+        if (row.dataset.saving === "1") {
+            return;
+        }
+
+        if (!rowHasChanges(row)) {
+            const status = row.querySelector(".svr-status");
+            if (status) {
+                status.textContent = "";
+            }
+            return;
+        }
+
+        const fieldId = row.getAttribute("data-field-id");
+        const status = row.querySelector(".svr-status");
+        const state = getRowState(row);
+
+        const formData = new FormData();
+        formData.append("action", "update");
+        formData.append("field_id", fieldId);
+        formData.append("field_key", state.field_key);
+        formData.append("field_label", state.field_label);
+        formData.append("field_type", state.field_type);
+        formData.append("sort_order", state.sort_order);
+
+        if (state.is_active === "1") {
+            formData.append("is_active", "on");
+        }
+
+        row.dataset.saving = "1";
+        row.classList.remove("is-saved");
+        row.classList.add("is-saving");
+
+        if (status) {
+            status.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch(window.location.pathname + window.location.search, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
+            updateSavedState(row, state);
+            updateRowVisuals(row);
+
+            row.classList.remove("is-saving");
+            row.classList.add("is-saved");
+
+            if (status) {
+                status.textContent = "Saved";
+            }
+
+            window.setTimeout(function () {
+                row.classList.remove("is-saved");
+                if (status && status.textContent === "Saved") {
+                    status.textContent = "";
+                }
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            row.classList.remove("is-saving");
+
+            if (status) {
+                status.textContent = "Save failed. Refresh and try again.";
+            }
+        } finally {
+            row.dataset.saving = "0";
+        }
+    }
+
+    function queueSave(row, delay) {
+        if (row._saveTimer) {
+            clearTimeout(row._saveTimer);
+        }
+
+        row._saveTimer = setTimeout(function () {
+            saveRow(row);
+        }, delay);
+    }
+
+    rows.forEach(function (row) {
+        updateRowVisuals(row);
+
+        const keyInput = row.querySelector(".field-key-input");
+        const labelInput = row.querySelector(".field-label-input");
+        const typeInput = row.querySelector(".field-type-input");
+        const sortInput = row.querySelector(".field-sort-input");
+        const activeInput = row.querySelector(".field-active-input");
+
+        [keyInput, labelInput, sortInput].forEach(function (input) {
+            if (!input) return;
+
+            input.addEventListener("input", function () {
+                updateRowVisuals(row);
+            });
+
+            input.addEventListener("blur", function () {
+                updateRowVisuals(row);
+                queueSave(row, 150);
+            });
+
+            input.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 150);
+            });
+        });
+
+        if (typeInput) {
+            typeInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+
+        if (activeInput) {
+            activeInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

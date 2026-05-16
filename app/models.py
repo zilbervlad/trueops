@@ -293,6 +293,13 @@ class MaintenanceTicket(db.Model):
     svr_report_id = db.Column(db.Integer, db.ForeignKey("svr_reports.id"), nullable=True)
 
     status = db.Column(db.String(50), nullable=False, default="open")
+
+    assigned_to = db.Column(db.String(120), nullable=True)
+    scheduled_date = db.Column(db.Date, nullable=True)
+    scheduled_time = db.Column(db.Time, nullable=True)
+    estimated_minutes = db.Column(db.Integer, nullable=True)
+    priority = db.Column(db.String(20), nullable=False, default="normal")
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     svr_report = db.relationship("SVRReport")

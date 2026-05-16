@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | BPI Ops{% endblock %}
+{% block title %}Dashboard | TrueOps{% endblock %}
 {% block header %}
     {% if session.get('user_role') == 'manager' %}
         Store Dashboard
@@ -19,13 +19,13 @@
 
 <style>
     .manager-weekly-focus-card {
-        transition: background 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+        transition: background 0.18s ease, opacity 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
     }
 
     .manager-weekly-focus-card.is-completed {
-        background: rgba(0, 0, 0, 0.24);
-        opacity: 0.68;
-        border-color: rgba(255, 255, 255, 0.08);
+        background: rgba(248, 250, 252, 0.95);
+        opacity: 0.72;
+        border-color: rgba(15, 23, 42, 0.08);
     }
 
     .manager-weekly-focus-card.is-completed .checklist-checkbox-row span {
@@ -81,11 +81,11 @@
 
         <h2 class="command-title">
             {% if is_manager %}
-                BPI Ops Store Dashboard
+                TrueOps Store Dashboard
             {% elif is_maintenance %}
-                BPI Ops Maintenance Dashboard
+                TrueOps Maintenance Dashboard
             {% else %}
-                BPI Ops Command Center
+                TrueOps Command Center
             {% endif %}
         </h2>
 

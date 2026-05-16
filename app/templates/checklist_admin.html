@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Checklist Admin | BPI Ops{% endblock %}
+{% block title %}Checklist Admin | TrueOps{% endblock %}
 {% block header %}Checklist Admin{% endblock %}
 
 {% block content %}
@@ -8,229 +8,238 @@
     .checklist-admin-page {
         display: flex;
         flex-direction: column;
-        gap: 22px;
+        gap: 12px;
     }
 
     .checklist-admin-shell {
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 12px;
     }
 
     .checklist-admin-panel {
-        padding: 22px;
+        padding: 12px;
     }
 
     .checklist-admin-panel .panel-head {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 18px;
+        gap: 10px;
+        margin-bottom: 10px;
         flex-wrap: wrap;
     }
 
     .checklist-admin-panel h3 {
-        margin: 0 0 6px 0;
+        margin: 0 0 3px 0;
+        color: #0f172a;
     }
 
     .checklist-admin-muted {
-        color: rgba(255, 255, 255, 0.74);
-        font-size: 0.95rem;
-        line-height: 1.45;
+        color: #64748b;
+        font-size: 0.84rem;
+        line-height: 1.3;
     }
 
     .checklist-admin-command {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        gap: 18px;
+        gap: 10px;
         align-items: center;
-        padding: 22px;
+        padding: 12px;
     }
 
     .checklist-admin-command h2 {
-        margin: 4px 0 6px 0;
+        margin: 0 0 3px 0;
     }
 
     .checklist-admin-chip-row {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
     }
 
     .checklist-admin-chip {
-        padding: 8px 12px;
+        padding: 5px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 0.88rem;
-        font-weight: 600;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        font-size: 0.78rem;
+        font-weight: 700;
         white-space: nowrap;
+        color: #334155;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
     }
 
     .checklist-admin-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 8px;
     }
 
     .checklist-admin-grid-3 {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
+        gap: 8px;
     }
 
     .checklist-admin-note-card {
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 9px 10px;
+        border-radius: 12px;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
     }
 
     .checklist-admin-note-card-title {
-        font-size: 0.78rem;
+        font-size: 0.68rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        margin-bottom: 6px;
-        color: rgba(255, 255, 255, 0.62);
+        margin-bottom: 3px;
+        color: #64748b;
         font-weight: 700;
     }
 
     .checklist-admin-note-card-text {
-        color: rgba(255, 255, 255, 0.9);
-        line-height: 1.5;
-        font-size: 0.94rem;
+        color: #0f172a;
+        line-height: 1.35;
+        font-size: 0.82rem;
     }
 
     .checklist-admin-helper {
-        margin-top: 6px;
-        font-size: 0.82rem;
-        color: rgba(255, 255, 255, 0.6);
-        line-height: 1.4;
+        margin-top: 3px;
+        font-size: 0.74rem;
+        color: #64748b;
+        line-height: 1.25;
     }
 
     .checklist-admin-actions {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
-        margin-top: 12px;
+        margin-top: 8px;
     }
 
     .checklist-admin-toolbar {
-        position: sticky;
-        top: 10px;
-        z-index: 5;
-        padding: 16px;
-        border-radius: 18px;
-        background: rgba(14, 18, 27, 0.92);
+        position: static;
+        top: auto;
+        z-index: auto;
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        margin-bottom: 18px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        margin-bottom: 8px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
     }
 
     .checklist-admin-toolbar-grid {
         display: grid;
-        grid-template-columns: 220px minmax(0, 1fr) auto;
-        gap: 12px;
+        grid-template-columns: 190px minmax(0, 1fr) auto;
+        gap: 8px;
         align-items: end;
     }
 
     .checklist-admin-toolbar-stats {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
     }
 
     .checklist-admin-stat {
-        padding: 9px 12px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.06);
-        font-size: 0.86rem;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        font-size: 0.78rem;
         font-weight: 700;
+        color: #334155;
     }
 
     .checklist-admin-list {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 6px;
     }
 
     .checklist-task-card {
-        padding: 18px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
     }
 
     .checklist-task-card:hover {
-        border-color: rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(37, 99, 235, 0.14);
+        background: rgba(248, 250, 252, 0.96);
     }
 
-    .checklist-task-card-head {
+    .checklist-task-card.is-dirty {
+        border-color: rgba(245, 158, 11, 0.35);
+        box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08);
+        background: rgba(255, 251, 235, 0.95);
+    }
+
+    .checklist-task-card.is-saving {
+        opacity: 0.82;
+    }
+
+    .checklist-task-card.is-saved {
+        border-color: rgba(22, 163, 74, 0.36);
+        box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.08);
+        background: rgba(240, 253, 244, 0.95);
+    }
+
+    .checklist-task-card-top {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr) 130px 110px auto auto;
+        gap: 8px;
+        align-items: end;
+    }
+
+    .checklist-task-card-bottom {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 14px;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
         flex-wrap: wrap;
     }
 
-    .checklist-task-card-meta {
+    .checklist-task-header-mini {
         display: flex;
         gap: 8px;
-        flex-wrap: wrap;
         align-items: center;
+        flex-wrap: wrap;
     }
 
-    .checklist-task-card-title {
-        font-size: 0.86rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: rgba(255, 255, 255, 0.62);
+    .checklist-task-id {
+        font-size: 0.74rem;
         font-weight: 700;
-        margin-bottom: 6px;
-    }
-
-    .checklist-task-card-subtitle {
-        font-size: 1rem;
-        color: rgba(255, 255, 255, 0.92);
-        line-height: 1.4;
-    }
-
-    .checklist-task-card-body {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-    }
-
-    .checklist-task-flags {
-        display: flex;
-        gap: 18px;
-        flex-wrap: wrap;
-        align-items: center;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
 
     .checklist-empty-state {
-        padding: 24px;
-        border-radius: 16px;
+        padding: 16px;
+        border-radius: 12px;
         text-align: center;
-        color: rgba(255, 255, 255, 0.72);
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px dashed rgba(255, 255, 255, 0.1);
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
     }
 
     .checklist-section-divider {
         height: 1px;
         background: linear-gradient(
             to right,
-            rgba(255, 255, 255, 0.04),
-            rgba(255, 255, 255, 0.12),
-            rgba(255, 255, 255, 0.04)
+            rgba(15, 23, 42, 0.03),
+            rgba(15, 23, 42, 0.1),
+            rgba(15, 23, 42, 0.03)
         );
         margin: 2px 0;
     }
@@ -238,27 +247,88 @@
     .checklist-admin-form-stack {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 8px;
     }
 
     .checklist-inline-note {
-        margin-top: -4px;
-        margin-bottom: 2px;
-        color: rgba(255, 255, 255, 0.66);
+        margin-top: -1px;
+        margin-bottom: 0;
+        color: #64748b;
+        font-size: 0.75rem;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+        min-width: 0;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 6px 9px;
         font-size: 0.84rem;
+        min-height: 34px;
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: rgba(37, 99, 235, 0.35);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .checkbox-inline {
+        font-size: 0.82rem;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .checkbox-inline input[type="checkbox"] {
+        accent-color: #2563eb;
+    }
+
+    .save-status {
+        font-size: 0.74rem;
+        color: #64748b;
+        min-height: 16px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 1280px) {
+        .checklist-task-card-top {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 980px) {
         .checklist-admin-grid,
         .checklist-admin-grid-3,
         .checklist-admin-toolbar-grid,
-        .checklist-admin-command {
+        .checklist-admin-command,
+        .checklist-task-card-top {
             grid-template-columns: 1fr;
         }
 
         .checklist-admin-chip-row,
         .checklist-admin-toolbar-stats {
             justify-content: flex-start;
+        }
+
+        .checklist-task-card-bottom {
+            align-items: flex-start;
+            flex-direction: column;
         }
     }
 </style>
@@ -511,7 +581,7 @@
                 <div>
                     <h3>Checklist Template</h3>
                     <div class="checklist-admin-muted">
-                        Filter or search the template below. Each card still saves independently.
+                        Auto-save is on. Text fields save when you leave them. Checkboxes save instantly.
                     </div>
                 </div>
                 <span class="summary-pill">{{ items|length }} Items</span>
@@ -552,86 +622,87 @@
 
             <div class="checklist-admin-list" id="admin-task-list">
                 {% for item in items %}
-                <form
-                    method="POST"
-                    class="admin-task-card checklist-task-card"
+                <div
+                    class="checklist-task-card ajax-task-card"
+                    id="task-card-{{ item.id }}"
+                    data-item-id="{{ item.id }}"
                     data-section="{{ item.section_name }}"
                     data-task-text="{{ item.task_text|lower }}"
+                    data-last-saved-section="{{ item.section_name }}"
+                    data-last-saved-task-text="{{ item.task_text }}"
+                    data-last-saved-expected-minutes="{{ item.expected_minutes }}"
+                    data-last-saved-sort-order="{{ item.sort_order }}"
+                    data-last-saved-is-required="{{ 1 if item.is_required else 0 }}"
+                    data-last-saved-is-active="{{ 1 if item.is_active else 0 }}"
                 >
-                    <input type="hidden" name="action" value="update">
-                    <input type="hidden" name="item_id" value="{{ item.id }}">
-
-                    <div class="checklist-task-card-head">
-                        <div>
-                            <div class="checklist-task-card-title">Template Item</div>
-                            <div class="checklist-task-card-subtitle">
-                                ID {{ item.id }} • {{ item.section_name }}
-                            </div>
+                    <div class="checklist-task-card-top">
+                        <div class="form-group">
+                            <label>Section</label>
+                            <select class="task-section-input">
+                                {% for section in section_options %}
+                                <option value="{{ section }}" {% if item.section_name == section %}selected{% endif %}>
+                                    {{ section }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
 
-                        <div class="checklist-task-card-meta">
+                        <div class="form-group">
+                            <label>Task Text</label>
+                            <input
+                                type="text"
+                                class="task-text-input"
+                                value="{{ item.task_text }}"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>Expected Min</label>
+                            <input type="number" class="task-expected-input" value="{{ item.expected_minutes }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Sort</label>
+                            <input type="number" class="task-sort-input" value="{{ item.sort_order }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Required</label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" class="task-required-input" {% if item.is_required %}checked{% endif %}>
+                                Yes
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Active</label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" class="task-active-input" {% if item.is_active %}checked{% endif %}>
+                                Yes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="checklist-task-card-bottom">
+                        <div class="checklist-task-header-mini">
+                            <span class="checklist-task-id">ID {{ item.id }}</span>
+
                             {% if item.is_active %}
-                            <span class="table-badge badge-success">Active</span>
+                            <span class="table-badge badge-success task-active-badge">Active</span>
                             {% else %}
-                            <span class="table-badge badge-neutral">Inactive</span>
+                            <span class="table-badge badge-neutral task-active-badge">Inactive</span>
                             {% endif %}
 
                             {% if item.is_required %}
-                            <span class="table-badge badge-danger">Required</span>
+                            <span class="table-badge badge-danger task-required-badge">Required</span>
                             {% else %}
-                            <span class="table-badge badge-neutral">Optional</span>
+                            <span class="table-badge badge-neutral task-required-badge">Optional</span>
                             {% endif %}
                         </div>
+
+                        <div class="save-status" aria-live="polite"></div>
                     </div>
-
-                    <div class="checklist-task-card-body">
-                        <div class="checklist-admin-grid">
-                            <div class="form-group">
-                                <label>Section</label>
-                                <select name="section_name" required>
-                                    {% for section in section_options %}
-                                    <option value="{{ section }}" {% if item.section_name == section %}selected{% endif %}>
-                                        {{ section }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Task Text</label>
-                                <input type="text" name="task_text" value="{{ item.task_text }}" required>
-                            </div>
-                        </div>
-
-                        <div class="checklist-admin-grid">
-                            <div class="form-group">
-                                <label>Expected Minutes</label>
-                                <input type="number" name="expected_minutes" value="{{ item.expected_minutes }}" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Sort Order</label>
-                                <input type="number" name="sort_order" value="{{ item.sort_order }}" required>
-                            </div>
-                        </div>
-
-                        <div class="checklist-task-flags">
-                            <label class="checkbox-inline">
-                                <input type="checkbox" name="is_required" {% if item.is_required %}checked{% endif %}>
-                                Required
-                            </label>
-
-                            <label class="checkbox-inline">
-                                <input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}>
-                                Active
-                            </label>
-                        </div>
-
-                        <div class="admin-check-row compact-actions">
-                            <button type="submit" class="btn-primary">Save Task</button>
-                        </div>
-                    </div>
-                </form>
+                </div>
                 {% else %}
                 <div class="checklist-empty-state">
                     No checklist template items found.
@@ -647,7 +718,93 @@ document.addEventListener("DOMContentLoaded", function () {
     const sectionFilter = document.getElementById("section_filter");
     const taskSearch = document.getElementById("task_search");
     const visibleTaskCount = document.getElementById("visible_task_count");
-    const taskCards = document.querySelectorAll(".admin-task-card[data-section]");
+    const taskCards = document.querySelectorAll(".ajax-task-card[data-section]");
+    const STORAGE_KEY_SEARCH = "trueops_checklist_admin_search";
+    const STORAGE_KEY_FILTER = "trueops_checklist_admin_filter";
+
+    if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+    }
+
+    function getCardState(card) {
+        return {
+            section_name: card.querySelector(".task-section-input")?.value || "",
+            task_text: card.querySelector(".task-text-input")?.value || "",
+            expected_minutes: card.querySelector(".task-expected-input")?.value || "0",
+            sort_order: card.querySelector(".task-sort-input")?.value || "999",
+            is_required: card.querySelector(".task-required-input")?.checked ? "1" : "0",
+            is_active: card.querySelector(".task-active-input")?.checked ? "1" : "0"
+        };
+    }
+
+    function getSavedState(card) {
+        return {
+            section_name: card.dataset.lastSavedSection || "",
+            task_text: card.dataset.lastSavedTaskText || "",
+            expected_minutes: card.dataset.lastSavedExpectedMinutes || "0",
+            sort_order: card.dataset.lastSavedSortOrder || "999",
+            is_required: card.dataset.lastSavedIsRequired || "0",
+            is_active: card.dataset.lastSavedIsActive || "0"
+        };
+    }
+
+    function updateSavedState(card, state) {
+        card.dataset.lastSavedSection = state.section_name;
+        card.dataset.lastSavedTaskText = state.task_text;
+        card.dataset.lastSavedExpectedMinutes = state.expected_minutes;
+        card.dataset.lastSavedSortOrder = state.sort_order;
+        card.dataset.lastSavedIsRequired = state.is_required;
+        card.dataset.lastSavedIsActive = state.is_active;
+    }
+
+    function cardHasChanges(card) {
+        const current = getCardState(card);
+        const saved = getSavedState(card);
+
+        return (
+            current.section_name !== saved.section_name ||
+            current.task_text !== saved.task_text ||
+            current.expected_minutes !== saved.expected_minutes ||
+            current.sort_order !== saved.sort_order ||
+            current.is_required !== saved.is_required ||
+            current.is_active !== saved.is_active
+        );
+    }
+
+    function setCardData(card) {
+        const state = getCardState(card);
+        const requiredBadge = card.querySelector(".task-required-badge");
+        const activeBadge = card.querySelector(".task-active-badge");
+
+        card.setAttribute("data-section", state.section_name);
+        card.setAttribute("data-task-text", state.task_text.toLowerCase());
+
+        if (requiredBadge) {
+            if (state.is_required === "1") {
+                requiredBadge.textContent = "Required";
+                requiredBadge.className = "table-badge badge-danger task-required-badge";
+            } else {
+                requiredBadge.textContent = "Optional";
+                requiredBadge.className = "table-badge badge-neutral task-required-badge";
+            }
+        }
+
+        if (activeBadge) {
+            if (state.is_active === "1") {
+                activeBadge.textContent = "Active";
+                activeBadge.className = "table-badge badge-success task-active-badge";
+            } else {
+                activeBadge.textContent = "Inactive";
+                activeBadge.className = "table-badge badge-neutral task-active-badge";
+            }
+        }
+
+        if (cardHasChanges(card)) {
+            card.classList.add("is-dirty");
+        } else {
+            card.classList.remove("is-dirty");
+        }
+    }
 
     function applyTaskFilters() {
         const selectedSection = sectionFilter ? sectionFilter.value : "all";
@@ -668,7 +825,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 section.includes(searchValue);
 
             const shouldShow = matchesSection && matchesSearch;
-
             card.style.display = shouldShow ? "" : "none";
 
             if (shouldShow) {
@@ -679,15 +835,168 @@ document.addEventListener("DOMContentLoaded", function () {
         if (visibleTaskCount) {
             visibleTaskCount.textContent = visibleCount;
         }
+
+        try {
+            localStorage.setItem(STORAGE_KEY_FILTER, selectedSection);
+            localStorage.setItem(STORAGE_KEY_SEARCH, taskSearch ? taskSearch.value : "");
+        } catch (error) {
+            console.warn("Could not save filter state", error);
+        }
+    }
+
+    async function saveCard(card) {
+        if (card.dataset.saving === "1") {
+            return;
+        }
+
+        if (!cardHasChanges(card)) {
+            const saveStatus = card.querySelector(".save-status");
+            if (saveStatus) {
+                saveStatus.textContent = "";
+            }
+            return;
+        }
+
+        const saveStatus = card.querySelector(".save-status");
+        const itemId = card.getAttribute("data-item-id");
+        const state = getCardState(card);
+
+        const formData = new FormData();
+        formData.append("action", "update");
+        formData.append("item_id", itemId);
+        formData.append("section_name", state.section_name);
+        formData.append("task_text", state.task_text);
+        formData.append("expected_minutes", state.expected_minutes);
+        formData.append("sort_order", state.sort_order);
+
+        if (state.is_required === "1") {
+            formData.append("is_required", "on");
+        }
+
+        if (state.is_active === "1") {
+            formData.append("is_active", "on");
+        }
+
+        card.dataset.saving = "1";
+        card.classList.remove("is-saved");
+        card.classList.add("is-saving");
+
+        if (saveStatus) {
+            saveStatus.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch(window.location.pathname + window.location.search, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
+            updateSavedState(card, state);
+            setCardData(card);
+            applyTaskFilters();
+
+            card.classList.remove("is-saving");
+            card.classList.add("is-saved");
+
+            if (saveStatus) {
+                saveStatus.textContent = "Saved";
+            }
+
+            window.setTimeout(function () {
+                card.classList.remove("is-saved");
+                if (saveStatus && saveStatus.textContent === "Saved") {
+                    saveStatus.textContent = "";
+                }
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            card.classList.remove("is-saving");
+
+            if (saveStatus) {
+                saveStatus.textContent = "Save failed. Refresh and try again.";
+            }
+        } finally {
+            card.dataset.saving = "0";
+        }
+    }
+
+    function queueSave(card, delay) {
+        if (card._saveTimer) {
+            clearTimeout(card._saveTimer);
+        }
+
+        card._saveTimer = setTimeout(function () {
+            saveCard(card);
+        }, delay);
     }
 
     if (sectionFilter) {
+        const savedFilter = localStorage.getItem(STORAGE_KEY_FILTER);
+        if (savedFilter) {
+            sectionFilter.value = savedFilter;
+        }
+
         sectionFilter.addEventListener("change", applyTaskFilters);
     }
 
     if (taskSearch) {
+        const savedSearch = localStorage.getItem(STORAGE_KEY_SEARCH);
+        if (savedSearch) {
+            taskSearch.value = savedSearch;
+        }
+
         taskSearch.addEventListener("input", applyTaskFilters);
     }
+
+    taskCards.forEach(function (card) {
+        setCardData(card);
+
+        const sectionInput = card.querySelector(".task-section-input");
+        const taskTextInput = card.querySelector(".task-text-input");
+        const expectedInput = card.querySelector(".task-expected-input");
+        const sortInput = card.querySelector(".task-sort-input");
+        const requiredInput = card.querySelector(".task-required-input");
+        const activeInput = card.querySelector(".task-active-input");
+
+        [sectionInput, taskTextInput, expectedInput, sortInput].forEach(function (input) {
+            if (!input) return;
+
+            input.addEventListener("input", function () {
+                setCardData(card);
+                applyTaskFilters();
+            });
+
+            input.addEventListener("blur", function () {
+                setCardData(card);
+                applyTaskFilters();
+                queueSave(card, 150);
+            });
+
+            input.addEventListener("change", function () {
+                setCardData(card);
+                applyTaskFilters();
+                queueSave(card, 150);
+            });
+        });
+
+        [requiredInput, activeInput].forEach(function (input) {
+            if (!input) return;
+
+            input.addEventListener("change", function () {
+                setCardData(card);
+                applyTaskFilters();
+                queueSave(card, 0);
+            });
+        });
+    });
 
     applyTaskFilters();
 });

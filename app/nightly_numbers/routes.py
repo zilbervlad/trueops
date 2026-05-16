@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
 from app.auth.routes import login_required, role_required
@@ -7,6 +9,9 @@ from app.models import NightlyNumbersReport, NightlyNumbersFieldConfig, Store, U
 from app.services.email_service import send_email
 
 nightly_numbers_bp = Blueprint("nightly_numbers", __name__, url_prefix="/nightly-numbers")
+
+APP_TZ = ZoneInfo("America/New_York")
+BUSINESS_DAY_CUTOFF_HOUR = 5
 
 DEFAULT_FIELD_CONFIG = [
     {
@@ -158,6 +163,13 @@ FIELD_META = {
 
 def current_company_id():
     return session.get("current_company_id")
+
+
+def current_business_date():
+    now_et = datetime.now(APP_TZ)
+    if now_et.hour < BUSINESS_DAY_CUTOFF_HOUR:
+        return now_et.date() - timedelta(days=1)
+    return now_et.date()
 
 
 def ensure_field_config_seeded():
@@ -375,10 +387,11 @@ def index():
         return redirect(url_for("dashboard.home"))
 
     fields = get_field_config()
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    business_date = current_business_date()
+    today_str = business_date.strftime("%Y-%m-%d")
 
     if request.method == "POST":
-        report_date_str = request.form.get("report_date", "").strip()
+        report_date_str = request.form.get("report_date", "").strip() or today_str
 
         try:
             report_date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
@@ -421,7 +434,7 @@ def index():
     if not reset:
         existing_report = NightlyNumbersReport.query.filter_by(
             store_number=user_store,
-            report_date=datetime.strptime(today_str, "%Y-%m-%d").date()
+            report_date=business_date
         ).first()
 
     field_values = {}

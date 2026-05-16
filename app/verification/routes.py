@@ -390,7 +390,6 @@ def view_report(report_id):
 @role_required("admin", "supervisor")
 def new_report():
     stores = get_supervisor_stores()
-    ensure_default_template()
 
     if not stores:
         flash("No stores available for verification.", "error")
@@ -494,8 +493,6 @@ def new_report():
 @login_required
 @role_required("admin")
 def admin():
-    ensure_default_template()
-
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
 
@@ -531,6 +528,19 @@ def admin():
             )
             db.session.commit()
             flash("Verification field created.", "success")
+            return redirect(url_for("verification.admin"))
+
+        if action == "delete":
+            field_id = (request.form.get("field_id") or "").strip()
+            field = VerificationTemplateField.query.get(field_id)
+
+            if not field:
+                flash("Field not found.", "error")
+                return redirect(url_for("verification.admin"))
+
+            db.session.delete(field)
+            db.session.commit()
+            flash("Verification field deleted.", "success")
             return redirect(url_for("verification.admin"))
 
         if action == "update":

@@ -1,23 +1,369 @@
 {% extends "base.html" %}
 
-{% block title %}Nightly Numbers Admin | BPI Ops{% endblock %}
+{% block title %}Nightly Numbers Admin | TrueOps{% endblock %}
 {% block header %}Nightly Numbers Admin{% endblock %}
 
 {% block content %}
-<div class="content-grid">
-    <section class="panel">
-        <h3>Nightly Form Settings</h3>
-        <p class="subtitle" style="margin-top: 0;">
-            Control which fields managers see on the nightly numbers form.
-        </p>
+<style>
+    .nightly-admin-page {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
 
-        {% if session.get("user_role") == "admin" %}
-        <form method="POST" class="login-form">
-            <div class="admin-task-list">
+    .nightly-admin-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 14px;
+        align-items: start;
+    }
+
+    .nightly-admin-panel {
+        padding: 14px;
+    }
+
+    .nightly-admin-panel h3 {
+        margin-top: 0;
+        margin-bottom: 6px;
+        color: #0f172a;
+    }
+
+    .nightly-admin-muted {
+        margin-top: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.35;
+    }
+
+    .nightly-airtable-wrap {
+        margin-top: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+
+    .nightly-airtable-head,
+    .nightly-airtable-row {
+        display: grid;
+        grid-template-columns: 150px minmax(220px, 1fr) 120px 120px 120px;
+        gap: 0;
+        align-items: stretch;
+    }
+
+    .nightly-airtable-head {
+        background: rgba(248, 250, 252, 0.96);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .nightly-airtable-head-cell {
+        padding: 10px 12px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+        border-right: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .nightly-airtable-head-cell:last-child {
+        border-right: none;
+    }
+
+    .nightly-airtable-row {
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .nightly-airtable-row:last-child {
+        border-bottom: none;
+    }
+
+    .nightly-airtable-row:hover {
+        background: rgba(248, 250, 252, 0.88);
+    }
+
+    .nightly-airtable-row.is-dirty {
+        background: rgba(245, 158, 11, 0.06);
+        box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.55);
+    }
+
+    .nightly-airtable-row.is-saving {
+        opacity: 0.82;
+    }
+
+    .nightly-airtable-row.is-saved {
+        background: rgba(22, 163, 74, 0.06);
+        box-shadow: inset 3px 0 0 rgba(22, 163, 74, 0.5);
+    }
+
+    .nightly-airtable-cell {
+        padding: 8px 10px;
+        border-right: 1px solid rgba(15, 23, 42, 0.06);
+        display: flex;
+        align-items: center;
+        min-height: 52px;
+    }
+
+    .nightly-airtable-cell:last-child {
+        border-right: none;
+    }
+
+    .nightly-field-key {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .nightly-key-text {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+
+    .nightly-key-type {
+        font-size: 0.72rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .nightly-inline-input {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        background: rgba(255, 255, 255, 0.98);
+        color: #0f172a;
+        font-size: 0.88rem;
+        transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .nightly-inline-input:focus {
+        outline: none;
+        border-color: rgba(37, 99, 235, 0.35);
+        background: rgba(255, 255, 255, 1);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+
+    .nightly-toggle-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .nightly-checkbox-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.84rem;
+        color: #334155;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+
+    .nightly-checkbox-inline input[type="checkbox"] {
+        accent-color: #2563eb;
+    }
+
+    .nightly-status {
+        justify-content: center;
+        font-size: 0.76rem;
+        color: #64748b;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .nightly-readonly-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .nightly-readonly-card {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .nightly-readonly-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .nightly-report-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .nightly-report-card {
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    .nightly-report-top {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .nightly-report-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .nightly-value-card {
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(248, 250, 252, 0.82);
+        border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .nightly-value-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 4px;
+        font-weight: 700;
+    }
+
+    .nightly-value-text {
+        color: #0f172a;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .nightly-empty {
+        padding: 14px;
+        border-radius: 12px;
+        text-align: center;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.82);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
+    }
+
+    @media (max-width: 1180px) {
+        .nightly-admin-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 980px) {
+        .nightly-airtable-wrap {
+            overflow-x: auto;
+        }
+
+        .nightly-airtable-head,
+        .nightly-airtable-row {
+            min-width: 720px;
+        }
+
+        .nightly-report-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="nightly-admin-page">
+    <div class="nightly-admin-grid">
+        <section class="panel nightly-admin-panel">
+            <h3>Nightly Form Settings</h3>
+            <p class="nightly-admin-muted">
+                Control which fields managers see on the nightly numbers form.
+                {% if session.get("user_role") == "admin" %}
+                Auto-save is on.
+                {% endif %}
+            </p>
+
+            {% if session.get("user_role") == "admin" %}
+            <div class="nightly-airtable-wrap">
+                <div class="nightly-airtable-head">
+                    <div class="nightly-airtable-head-cell">Field</div>
+                    <div class="nightly-airtable-head-cell">Label</div>
+                    <div class="nightly-airtable-head-cell">Enabled</div>
+                    <div class="nightly-airtable-head-cell">Required</div>
+                    <div class="nightly-airtable-head-cell">Status</div>
+                </div>
+
                 {% for field in fields %}
-                <div class="admin-task-card">
-                    <div class="admin-task-top">
-                        <span class="summary-pill">{{ field.field_key }}</span>
+                <div
+                    class="nightly-airtable-row ajax-nightly-row"
+                    data-field-id="{{ field.id }}"
+                    data-last-saved-label="{{ field.field_label }}"
+                    data-last-saved-enabled="{{ 1 if field.is_enabled else 0 }}"
+                    data-last-saved-required="{{ 1 if field.is_required else 0 }}"
+                >
+                    <div class="nightly-airtable-cell">
+                        <div class="nightly-field-key">
+                            <div class="nightly-key-text">{{ field.field_key }}</div>
+                            <div class="nightly-key-type">{{ field.field_type|title }}</div>
+                        </div>
+                    </div>
+
+                    <div class="nightly-airtable-cell">
+                        <input
+                            type="text"
+                            class="nightly-inline-input nightly-label-input"
+                            value="{{ field.field_label }}"
+                        >
+                    </div>
+
+                    <div class="nightly-airtable-cell">
+                        <div class="nightly-toggle-wrap">
+                            <label class="nightly-checkbox-inline">
+                                <input
+                                    type="checkbox"
+                                    class="nightly-enabled-input"
+                                    {% if field.is_enabled %}checked{% endif %}
+                                >
+                                Yes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="nightly-airtable-cell">
+                        <div class="nightly-toggle-wrap">
+                            <label class="nightly-checkbox-inline">
+                                <input
+                                    type="checkbox"
+                                    class="nightly-required-input"
+                                    {% if field.is_required %}checked{% endif %}
+                                >
+                                Yes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="nightly-airtable-cell nightly-status" aria-live="polite"></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="nightly-readonly-list">
+                {% for field in fields %}
+                <div class="nightly-readonly-card">
+                    <div class="nightly-readonly-top">
+                        <span class="summary-pill">{{ field.field_label }}</span>
 
                         {% if field.is_enabled %}
                         <span class="table-badge badge-success">Enabled</span>
@@ -30,107 +376,51 @@
                         {% else %}
                         <span class="table-badge badge-neutral">Optional</span>
                         {% endif %}
-
-                        <span class="table-badge badge-neutral">{{ field.field_type|title }}</span>
                     </div>
 
-                    <div class="form-group">
-                        <label for="label_{{ field.id }}">Field Label</label>
-                        <input
-                            type="text"
-                            id="label_{{ field.id }}"
-                            name="label_{{ field.id }}"
-                            value="{{ field.field_label }}"
-                        >
-                    </div>
-
-                    <div class="admin-check-row">
-                        <label class="checkbox-inline">
-                            <input
-                                type="checkbox"
-                                name="enabled_{{ field.id }}"
-                                {% if field.is_enabled %}checked{% endif %}
-                            >
-                            Enabled
-                        </label>
-
-                        <label class="checkbox-inline">
-                            <input
-                                type="checkbox"
-                                name="required_{{ field.id }}"
-                                {% if field.is_required %}checked{% endif %}
-                            >
-                            Required
-                        </label>
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Field Key</div>
+                        <div class="nightly-value-text">{{ field.field_key }}</div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
+        </section>
 
-            <button type="submit" class="btn-primary">Save Form Settings</button>
-        </form>
-        {% else %}
-        <div class="admin-task-list">
-            {% for field in fields %}
-            <div class="admin-task-card">
-                <div class="admin-task-top">
-                    <span class="summary-pill">{{ field.field_label }}</span>
+        <section class="panel nightly-admin-panel">
+            <h3>Filter Reports</h3>
 
-                    {% if field.is_enabled %}
-                    <span class="table-badge badge-success">Enabled</span>
-                    {% else %}
-                    <span class="table-badge badge-neutral">Hidden</span>
-                    {% endif %}
-
-                    {% if field.is_required %}
-                    <span class="table-badge badge-danger">Required</span>
-                    {% else %}
-                    <span class="table-badge badge-neutral">Optional</span>
-                    {% endif %}
+            <form method="GET" class="login-form">
+                <div class="form-group">
+                    <label for="store">Store</label>
+                    <select id="store" name="store">
+                        <option value="">All Visible Stores</option>
+                        {% for store in stores %}
+                        <option value="{{ store.store_number }}" {% if selected_store == store.store_number %}selected{% endif %}>
+                            {{ store.store_number }}{% if store.store_name %} - {{ store.store_name }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
-                <div class="svr-value-card">
-                    <div class="svr-value-label">Field Key</div>
-                    <div class="svr-value-text">{{ field.field_key }}</div>
+                <div class="form-group">
+                    <label for="date">Report Date</label>
+                    <input type="date" id="date" name="date" value="{{ selected_date }}">
                 </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </section>
 
-    <section class="panel">
-        <h3>Filter Reports</h3>
+                <button type="submit" class="btn-primary">Apply Filters</button>
+            </form>
+        </section>
+    </div>
 
-        <form method="GET" class="login-form">
-            <div class="form-group">
-                <label for="store">Store</label>
-                <select id="store" name="store">
-                    <option value="">All Visible Stores</option>
-                    {% for store in stores %}
-                    <option value="{{ store.store_number }}" {% if selected_store == store.store_number %}selected{% endif %}>
-                        {{ store.store_number }}{% if store.store_name %} - {{ store.store_name }}{% endif %}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="date">Report Date</label>
-                <input type="date" id="date" name="date" value="{{ selected_date }}">
-            </div>
-
-            <button type="submit" class="btn-primary">Apply Filters</button>
-        </form>
-    </section>
-
-    <section class="panel">
+    <section class="panel nightly-admin-panel">
         <h3>Submitted Reports</h3>
 
-        <div class="admin-task-list">
+        <div class="nightly-report-list">
             {% for report in reports %}
-            <div class="admin-task-card">
-                <div class="admin-task-top">
+            <div class="nightly-report-card">
+                <div class="nightly-report-top">
                     <span class="summary-pill">Store {{ report.store_number }}</span>
                     <span class="summary-pill">{{ report.report_date.strftime('%b %d, %Y') }}</span>
 
@@ -155,98 +445,98 @@
                     {% endif %}
                 </div>
 
-                <div class="admin-task-grid compact-grid">
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Manager</div>
-                        <div class="svr-value-text">{{ report.manager_name or "Not provided" }}</div>
+                <div class="nightly-report-grid">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Manager</div>
+                        <div class="nightly-value-text">{{ report.manager_name or "Not provided" }}</div>
                     </div>
 
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Royalty Sales</div>
-                        <div class="svr-value-text">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Royalty Sales</div>
+                        <div class="nightly-value-text">
                             {{ report.royalty_sales if report.royalty_sales is not none else "Not provided" }}
                         </div>
                     </div>
                 </div>
 
-                <div class="admin-task-grid compact-grid">
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Variable Labor / Goal</div>
-                        <div class="svr-value-text">
+                <div class="nightly-report-grid">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Variable Labor / Goal</div>
+                        <div class="nightly-value-text">
                             {{ report.variable_labor if report.variable_labor is not none else "N/A" }}
                             /
                             {{ report.labor_goal if report.labor_goal is not none else "N/A" }}
                         </div>
                     </div>
 
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Food Variance</div>
-                        <div class="svr-value-text">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Food Variance</div>
+                        <div class="nightly-value-text">
                             {{ report.food_variance if report.food_variance is not none else "Not provided" }}
                         </div>
                     </div>
                 </div>
 
-                <div class="admin-task-grid compact-grid">
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">ADT</div>
-                        <div class="svr-value-text">
+                <div class="nightly-report-grid">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">ADT</div>
+                        <div class="nightly-value-text">
                             {{ report.adt if report.adt is not none else "Not provided" }}
                         </div>
                     </div>
 
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Load Time</div>
-                        <div class="svr-value-text">{{ report.load_time or "Not provided" }}</div>
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Load Time</div>
+                        <div class="nightly-value-text">{{ report.load_time or "Not provided" }}</div>
                     </div>
                 </div>
 
-                <div class="admin-task-grid compact-grid">
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Cash +/-</div>
-                        <div class="svr-value-text">
+                <div class="nightly-report-grid">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Cash +/-</div>
+                        <div class="nightly-value-text">
                             {{ report.cash_diff if report.cash_diff is not none else "Not provided" }}
                         </div>
                     </div>
 
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Invoices / Transfers Checked</div>
-                        <div class="svr-value-text">{{ "Yes" if report.invoices_transfers_checked else "No" }}</div>
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Invoices / Transfers Checked</div>
+                        <div class="nightly-value-text">{{ "Yes" if report.invoices_transfers_checked else "No" }}</div>
                     </div>
                 </div>
 
-                <div class="admin-task-grid compact-grid">
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Food Order Placed</div>
-                        <div class="svr-value-text">{{ "Yes" if report.food_order_placed else "No" }}</div>
+                <div class="nightly-report-grid">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Food Order Placed</div>
+                        <div class="nightly-value-text">{{ "Yes" if report.food_order_placed else "No" }}</div>
                     </div>
 
-                    <div class="svr-value-card">
-                        <div class="svr-value-label">Created</div>
-                        <div class="svr-value-text">
+                    <div class="nightly-value-card">
+                        <div class="nightly-value-label">Created</div>
+                        <div class="nightly-value-text">
                             {{ report.created_at.strftime('%b %d, %Y %I:%M %p') if report.created_at else "N/A" }}
                         </div>
                     </div>
                 </div>
 
                 {% if report.food_variance_details %}
-                <div class="svr-value-card">
-                    <div class="svr-value-label">Food Variance Details</div>
-                    <div class="svr-value-text">{{ report.food_variance_details }}</div>
+                <div class="nightly-value-card" style="margin-bottom: 8px;">
+                    <div class="nightly-value-label">Food Variance Details</div>
+                    <div class="nightly-value-text">{{ report.food_variance_details }}</div>
                 </div>
                 {% endif %}
 
                 {% if report.adt_reason %}
-                <div class="svr-value-card">
-                    <div class="svr-value-label">ADT Reason</div>
-                    <div class="svr-value-text">{{ report.adt_reason }}</div>
+                <div class="nightly-value-card" style="margin-bottom: 8px;">
+                    <div class="nightly-value-label">ADT Reason</div>
+                    <div class="nightly-value-text">{{ report.adt_reason }}</div>
                 </div>
                 {% endif %}
 
                 {% if report.bad_orders %}
-                <div class="svr-value-card">
-                    <div class="svr-value-label">Bad Orders</div>
-                    <div class="svr-value-text">{{ report.bad_orders }}</div>
+                <div class="nightly-value-card" style="margin-bottom: 8px;">
+                    <div class="nightly-value-label">Bad Orders</div>
+                    <div class="nightly-value-text">{{ report.bad_orders }}</div>
                 </div>
                 {% endif %}
 
@@ -259,11 +549,182 @@
                 {% endif %}
             </div>
             {% else %}
-            <div class="admin-task-card">
+            <div class="nightly-empty">
                 No nightly numbers reports found for the selected filters.
             </div>
             {% endfor %}
         </div>
     </section>
 </div>
+
+{% if session.get("user_role") == "admin" %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll(".ajax-nightly-row");
+
+    function getRowState(row) {
+        return {
+            field_label: row.querySelector(".nightly-label-input")?.value || "",
+            is_enabled: row.querySelector(".nightly-enabled-input")?.checked ? "1" : "0",
+            is_required: row.querySelector(".nightly-required-input")?.checked ? "1" : "0"
+        };
+    }
+
+    function getSavedState(row) {
+        return {
+            field_label: row.dataset.lastSavedLabel || "",
+            is_enabled: row.dataset.lastSavedEnabled || "0",
+            is_required: row.dataset.lastSavedRequired || "0"
+        };
+    }
+
+    function updateSavedState(row, state) {
+        row.dataset.lastSavedLabel = state.field_label;
+        row.dataset.lastSavedEnabled = state.is_enabled;
+        row.dataset.lastSavedRequired = state.is_required;
+    }
+
+    function rowHasChanges(row) {
+        const current = getRowState(row);
+        const saved = getSavedState(row);
+
+        return (
+            current.field_label !== saved.field_label ||
+            current.is_enabled !== saved.is_enabled ||
+            current.is_required !== saved.is_required
+        );
+    }
+
+    function updateRowVisuals(row) {
+        if (rowHasChanges(row)) {
+            row.classList.add("is-dirty");
+        } else {
+            row.classList.remove("is-dirty");
+        }
+    }
+
+    async function saveRow(row) {
+        if (row.dataset.saving === "1") {
+            return;
+        }
+
+        if (!rowHasChanges(row)) {
+            const status = row.querySelector(".nightly-status");
+            if (status) {
+                status.textContent = "";
+            }
+            return;
+        }
+
+        const fieldId = row.getAttribute("data-field-id");
+        const status = row.querySelector(".nightly-status");
+        const state = getRowState(row);
+
+        const formData = new FormData();
+        formData.append("action", "update_single_field");
+        formData.append("field_id", fieldId);
+        formData.append("field_label", state.field_label);
+        formData.append("is_enabled", state.is_enabled);
+        formData.append("is_required", state.is_required);
+
+        row.dataset.saving = "1";
+        row.classList.remove("is-saved");
+        row.classList.add("is-saving");
+
+        if (status) {
+            status.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch(window.location.pathname + window.location.search, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
+            updateSavedState(row, state);
+            updateRowVisuals(row);
+
+            row.classList.remove("is-saving");
+            row.classList.add("is-saved");
+
+            if (status) {
+                status.textContent = "Saved";
+            }
+
+            window.setTimeout(function () {
+                row.classList.remove("is-saved");
+                if (status && status.textContent === "Saved") {
+                    status.textContent = "";
+                }
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            row.classList.remove("is-saving");
+
+            if (status) {
+                status.textContent = "Save failed";
+            }
+        } finally {
+            row.dataset.saving = "0";
+        }
+    }
+
+    function queueSave(row, delay) {
+        if (row._saveTimer) {
+            clearTimeout(row._saveTimer);
+        }
+
+        row._saveTimer = setTimeout(function () {
+            saveRow(row);
+        }, delay);
+    }
+
+    rows.forEach(function (row) {
+        updateRowVisuals(row);
+
+        const labelInput = row.querySelector(".nightly-label-input");
+        const enabledInput = row.querySelector(".nightly-enabled-input");
+        const requiredInput = row.querySelector(".nightly-required-input");
+
+        if (labelInput) {
+            labelInput.addEventListener("input", function () {
+                updateRowVisuals(row);
+            });
+
+            labelInput.addEventListener("blur", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+
+            labelInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+        }
+
+        if (enabledInput) {
+            enabledInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+
+        if (requiredInput) {
+            requiredInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

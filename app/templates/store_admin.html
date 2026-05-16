@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Store Admin | BPI Ops{% endblock %}
+{% block title %}Store Admin | TrueOps{% endblock %}
 {% block header %}Store Admin{% endblock %}
 
 {% block content %}
@@ -67,99 +67,152 @@
 </div>
 
 <style>
-    .store-card-list {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-    }
-
-    .store-card {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.03);
+    .store-airtable-wrap {
+        margin-top: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
         overflow: hidden;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
-    .store-card-summary {
-        width: 100%;
-        background: transparent;
-        border: none;
-        color: inherit;
-        cursor: pointer;
-        padding: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        text-align: left;
+    .store-airtable-head,
+    .store-airtable-row {
+        display: grid;
+        grid-template-columns: 80px 140px minmax(220px, 1fr) 200px 120px 120px;
+        gap: 0;
+        align-items: stretch;
     }
 
-    .store-card-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        flex: 1;
-        min-width: 0;
+    .store-airtable-head {
+        background: rgba(248, 250, 252, 0.96);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
     }
 
-    .store-name-wrap {
-        min-width: 0;
-    }
-
-    .store-name-main {
+    .store-airtable-head-cell {
+        padding: 10px 12px;
+        font-size: 0.76rem;
         font-weight: 800;
-        font-size: 15px;
-        line-height: 1.2;
-        margin-bottom: 2px;
-        word-break: break-word;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #64748b;
+        border-right: 1px solid rgba(15, 23, 42, 0.06);
     }
 
-    .store-name-sub {
-        font-size: 12px;
-        opacity: 0.72;
-        line-height: 1.25;
-        word-break: break-word;
+    .store-airtable-head-cell:last-child {
+        border-right: none;
     }
 
-    .store-card-right {
+    .store-airtable-row {
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        transition: background 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .store-airtable-row:last-child {
+        border-bottom: none;
+    }
+
+    .store-airtable-row:hover {
+        background: rgba(248, 250, 252, 0.88);
+    }
+
+    .store-airtable-row.is-dirty {
+        background: rgba(245, 158, 11, 0.06);
+        box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.5);
+    }
+
+    .store-airtable-row.is-saving {
+        opacity: 0.82;
+    }
+
+    .store-airtable-row.is-saved {
+        background: rgba(22, 163, 74, 0.06);
+        box-shadow: inset 3px 0 0 rgba(22, 163, 74, 0.5);
+    }
+
+    .store-airtable-cell {
+        padding: 8px 10px;
+        border-right: 1px solid rgba(15, 23, 42, 0.06);
         display: flex;
+        align-items: center;
+        min-height: 54px;
+    }
+
+    .store-airtable-cell:last-child {
+        border-right: none;
+    }
+
+    .store-id-text {
+        font-size: 0.84rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .store-inline-input {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        background: rgba(255, 255, 255, 0.98);
+        color: #0f172a;
+        font-size: 0.88rem;
+        transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .store-inline-input:focus {
+        outline: none;
+        border-color: rgba(37, 99, 235, 0.35);
+        background: rgba(255, 255, 255, 1);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+
+    .store-checkbox-wrap {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .store-checkbox-inline {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
+        font-size: 0.84rem;
+        color: #334155;
+        white-space: nowrap;
+        font-weight: 600;
     }
 
-    .store-card-body {
-        display: none;
-        padding: 0 18px 18px 18px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    .store-checkbox-inline input[type="checkbox"] {
+        accent-color: #2563eb;
     }
 
-    .store-section-label {
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        opacity: 0.72;
-        margin-bottom: 10px;
-        margin-top: 14px;
-    }
-
-    .store-expand-chip {
-        min-width: 88px;
+    .store-status-cell {
+        justify-content: center;
+        font-size: 0.76rem;
+        color: #64748b;
         text-align: center;
+        font-weight: 600;
     }
 
-    @media (max-width: 900px) {
-        .store-card-summary {
-            align-items: flex-start;
-            flex-direction: column;
+    .store-empty-state {
+        padding: 16px;
+        text-align: center;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
+    }
+
+    @media (max-width: 1100px) {
+        .store-airtable-wrap {
+            overflow-x: auto;
         }
 
-        .store-card-right {
-            width: 100%;
-            justify-content: flex-start;
+        .store-airtable-head,
+        .store-airtable-row {
+            min-width: 860px;
         }
     }
 </style>
@@ -168,82 +221,83 @@
     <div class="panel-head">
         <div>
             <h3>All Stores</h3>
-            <div class="area-subtitle">Expand a store card to edit name, number, area, and active status</div>
+            <div class="area-subtitle">Inline editing with auto-save</div>
         </div>
         <span class="summary-pill">{{ stores|length }} total</span>
     </div>
 
-    <div class="store-card-list" style="margin-top: 16px;">
+    <datalist id="area-options-inline">
+        {% for area in existing_areas %}
+        <option value="{{ area }}">
+        {% endfor %}
+    </datalist>
+
+    <div class="store-airtable-wrap">
+        <div class="store-airtable-head">
+            <div class="store-airtable-head-cell">ID</div>
+            <div class="store-airtable-head-cell">Store Number</div>
+            <div class="store-airtable-head-cell">Store Name</div>
+            <div class="store-airtable-head-cell">Area</div>
+            <div class="store-airtable-head-cell">Active</div>
+            <div class="store-airtable-head-cell">Status</div>
+        </div>
+
         {% for store in stores %}
-        <div class="store-card">
-            <button
-                type="button"
-                class="store-card-summary"
-                data-store-toggle="{{ store.id }}"
-                aria-expanded="false"
-            >
-                <div class="store-card-left">
-                    <span class="summary-pill">ID {{ store.id }}</span>
-
-                    <span class="status-badge {% if store.is_active %}status-completed{% else %}status-not-started{% endif %}">
-                        {{ "Active" if store.is_active else "Inactive" }}
-                    </span>
-
-                    <span class="summary-pill">{{ store.area_name }}</span>
-
-                    <div class="store-name-wrap">
-                        <div class="store-name-main">
-                            Store {{ store.store_number }}{% if store.store_name %} — {{ store.store_name }}{% endif %}
-                        </div>
-                        <div class="store-name-sub">
-                            Area: {{ store.area_name }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="store-card-right">
-                    <span class="summary-pill store-expand-chip" data-store-chevron="{{ store.id }}">Edit ▼</span>
-                </div>
-            </button>
-
-            <div class="store-card-body" data-store-body="{{ store.id }}">
-                <form method="POST" class="login-form" style="margin-top: 16px;">
-                    <input type="hidden" name="action" value="update">
-                    <input type="hidden" name="store_id" value="{{ store.id }}">
-
-                    <div class="store-section-label">Store Info</div>
-                    <div class="admin-task-grid">
-                        <div class="form-group">
-                            <label>Store Number</label>
-                            <input type="text" name="store_number" value="{{ store.store_number }}" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Store Name</label>
-                            <input type="text" name="store_name" value="{{ store.store_name or '' }}">
-                        </div>
-                    </div>
-
-                    <div class="store-section-label">Area Assignment</div>
-                    <div class="form-group">
-                        <label>Area</label>
-                        <input type="text" name="area_name" value="{{ store.area_name }}" list="area-options" required>
-                    </div>
-
-                    <div class="store-section-label">Status</div>
-                    <div class="admin-check-row compact-actions">
-                        <label class="checkbox-inline">
-                            <input type="checkbox" name="is_active" {% if store.is_active %}checked{% endif %}>
-                            Active
-                        </label>
-                    </div>
-
-                    <div class="store-section-label">Actions</div>
-                    <div class="admin-check-row compact-actions">
-                        <button type="submit" class="btn-primary">Save Store</button>
-                    </div>
-                </form>
+        <div
+            class="store-airtable-row ajax-store-row"
+            data-store-id="{{ store.id }}"
+            data-last-saved-store-number="{{ store.store_number }}"
+            data-last-saved-store-name="{{ store.store_name or '' }}"
+            data-last-saved-area-name="{{ store.area_name }}"
+            data-last-saved-is-active="{{ 1 if store.is_active else 0 }}"
+        >
+            <div class="store-airtable-cell">
+                <div class="store-id-text">{{ store.id }}</div>
             </div>
+
+            <div class="store-airtable-cell">
+                <input
+                    type="text"
+                    class="store-inline-input store-number-input"
+                    value="{{ store.store_number }}"
+                >
+            </div>
+
+            <div class="store-airtable-cell">
+                <input
+                    type="text"
+                    class="store-inline-input store-name-input"
+                    value="{{ store.store_name or '' }}"
+                >
+            </div>
+
+            <div class="store-airtable-cell">
+                <input
+                    type="text"
+                    class="store-inline-input store-area-input"
+                    value="{{ store.area_name }}"
+                    list="area-options-inline"
+                >
+            </div>
+
+            <div class="store-airtable-cell">
+                <div class="store-checkbox-wrap">
+                    <label class="store-checkbox-inline">
+                        <input
+                            type="checkbox"
+                            class="store-active-input"
+                            {% if store.is_active %}checked{% endif %}
+                        >
+                        Yes
+                    </label>
+                </div>
+            </div>
+
+            <div class="store-airtable-cell store-status-cell" aria-live="polite"></div>
+        </div>
+        {% else %}
+        <div class="store-empty-state">
+            No stores found.
         </div>
         {% endfor %}
     </div>
@@ -266,40 +320,173 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function bindStoreEditors() {
-        document.querySelectorAll("[data-store-toggle]").forEach(toggle => {
-            toggle.addEventListener("click", function () {
-                const storeId = this.getAttribute("data-store-toggle");
-                const targetBody = document.querySelector(`[data-store-body="${storeId}"]`);
-                const targetChevron = document.querySelector(`[data-store-chevron="${storeId}"]`);
+    bindToggle("create-store-toggle", "create-store-body", "create-store-chevron");
 
-                if (!targetBody || !targetChevron) return;
+    const rows = document.querySelectorAll(".ajax-store-row");
 
-                const isOpening = targetBody.style.display === "none" || targetBody.style.display === "";
-
-                document.querySelectorAll("[data-store-body]").forEach(body => {
-                    body.style.display = "none";
-                });
-
-                document.querySelectorAll("[data-store-chevron]").forEach(chevron => {
-                    chevron.textContent = "Edit ▼";
-                });
-
-                document.querySelectorAll("[data-store-toggle]").forEach(btn => {
-                    btn.setAttribute("aria-expanded", "false");
-                });
-
-                if (isOpening) {
-                    targetBody.style.display = "block";
-                    targetChevron.textContent = "Close ▲";
-                    this.setAttribute("aria-expanded", "true");
-                }
-            });
-        });
+    function getRowState(row) {
+        return {
+            store_number: row.querySelector(".store-number-input")?.value || "",
+            store_name: row.querySelector(".store-name-input")?.value || "",
+            area_name: row.querySelector(".store-area-input")?.value || "",
+            is_active: row.querySelector(".store-active-input")?.checked ? "1" : "0"
+        };
     }
 
-    bindToggle("create-store-toggle", "create-store-body", "create-store-chevron");
-    bindStoreEditors();
+    function getSavedState(row) {
+        return {
+            store_number: row.dataset.lastSavedStoreNumber || "",
+            store_name: row.dataset.lastSavedStoreName || "",
+            area_name: row.dataset.lastSavedAreaName || "",
+            is_active: row.dataset.lastSavedIsActive || "0"
+        };
+    }
+
+    function updateSavedState(row, state) {
+        row.dataset.lastSavedStoreNumber = state.store_number;
+        row.dataset.lastSavedStoreName = state.store_name;
+        row.dataset.lastSavedAreaName = state.area_name;
+        row.dataset.lastSavedIsActive = state.is_active;
+    }
+
+    function rowHasChanges(row) {
+        const current = getRowState(row);
+        const saved = getSavedState(row);
+
+        return (
+            current.store_number !== saved.store_number ||
+            current.store_name !== saved.store_name ||
+            current.area_name !== saved.area_name ||
+            current.is_active !== saved.is_active
+        );
+    }
+
+    function updateRowVisuals(row) {
+        if (rowHasChanges(row)) {
+            row.classList.add("is-dirty");
+        } else {
+            row.classList.remove("is-dirty");
+        }
+    }
+
+    async function saveRow(row) {
+        if (row.dataset.saving === "1") {
+            return;
+        }
+
+        if (!rowHasChanges(row)) {
+            const status = row.querySelector(".store-status-cell");
+            if (status) {
+                status.textContent = "";
+            }
+            return;
+        }
+
+        const storeId = row.getAttribute("data-store-id");
+        const status = row.querySelector(".store-status-cell");
+        const state = getRowState(row);
+
+        const formData = new FormData();
+        formData.append("action", "update_inline");
+        formData.append("store_id", storeId);
+        formData.append("store_number", state.store_number);
+        formData.append("store_name", state.store_name);
+        formData.append("area_name", state.area_name);
+        formData.append("is_active", state.is_active);
+
+        row.dataset.saving = "1";
+        row.classList.remove("is-saved");
+        row.classList.add("is-saving");
+
+        if (status) {
+            status.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch(window.location.pathname + window.location.search, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
+            updateSavedState(row, state);
+            updateRowVisuals(row);
+
+            row.classList.remove("is-saving");
+            row.classList.add("is-saved");
+
+            if (status) {
+                status.textContent = "Saved";
+            }
+
+            window.setTimeout(function () {
+                row.classList.remove("is-saved");
+                if (status && status.textContent === "Saved") {
+                    status.textContent = "";
+                }
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            row.classList.remove("is-saving");
+
+            if (status) {
+                status.textContent = "Save failed";
+            }
+        } finally {
+            row.dataset.saving = "0";
+        }
+    }
+
+    function queueSave(row, delay) {
+        if (row._saveTimer) {
+            clearTimeout(row._saveTimer);
+        }
+
+        row._saveTimer = setTimeout(function () {
+            saveRow(row);
+        }, delay);
+    }
+
+    rows.forEach(function (row) {
+        updateRowVisuals(row);
+
+        const numberInput = row.querySelector(".store-number-input");
+        const nameInput = row.querySelector(".store-name-input");
+        const areaInput = row.querySelector(".store-area-input");
+        const activeInput = row.querySelector(".store-active-input");
+
+        [numberInput, nameInput, areaInput].forEach(function (input) {
+            if (!input) return;
+
+            input.addEventListener("input", function () {
+                updateRowVisuals(row);
+            });
+
+            input.addEventListener("blur", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+
+            input.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+        });
+
+        if (activeInput) {
+            activeInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+    });
 });
 </script>
 {% endblock %}

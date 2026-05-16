@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Maintenance | BPI Ops{% endblock %}
+{% block title %}Maintenance | TrueOps{% endblock %}
 {% block header %}Maintenance Dashboard{% endblock %}
 
 {% block content %}
@@ -9,12 +9,13 @@
         <div class="command-eyebrow">MAINTENANCE</div>
         <h2 class="command-title">Maintenance Command Board</h2>
         <p class="command-subtitle">
-            Clean list view for fast scanning and quick updates.
+            Track issues, assign work, schedule repairs, and keep stores moving.
         </p>
     </div>
     <div class="command-bar-right">
         <div class="command-chip">{{ tickets|length }} Tasks</div>
         <div class="command-chip">{{ stores|length }} Stores</div>
+        <a href="{{ url_for('maintenance.calendar') }}" class="action-btn" style="max-width: 180px;">Calendar View</a>
     </div>
 </div>
 
@@ -68,7 +69,39 @@
                     ></textarea>
                 </div>
 
-                <button type="submit" class="btn-primary">Add Task</button>
+                <div class="maintenance-modal-grid">
+                    <div class="form-group">
+                        <label for="assigned_to">Assigned To</label>
+                        <input type="text" id="assigned_to" name="assigned_to" placeholder="Example: Mike">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Priority</label>
+                        <select id="priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduled_date">Scheduled Date</label>
+                        <input type="date" id="scheduled_date" name="scheduled_date">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduled_time">Scheduled Time</label>
+                        <input type="time" id="scheduled_time" name="scheduled_time">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estimated_minutes">Estimated Minutes</label>
+                        <input type="number" min="0" id="estimated_minutes" name="estimated_minutes" placeholder="45">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 16px;">Add Task</button>
             </form>
         </div>
     </section>
@@ -170,7 +203,7 @@
 
     .maintenance-list-head {
         display: grid;
-        grid-template-columns: 90px minmax(0, 1fr) 130px 170px 160px;
+        grid-template-columns: 90px minmax(0, 1fr) 120px 140px 160px 170px;
         gap: 12px;
         padding: 10px 14px;
         font-size: 11px;
@@ -231,7 +264,7 @@
 
     .maintenance-list-row {
         display: grid;
-        grid-template-columns: 90px minmax(0, 1fr) 130px 170px 160px;
+        grid-template-columns: 90px minmax(0, 1fr) 120px 140px 160px 170px;
         gap: 12px;
         align-items: center;
         padding: 11px 14px;
@@ -300,7 +333,8 @@
         line-height: 1.25;
     }
 
-    .maintenance-status-pill {
+    .maintenance-status-pill,
+    .maintenance-priority-pill {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -335,7 +369,28 @@
         color: #9df0bb;
     }
 
-    .maintenance-date-cell {
+    .maintenance-priority-pill.priority-low {
+        background: rgba(148, 163, 184, 0.14);
+        color: #cbd5e1;
+    }
+
+    .maintenance-priority-pill.priority-normal {
+        background: rgba(59, 130, 246, 0.14);
+        color: #9ac5ff;
+    }
+
+    .maintenance-priority-pill.priority-high {
+        background: rgba(240, 196, 25, 0.14);
+        color: #ffe38a;
+    }
+
+    .maintenance-priority-pill.priority-urgent {
+        background: rgba(255, 77, 79, 0.16);
+        color: #ffb3b5;
+    }
+
+    .maintenance-date-cell,
+    .maintenance-assigned-cell {
         font-size: 12px;
         opacity: 0.82;
         white-space: nowrap;
@@ -360,6 +415,7 @@
         font-weight: 800;
         cursor: pointer;
         transition: background 0.14s ease, border-color 0.14s ease;
+        text-decoration: none;
     }
 
     .maintenance-quick-btn:hover {
@@ -389,12 +445,13 @@
     }
 
     .maintenance-modal {
-        width: min(760px, 100%);
+        width: min(820px, 100%);
+        max-height: 90vh;
+        overflow-y: auto;
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 22px;
         background: linear-gradient(180deg, rgba(9,20,53,0.98), rgba(6,14,38,0.98));
         box-shadow: 0 30px 80px rgba(0,0,0,0.45);
-        overflow: hidden;
     }
 
     .maintenance-modal-header {
@@ -450,18 +507,18 @@
         margin-top: 16px;
     }
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1300px) {
         .maintenance-list-head,
         .maintenance-list-row {
-            grid-template-columns: 90px minmax(0, 1fr) 120px 140px;
+            grid-template-columns: 80px minmax(0, 1fr) 110px 130px 140px;
         }
 
-        .maintenance-date-cell {
+        .maintenance-assigned-cell {
             display: none;
         }
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 950px) {
         .maintenance-list-head {
             display: none;
         }
@@ -478,6 +535,7 @@
 
         .maintenance-actions-cell {
             justify-content: flex-start;
+            flex-wrap: wrap;
         }
 
         .maintenance-modal-grid {
@@ -538,8 +596,21 @@
         </span>
     </div>
 
-    <div class="maintenance-date-cell">
-        {{ ticket.created_at.strftime('%b %d, %Y %I:%M %p') if ticket.created_at else '' }}
+    <div>
+        <span class="maintenance-priority-pill priority-{{ ticket.priority or 'normal' }}">
+            {{ (ticket.priority or 'normal')|title }}
+        </span>
+    </div>
+
+    <div class="maintenance-assigned-cell">
+        {% if ticket.assigned_to %}
+            {{ ticket.assigned_to }}
+        {% else %}
+            Unassigned
+        {% endif %}
+        {% if ticket.scheduled_date %}
+            <br>{{ format_ticket_datetime(ticket) }}
+        {% endif %}
     </div>
 
     <div class="maintenance-actions-cell">
@@ -551,7 +622,12 @@
             <input type="hidden" name="title" value="{{ ticket.title }}">
             <input type="hidden" name="details" value="{{ ticket.details or '' }}">
             <input type="hidden" name="status" value="assigned">
-            <button type="submit" class="maintenance-quick-btn">Start Fix</button>
+            <input type="hidden" name="assigned_to" value="{{ ticket.assigned_to or '' }}">
+            <input type="hidden" name="scheduled_date" value="{{ ticket.scheduled_date.strftime('%Y-%m-%d') if ticket.scheduled_date else '' }}">
+            <input type="hidden" name="scheduled_time" value="{{ ticket.scheduled_time.strftime('%H:%M') if ticket.scheduled_time else '' }}">
+            <input type="hidden" name="estimated_minutes" value="{{ ticket.estimated_minutes or '' }}">
+            <input type="hidden" name="priority" value="{{ ticket.priority or 'normal' }}">
+            <button type="submit" class="maintenance-quick-btn">Assign</button>
         </form>
         {% elif ticket.status == "assigned" %}
         <form method="POST">
@@ -561,6 +637,11 @@
             <input type="hidden" name="title" value="{{ ticket.title }}">
             <input type="hidden" name="details" value="{{ ticket.details or '' }}">
             <input type="hidden" name="status" value="in_progress">
+            <input type="hidden" name="assigned_to" value="{{ ticket.assigned_to or '' }}">
+            <input type="hidden" name="scheduled_date" value="{{ ticket.scheduled_date.strftime('%Y-%m-%d') if ticket.scheduled_date else '' }}">
+            <input type="hidden" name="scheduled_time" value="{{ ticket.scheduled_time.strftime('%H:%M') if ticket.scheduled_time else '' }}">
+            <input type="hidden" name="estimated_minutes" value="{{ ticket.estimated_minutes or '' }}">
+            <input type="hidden" name="priority" value="{{ ticket.priority or 'normal' }}">
             <button type="submit" class="maintenance-quick-btn">Start Fix</button>
         </form>
         {% elif ticket.status == "in_progress" %}
@@ -571,6 +652,11 @@
             <input type="hidden" name="title" value="{{ ticket.title }}">
             <input type="hidden" name="details" value="{{ ticket.details or '' }}">
             <input type="hidden" name="status" value="complete">
+            <input type="hidden" name="assigned_to" value="{{ ticket.assigned_to or '' }}">
+            <input type="hidden" name="scheduled_date" value="{{ ticket.scheduled_date.strftime('%Y-%m-%d') if ticket.scheduled_date else '' }}">
+            <input type="hidden" name="scheduled_time" value="{{ ticket.scheduled_time.strftime('%H:%M') if ticket.scheduled_time else '' }}">
+            <input type="hidden" name="estimated_minutes" value="{{ ticket.estimated_minutes or '' }}">
+            <input type="hidden" name="priority" value="{{ ticket.priority or 'normal' }}">
             <button type="submit" class="maintenance-quick-btn">Mark Done</button>
         </form>
         {% endif %}
@@ -583,6 +669,11 @@
             data-ticket-title="{{ ticket.title }}"
             data-ticket-details="{{ ticket.details or '' }}"
             data-ticket-status="{{ ticket.status }}"
+            data-ticket-assigned-to="{{ ticket.assigned_to or '' }}"
+            data-ticket-scheduled-date="{{ ticket.scheduled_date.strftime('%Y-%m-%d') if ticket.scheduled_date else '' }}"
+            data-ticket-scheduled-time="{{ ticket.scheduled_time.strftime('%H:%M') if ticket.scheduled_time else '' }}"
+            data-ticket-estimated-minutes="{{ ticket.estimated_minutes or '' }}"
+            data-ticket-priority="{{ ticket.priority or 'normal' }}"
         >
             Edit
         </button>
@@ -633,7 +724,8 @@
                 <div>Store</div>
                 <div>Name</div>
                 <div>Status</div>
-                <div>Date Modified</div>
+                <div>Priority</div>
+                <div>Assigned / Scheduled</div>
                 <div style="text-align:right;">Actions</div>
             </div>
 
@@ -688,6 +780,36 @@
                             <option value="in_progress">In Progress</option>
                             <option value="complete">Complete</option>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assigned To</label>
+                        <input type="text" name="assigned_to" id="modal_assigned_to" placeholder="Example: Mike">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select name="priority" id="modal_priority">
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Scheduled Date</label>
+                        <input type="date" name="scheduled_date" id="modal_scheduled_date">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Scheduled Time</label>
+                        <input type="time" name="scheduled_time" id="modal_scheduled_time">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Estimated Minutes</label>
+                        <input type="number" min="0" name="estimated_minutes" id="modal_estimated_minutes">
                     </div>
 
                     <div class="form-group" style="grid-column: 1 / -1;">
@@ -768,6 +890,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const statusInput = document.getElementById("modal_status");
     const titleInput = document.getElementById("modal_title");
     const detailsInput = document.getElementById("modal_details");
+    const assignedToInput = document.getElementById("modal_assigned_to");
+    const scheduledDateInput = document.getElementById("modal_scheduled_date");
+    const scheduledTimeInput = document.getElementById("modal_scheduled_time");
+    const estimatedMinutesInput = document.getElementById("modal_estimated_minutes");
+    const priorityInput = document.getElementById("modal_priority");
 
     function openModal(data) {
         ticketIdInput.value = data.ticketId || "";
@@ -775,7 +902,16 @@ document.addEventListener("DOMContentLoaded", function () {
         statusInput.value = data.status || "open";
         titleInput.value = data.title || "";
         detailsInput.value = data.details || "";
-        modalSubtitle.textContent = `Store ${data.store || ""} • ${data.status ? data.status.replace('_', ' ') : 'Open'}`;
+        assignedToInput.value = data.assignedTo || "";
+        scheduledDateInput.value = data.scheduledDate || "";
+        scheduledTimeInput.value = data.scheduledTime || "";
+        estimatedMinutesInput.value = data.estimatedMinutes || "";
+        priorityInput.value = data.priority || "normal";
+
+        let statusText = data.status ? data.status.replace("_", " ") : "Open";
+        let assignedText = data.assignedTo ? ` • ${data.assignedTo}` : "";
+        modalSubtitle.textContent = `Store ${data.store || ""} • ${statusText}${assignedText}`;
+
         modalBackdrop.classList.add("is-open");
     }
 
@@ -790,7 +926,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 store: this.dataset.ticketStore,
                 title: this.dataset.ticketTitle,
                 details: this.dataset.ticketDetails,
-                status: this.dataset.ticketStatus
+                status: this.dataset.ticketStatus,
+                assignedTo: this.dataset.ticketAssignedTo,
+                scheduledDate: this.dataset.ticketScheduledDate,
+                scheduledTime: this.dataset.ticketScheduledTime,
+                estimatedMinutes: this.dataset.ticketEstimatedMinutes,
+                priority: this.dataset.ticketPriority
             });
         });
     });
