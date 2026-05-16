@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from flask import session
+
 from app.config import Config
 from app.extensions import db, migrate
 
@@ -9,9 +12,22 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # -------------------------
+    # SESSION SETTINGS
+    # Keep users logged in longer for True Ops
+    # -------------------------
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+    app.config["SESSION_PERMANENT"] = True
+
+    # -------------------------
+    # EXTENSIONS
+    # -------------------------
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # -------------------------
+    # BLUEPRINTS
+    # -------------------------
     from app.auth.routes import auth_bp
     from app.dashboard.routes import dashboard_bp
     from app.checklist.routes import checklist_bp
@@ -40,28 +56,47 @@ def create_app():
     app.register_blueprint(verification_bp)
     app.register_blueprint(store_dashboard_bp)
 
+    # -------------------------
+    # GLOBAL TEMPLATE CONTEXT
+    # -------------------------
     @app.context_processor
     def inject_companies():
         if session.get("user_id") and session.get("is_platform_admin"):
             from app.models import Company
-            companies = Company.query.filter_by(is_active=True).order_by(Company.name.asc()).all()
+
+            companies = (
+                Company.query
+                .filter_by(is_active=True)
+                .order_by(Company.name.asc())
+                .all()
+            )
             return {"companies": companies}
+
         return {"companies": []}
 
+    # -------------------------
+    # UTILITY ROUTE
+    # -------------------------
     @app.route("/create-db")
     def create_db():
         from app import models
+
         db.create_all()
         return "Database tables created"
 
+    # -------------------------
+    # INITIAL DATABASE SETUP / SEEDS
+    # -------------------------
     with app.app_context():
         from app import models
+
         db.create_all()
 
         default_company = seed_default_company()
         seed_admin(default_company)
 
-        # 🚫 DISABLED STORE SEEDING
+        # Store seeding is intentionally disabled for True Ops.
+        # Stores should be created per company from the admin screen.
         # seed_stores(default_company)
 
         seed_checklist_template()
@@ -84,8 +119,10 @@ def seed_default_company():
         logo_filename="trueops-logo.png",
         is_active=True,
     )
+
     db.session.add(company)
     db.session.commit()
+
     return company
 
 
@@ -114,7 +151,7 @@ def seed_admin(default_company):
         name="Admin",
         username="admin",
         role="platform_admin",
-        is_active=True
+        is_active=True,
     )
     admin.set_password("admin123")
 
@@ -122,7 +159,8 @@ def seed_admin(default_company):
     db.session.commit()
 
 
-# 🚫 STORE SEEDING DISABLED COMPLETELY
+# Store seeding is disabled for True Ops.
+# True Ops should allow each company to create/manage its own stores.
 def seed_stores(default_company):
     return
 
@@ -138,6 +176,72 @@ def seed_checklist_template():
         ("Before Open / Before 10:30", "Take orders now", 1, 2, True),
         ("Before Open / Before 10:30", "Turn on makeline", 2, 3, True),
         ("Before Open / Before 10:30", "Check schedule", 2, 4, True),
+        ("Before Open / Before 10:30", "Run prep report - check enough food for day", 3, 5, True),
+        ("Before Open / Before 10:30", "Put wash in dryer / hang laundry", 2, 6, True),
+        ("Before Open / Before 10:30", "Bring out dough for 1-way proof", 3, 7, True),
+        ("Before Open / Before 10:30", "Count till", 2, 8, True),
+        ("Before Open / Before 10:30", "Turn on oven & open sign", 2, 9, True),
+        ("Before Open / Before 10:30", "Set up makeline & stock cabinets", 4, 10, True),
+        ("Before Open / Before 10:30", "Place scales & thermometers", 2, 11, True),
+        ("Before Open / Before 10:30", "Set up dough & cut tables", 4, 12, True),
+        ("Before Open / Before 10:30", "Check shelf-life dates - toss expired food", 3, 13, True),
+        ("Before Open / Before 10:30", "Check all labels for rotation - including dough", 3, 14, True),
+        ("Before Open / Before 10:30", "Clean customer area - including windows & sills", 4, 15, True),
+        ("Before Open / Before 10:30", "Sweep / clean outside - 6' out from door", 3, 16, True),
+        ("Before Open / Before 10:30", "Stock napkin & c-fold containers and soaps", 2, 17, True),
+        ("Before Open / Before 10:30", "Check image - TM & cars", 2, 18, True),
+        ("Before Open / Before 10:30", "Prep fresh sauce & warm cold sauce", 3, 19, True),
+        ("Before Open / Before 10:30", "Complete self OER & correct as needed", 4, 20, True),
+        ("Before Open / Before 10:30", "Stock cheese and prep for next day", 3, 21, True),
+        ("Before Open / Before 10:30", "Clean all bathrooms & stock", 4, 22, True),
+
+        ("During Dayshift", "Prep all products for day (done by 11am)", 5, 23, True),
+        ("During Dayshift", "Pick up bank slips & staple to daily", 2, 24, True),
+        ("During Dayshift", "Check & clean hot bags", 3, 25, True),
+        ("During Dayshift", "Wash dishes", 5, 26, True),
+        ("During Dayshift", "Sweep & mop office & trash area", 4, 27, True),
+        ("During Dayshift", "Box-top & fold boxes", 3, 28, True),
+        ("During Dayshift", "Cleaning task of the day", 5, 29, True),
+        ("During Dayshift", "Sweep / shovel / sand / entry area", 4, 30, True),
+        ("During Dayshift", "Hang all laundry", 2, 31, True),
+        ("During Dayshift", "Fill out temp log", 2, 32, True),
+        ("During Dayshift", "2 hr sanitation swap - time stamp buckets", 2, 33, True),
+
+        ("3-O'Clock Restock", "Restock makeline rail and cabinets", 4, 34, True),
+        ("3-O'Clock Restock", "Restock cut table and clean & sanitize", 4, 35, True),
+        ("3-O'Clock Restock", "Pick makeline pits - wash pits", 4, 36, True),
+        ("3-O'Clock Restock", "Clean and sanitize dough table", 4, 37, True),
+        ("3-O'Clock Restock", "Restock Coke and box counter", 3, 38, True),
+        ("3-O'Clock Restock", "Sweep floor", 3, 39, True),
+        ("3-O'Clock Restock", "Wash all remaining dishes", 4, 40, True),
+        ("3-O'Clock Restock", "Call / post dayshift numbers as required", 2, 41, True),
+        ("3-O'Clock Restock", "Dayshift cash-out complete & logged", 2, 42, True),
+
+        ("Manager's Walk", "Carryout area clean - swept, mopped, wiped etc", 3, 43, True),
+        ("Manager's Walk", "Under counter shelves clean", 3, 44, True),
+        ("Manager's Walk", "All counters clean & sanitized", 3, 45, True),
+        ("Manager's Walk", "Under phone counter clean and organized", 2, 46, True),
+        ("Manager's Walk", "Oven clean, wiped incl catch trays & fan covers", 4, 47, True),
+        ("Manager's Walk", "Organize office desktop & sweep floor", 3, 48, True),
+        ("Manager's Walk", "Makeline clean and wiped down - in and out", 4, 49, True),
+        ("Manager's Walk", "Cut table and blue bins clean", 3, 50, True),
+        ("Manager's Walk", "Laundry started (dirty towels)", 2, 51, True),
+        ("Manager's Walk", "3 comp & handsinks clean", 3, 52, True),
+        ("Manager's Walk", "Front stocked with boxes", 2, 53, True),
+        ("Manager's Walk", "Bag rack clean & neat", 2, 54, True),
+        ("Manager's Walk", "Heat racks clean and wiped incl very top", 3, 55, True),
+        ("Manager's Walk", "Floor clean - under everything", 4, 56, True),
+        ("Manager's Walk", "Trash empty &/or out back", 3, 57, True),
+        ("Manager's Walk", "All dishes clean - check them! & drying", 3, 58, True),
+        ("Manager's Walk", "All equipment turned off - ovens, hoods, etc", 2, 59, True),
+        ("Manager's Walk", "Back room clean / swept & mopped", 4, 60, True),
+        ("Manager's Walk", "Mops & bucket rinsed and drying", 2, 61, True),
+        ("Manager's Walk", "Utensils back in place up front", 2, 62, True),
+        ("Manager's Walk", "Walk-in clean and organized - food covered", 4, 63, True),
+        ("Manager's Walk", "Safe secure with till inside", 2, 64, True),
+        ("Manager's Walk", "Accurate inventory - incl line-by-line check", 4, 65, True),
+        ("Manager's Walk", "Call / post numbers as required", 2, 66, True),
+        ("Manager's Walk", "Paperwork properly filed / EOD run", 3, 67, True),
     ]
 
     for section_name, task_text, expected_minutes, sort_order, is_required in items:
@@ -165,6 +269,24 @@ def seed_svr_template():
         ("date", "Date", "date", 1),
         ("store_number", "Store #", "readonly", 2),
         ("manager_on_duty", "Manager on duty", "text", 3),
+        ("restroom_notes", "Restroom notes", "textarea", 4),
+        ("checklist_book_notes", "Checklist book notes", "textarea", 5),
+        ("one_way_proof", "1-way proof - dough projection/dough marked inside the walk-in", "textarea", 6),
+        ("pizza_quality_notes", "Pizza Quality notes", "textarea", 7),
+        ("load_go", "Load & Go - certified load captain on the schedule for every rush", "textarea", 8),
+        ("last_weeks_svr_review", "Last week's SVR review", "textarea", 9),
+        ("outside_store_condition_notes", "Outside store condition notes", "textarea", 10),
+        ("carry_out_notes", "Carry out notes", "textarea", 11),
+        ("store_condition_notes", "Store condition notes", "textarea", 12),
+        ("refrigeration_units_notes", "Refrigeration units notes", "textarea", 13),
+        ("bake_wares_notes", "Bake wares notes", "textarea", 14),
+        ("oven_heatrack_notes", "Oven/heatrack notes", "textarea", 15),
+        ("call_out_calendar_notes", "Call out calendar notes - who needs a meeting?", "textarea", 16),
+        ("deposit_log", "Deposit Log - which days are missing?", "textarea", 17),
+        ("pest_control", "Pest Control", "textarea", 18),
+        ("cleaning_list_for_week", "Cleaning list for the week", "textarea", 19),
+        ("goals_for_week", "Goals for the week", "textarea", 20),
+        ("maintenance_needs", "Maintenance needs", "textarea", 21),
     ]
 
     for field_key, field_label, field_type, sort_order in fields:
