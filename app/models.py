@@ -1,13 +1,13 @@
 from datetime import datetime, date
-from zoneinfo import ZoneInfo
-from werkzeug.security import generate_password_hash, check_password_hash
-from app.extensions import db
 
-APP_TZ = ZoneInfo("America/New_York")
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from app.extensions import db
+from app.services.business_day import business_date
 
 
 def today_et():
-    return datetime.now(APP_TZ).date()
+    return business_date()
 
 
 class Company(db.Model):
