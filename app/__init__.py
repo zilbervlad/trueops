@@ -95,6 +95,7 @@ def create_app():
 
         default_company = seed_default_company()
         ensure_checklist_template_company_column()
+        ensure_svr_template_company_column()
         seed_admin(default_company)
 
         # Store seeding is intentionally disabled for True Ops.
@@ -198,6 +199,39 @@ def ensure_checklist_template_company_column():
 
     db.session.commit()
 
+
+def ensure_svr_template_company_column():
+    """
+    Adds company_id to svr_template_fields for existing databases and removes
+    the old global UNIQUE constraint on field_key so each company can have
+    its own SVR template fields.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("svr_template_fields")]
+    dialect = db.engine.dialect.name
+
+    if "company_id" not in columns:
+        if dialect == "postgresql":
+            db.session.execute(
+                text("ALTER TABLE svr_template_fields ADD COLUMN IF NOT EXISTS company_id INTEGER")
+            )
+        else:
+            db.session.execute(
+                text("ALTER TABLE svr_template_fields ADD COLUMN company_id INTEGER")
+            )
+
+        db.session.commit()
+
+    if dialect == "postgresql":
+        db.session.execute(
+            text("ALTER TABLE svr_template_fields DROP CONSTRAINT IF EXISTS svr_template_fields_field_key_key")
+        )
+        db.session.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_svr_template_fields_company_id ON svr_template_fields (company_id)")
+        )
+        db.session.commit()
 
 def seed_checklist_template():
     from app.models import ChecklistTemplateItem, Company
@@ -305,9 +339,31 @@ def seed_checklist_template():
 
 
 def seed_svr_template():
-    from app.models import SVRTemplateField
+    from app.models import SVRTemplateField, Company
 
-    if SVRTemplateField.query.count() > 0:
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    # If old global SVR fields exist, assign them to TrueOps instead of
+    # trying to insert duplicate field_key values.
+    if trueops_company_id:
+        global_fields = SVRTemplateField.query.filter(
+            SVRTemplateField.company_id.is_(None)
+        ).all()
+
+        if global_fields:
+            for field in global_fields:
+                field.company_id = trueops_company_id
+            db.session.commit()
+            return
+
+        existing_trueops_fields = SVRTemplateField.query.filter_by(
+            company_id=trueops_company_id
+        ).count()
+
+        if existing_trueops_fields > 0:
+            return
+    elif SVRTemplateField.query.count() > 0:
         return
 
     fields = [
@@ -335,8 +391,17 @@ def seed_svr_template():
     ]
 
     for field_key, field_label, field_type, sort_order in fields:
+        existing = SVRTemplateField.query.filter_by(
+            company_id=trueops_company_id,
+            field_key=field_key,
+        ).first()
+
+        if existing:
+            continue
+
         db.session.add(
             SVRTemplateField(
+                company_id=trueops_company_id,
                 field_key=field_key,
                 field_label=field_label,
                 field_type=field_type,
@@ -346,3 +411,4 @@ def seed_svr_template():
         )
 
     db.session.commit()
+

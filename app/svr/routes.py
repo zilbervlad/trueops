@@ -44,6 +44,63 @@ def current_company_id():
     return session.get("current_company_id")
 
 
+def svr_template_query(include_inactive=False):
+    company_id = current_company_id()
+
+    query = SVRTemplateField.query
+
+    if company_id and hasattr(SVRTemplateField, "company_id"):
+        query = query.filter(SVRTemplateField.company_id == company_id)
+
+    if not include_inactive:
+        query = query.filter(SVRTemplateField.is_active == True)
+
+    return query
+
+
+def ensure_company_svr_template(company_id):
+    """
+    If a company has no SVR template yet, clone the TrueOps/default SVR template
+    so each company can edit its own SVR fields independently.
+    """
+    if not company_id:
+        return
+
+    existing_count = SVRTemplateField.query.filter_by(company_id=company_id).count()
+    if existing_count > 0:
+        return
+
+    source_items = SVRTemplateField.query.filter(
+        SVRTemplateField.company_id.isnot(None),
+        SVRTemplateField.company_id != company_id,
+    ).order_by(
+        SVRTemplateField.sort_order.asc(),
+        SVRTemplateField.id.asc(),
+    ).all()
+
+    if not source_items:
+        source_items = SVRTemplateField.query.filter(
+            SVRTemplateField.company_id.is_(None)
+        ).order_by(
+            SVRTemplateField.sort_order.asc(),
+            SVRTemplateField.id.asc(),
+        ).all()
+
+    for item in source_items:
+        db.session.add(
+            SVRTemplateField(
+                company_id=company_id,
+                field_key=item.field_key,
+                field_label=item.field_label,
+                field_type=item.field_type,
+                sort_order=item.sort_order,
+                is_active=item.is_active,
+            )
+        )
+
+    db.session.commit()
+
+
 def get_svr_week_range():
     today = today_et()
     week_offset_raw = (request.args.get("week_offset") or "0").strip()
@@ -733,13 +790,14 @@ def admin():
                 flash("Sort order must be a number.", "error")
                 return redirect(url_for("svr.admin"))
 
-            existing = SVRTemplateField.query.filter_by(field_key=field_key).first()
+            existing = svr_template_query(include_inactive=True).filter_by(field_key=field_key).first()
             if existing:
                 flash("That field key already exists.", "error")
                 return redirect(url_for("svr.admin"))
 
             db.session.add(
                 SVRTemplateField(
+                    company_id=current_company_id(),
                     field_key=field_key,
                     field_label=field_label,
                     field_type=field_type,
@@ -753,7 +811,7 @@ def admin():
 
         if action == "update":
             field_id = request.form.get("field_id", "").strip()
-            field = SVRTemplateField.query.get(field_id)
+            field = svr_template_query(include_inactive=True).filter_by(id=field_id).first()
 
             if not field:
                 flash("Field not found.", "error")
@@ -775,7 +833,10 @@ def admin():
             flash("SVR field updated.", "success")
             return redirect(url_for("svr.admin"))
 
-    fields = SVRTemplateField.query.order_by(
+    company_id = current_company_id()
+    ensure_company_svr_template(company_id)
+
+    fields = svr_template_query(include_inactive=True).order_by(
         SVRTemplateField.sort_order.asc(),
         SVRTemplateField.id.asc()
     ).all()
