@@ -1020,6 +1020,10 @@ def admin():
         action = request.form.get("action", "").strip()
 
         if action == "update_integrity":
+            if not session.get("is_platform_admin"):
+                flash("Only the platform admin can update integrity settings.", "error")
+                return redirect(url_for("checklist.admin"))
+
             if not settings:
                 settings = IntegritySettings()
                 db.session.add(settings)
