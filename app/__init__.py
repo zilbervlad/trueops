@@ -96,6 +96,7 @@ def create_app():
         default_company = seed_default_company()
         ensure_checklist_template_company_column()
         ensure_svr_template_company_column()
+        ensure_verification_template_company_column()
         seed_admin(default_company)
 
         # Store seeding is intentionally disabled for True Ops.
@@ -232,6 +233,40 @@ def ensure_svr_template_company_column():
             text("CREATE INDEX IF NOT EXISTS ix_svr_template_fields_company_id ON svr_template_fields (company_id)")
         )
         db.session.commit()
+
+def ensure_verification_template_company_column():
+    """
+    Adds company_id to verification_template_fields for existing databases and removes
+    the old global UNIQUE constraint on field_key so each company can have
+    its own verification template fields.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("verification_template_fields")]
+    dialect = db.engine.dialect.name
+
+    if "company_id" not in columns:
+        if dialect == "postgresql":
+            db.session.execute(
+                text("ALTER TABLE verification_template_fields ADD COLUMN IF NOT EXISTS company_id INTEGER")
+            )
+        else:
+            db.session.execute(
+                text("ALTER TABLE verification_template_fields ADD COLUMN company_id INTEGER")
+            )
+
+        db.session.commit()
+
+    if dialect == "postgresql":
+        db.session.execute(
+            text("ALTER TABLE verification_template_fields DROP CONSTRAINT IF EXISTS verification_template_fields_field_key_key")
+        )
+        db.session.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_verification_template_fields_company_id ON verification_template_fields (company_id)")
+        )
+        db.session.commit()
+
 
 def seed_checklist_template():
     from app.models import ChecklistTemplateItem, Company

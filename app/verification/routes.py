@@ -71,6 +71,86 @@ def get_active_company_id():
     return None
 
 
+def verification_template_query(include_inactive=False):
+    company_id = get_active_company_id()
+
+    query = VerificationTemplateField.query
+
+    if company_id and hasattr(VerificationTemplateField, "company_id"):
+        query = query.filter(VerificationTemplateField.company_id == company_id)
+
+    if not include_inactive:
+        query = query.filter(VerificationTemplateField.is_active == True)
+
+    return query
+
+
+def ensure_company_verification_template(company_id):
+    """
+    If a company has no verification template yet, clone an existing/default template
+    so each company can edit its own verification fields independently.
+    """
+    if not company_id:
+        return
+
+    existing_count = VerificationTemplateField.query.filter_by(company_id=company_id).count()
+    if existing_count > 0:
+        return
+
+    source_items = VerificationTemplateField.query.filter(
+        VerificationTemplateField.company_id.isnot(None),
+        VerificationTemplateField.company_id != company_id,
+    ).order_by(
+        VerificationTemplateField.sort_order.asc(),
+        VerificationTemplateField.id.asc(),
+    ).all()
+
+    if not source_items:
+        source_items = VerificationTemplateField.query.filter(
+            VerificationTemplateField.company_id.is_(None)
+        ).order_by(
+            VerificationTemplateField.sort_order.asc(),
+            VerificationTemplateField.id.asc(),
+        ).all()
+
+    if not source_items:
+        defaults = [
+            ("bad_orders", "Bad order / cancel log system in place?", "textarea", 1),
+            ("suspicious_activity", "Anyone identified for suspicious activity / callbacks made?", "textarea", 2),
+            ("csr_program", "Is CSR development program in use?", "textarea", 3),
+            ("dumpster_check", "Check dumpsters for waste - what did you see?", "textarea", 4),
+        ]
+
+        for field_key, field_label, field_type, sort_order in defaults:
+            db.session.add(
+                VerificationTemplateField(
+                    company_id=company_id,
+                    field_key=field_key,
+                    field_label=field_label,
+                    field_type=field_type,
+                    sort_order=sort_order,
+                    is_active=True,
+                )
+            )
+
+        db.session.commit()
+        return
+
+    for item in source_items:
+        db.session.add(
+            VerificationTemplateField(
+                company_id=company_id,
+                field_key=item.field_key,
+                field_label=item.field_label,
+                field_type=item.field_type,
+                sort_order=item.sort_order,
+                is_active=item.is_active,
+            )
+        )
+
+    db.session.commit()
+
+
 def scoped_store_query():
     """
     Base store query locked to the active company.
@@ -142,12 +222,16 @@ def ensure_default_template():
         ("dumpster_check", "Check dumpsters for waste - what did you see?", "textarea"),
     ]
 
-    existing = {f.field_key: f for f in VerificationTemplateField.query.all()}
+    company_id = get_active_company_id()
+    ensure_company_verification_template(company_id)
+
+    existing = {f.field_key: f for f in verification_template_query(include_inactive=True).all()}
 
     for i, (key, label, ftype) in enumerate(defaults, start=1):
         if key not in existing:
             db.session.add(
                 VerificationTemplateField(
+                    company_id=company_id,
                     field_key=key,
                     field_label=label,
                     field_type=ftype,
@@ -627,13 +711,14 @@ def admin():
                 flash("Sort order must be a number.", "error")
                 return redirect(url_for("verification.admin"))
 
-            existing = VerificationTemplateField.query.filter_by(field_key=field_key).first()
+            existing = verification_template_query(include_inactive=True).filter_by(field_key=field_key).first()
             if existing:
                 flash("That field key already exists.", "error")
                 return redirect(url_for("verification.admin"))
 
             db.session.add(
                 VerificationTemplateField(
+                    company_id=get_active_company_id(),
                     field_key=field_key,
                     field_label=field_label,
                     field_type=field_type,
@@ -647,7 +732,7 @@ def admin():
 
         if action == "delete":
             field_id = (request.form.get("field_id") or "").strip()
-            field = VerificationTemplateField.query.get(field_id)
+            field = verification_template_query(include_inactive=True).filter_by(id=field_id).first()
 
             if not field:
                 flash("Field not found.", "error")
@@ -660,7 +745,7 @@ def admin():
 
         if action == "update":
             field_id = (request.form.get("field_id") or "").strip()
-            field = VerificationTemplateField.query.get(field_id)
+            field = verification_template_query(include_inactive=True).filter_by(id=field_id).first()
 
             if not field:
                 flash("Field not found.", "error")
