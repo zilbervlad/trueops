@@ -1,8 +1,11 @@
 from functools import wraps
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+
 from app.models import User, Company
 from app.extensions import db
 from app.services.email_service import send_email
+
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -12,7 +15,9 @@ def login_required(view):
     def wrapped_view(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("auth.login"))
+
         return view(*args, **kwargs)
+
     return wrapped_view
 
 
@@ -32,7 +37,9 @@ def role_required(*allowed_roles):
                 return redirect(url_for("dashboard.home"))
 
             return view(*args, **kwargs)
+
         return wrapped_view
+
     return decorator
 
 
@@ -111,7 +118,11 @@ def manage_users():
         action = request.form.get("action", "").strip()
 
         form_company_id = request.form.get("company_id", "").strip()
-        target_company_id = int(form_company_id) if (is_platform_admin and form_company_id.isdigit()) else selected_company_id
+        target_company_id = (
+            int(form_company_id)
+            if (is_platform_admin and form_company_id.isdigit())
+            else selected_company_id
+        )
 
         if not target_company_id:
             flash("No company is selected for this action.", "error")
@@ -177,6 +188,30 @@ def manage_users():
             flash("User created successfully.", "success")
             return redirect(url_for("auth.manage_users"))
 
+        if action == "reset_password":
+            user_id = request.form.get("user_id", "").strip()
+            user = User.query.get(user_id)
+
+            if not user:
+                flash("User not found.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if not is_platform_admin and user.company_id != selected_company_id:
+                flash("You do not have permission to reset that user's password.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            new_password = request.form.get("password", "").strip()
+
+            if not new_password:
+                flash("Password is required.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            user.set_password(new_password)
+            db.session.commit()
+
+            flash(f"Password reset for {user.name}.", "success")
+            return redirect(url_for("auth.manage_users"))
+
         if action == "update":
             user_id = request.form.get("user_id", "").strip()
             user = User.query.get(user_id)
@@ -222,8 +257,9 @@ def manage_users():
 
             existing_user = User.query.filter(
                 User.username == username,
-                User.id != user.id
+                User.id != user.id,
             ).first()
+
             if existing_user:
                 flash("That username already exists.", "error")
                 return redirect(url_for("auth.manage_users"))
