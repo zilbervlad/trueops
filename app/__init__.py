@@ -97,6 +97,7 @@ def create_app():
         ensure_checklist_template_company_column()
         ensure_svr_template_company_column()
         ensure_verification_template_company_column()
+        ensure_nightly_numbers_config_company_column()
         seed_admin(default_company)
 
         # Store seeding is intentionally disabled for True Ops.
@@ -264,6 +265,40 @@ def ensure_verification_template_company_column():
         )
         db.session.execute(
             text("CREATE INDEX IF NOT EXISTS ix_verification_template_fields_company_id ON verification_template_fields (company_id)")
+        )
+        db.session.commit()
+
+
+def ensure_nightly_numbers_config_company_column():
+    """
+    Adds company_id to nightly_numbers_field_config for existing databases and removes
+    the old global UNIQUE constraint on field_key so each company can have its own
+    nightly numbers field settings.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("nightly_numbers_field_config")]
+    dialect = db.engine.dialect.name
+
+    if "company_id" not in columns:
+        if dialect == "postgresql":
+            db.session.execute(
+                text("ALTER TABLE nightly_numbers_field_config ADD COLUMN IF NOT EXISTS company_id INTEGER")
+            )
+        else:
+            db.session.execute(
+                text("ALTER TABLE nightly_numbers_field_config ADD COLUMN company_id INTEGER")
+            )
+
+        db.session.commit()
+
+    if dialect == "postgresql":
+        db.session.execute(
+            text("ALTER TABLE nightly_numbers_field_config DROP CONSTRAINT IF EXISTS nightly_numbers_field_config_field_key_key")
+        )
+        db.session.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_nightly_numbers_field_config_company_id ON nightly_numbers_field_config (company_id)")
         )
         db.session.commit()
 

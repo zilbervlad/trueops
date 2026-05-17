@@ -172,26 +172,77 @@ def current_business_date():
     return now_et.date()
 
 
-def ensure_field_config_seeded():
-    existing = {
-        field.field_key: field
-        for field in NightlyNumbersFieldConfig.query.all()
-    }
+def nightly_numbers_config_query():
+    company_id = current_company_id()
 
-    changed = False
+    query = NightlyNumbersFieldConfig.query
+
+    if company_id and hasattr(NightlyNumbersFieldConfig, "company_id"):
+        query = query.filter(NightlyNumbersFieldConfig.company_id == company_id)
+
+    return query
+
+
+def ensure_field_config_seeded():
+    company_id = current_company_id()
+
+    if not company_id:
+        return
+
+    existing_count = NightlyNumbersFieldConfig.query.filter_by(
+        company_id=company_id
+    ).count()
+
+    if existing_count > 0:
+        return
+
+    source_fields = NightlyNumbersFieldConfig.query.filter(
+        NightlyNumbersFieldConfig.company_id.isnot(None),
+        NightlyNumbersFieldConfig.company_id != company_id,
+    ).order_by(
+        NightlyNumbersFieldConfig.sort_order.asc(),
+        NightlyNumbersFieldConfig.id.asc(),
+    ).all()
+
+    if not source_fields:
+        source_fields = NightlyNumbersFieldConfig.query.filter(
+            NightlyNumbersFieldConfig.company_id.is_(None)
+        ).order_by(
+            NightlyNumbersFieldConfig.sort_order.asc(),
+            NightlyNumbersFieldConfig.id.asc(),
+        ).all()
+
+    if source_fields:
+        for field in source_fields:
+            db.session.add(
+                NightlyNumbersFieldConfig(
+                    company_id=company_id,
+                    field_key=field.field_key,
+                    field_label=field.field_label,
+                    field_type=field.field_type,
+                    sort_order=field.sort_order,
+                    is_enabled=field.is_enabled,
+                    is_required=field.is_required,
+                )
+            )
+
+        db.session.commit()
+        return
 
     for field_def in DEFAULT_FIELD_CONFIG:
-        if field_def["field_key"] not in existing:
-            db.session.add(NightlyNumbersFieldConfig(**field_def))
-            changed = True
+        db.session.add(
+            NightlyNumbersFieldConfig(
+                company_id=company_id,
+                **field_def,
+            )
+        )
 
-    if changed:
-        db.session.commit()
+    db.session.commit()
 
 
 def get_field_config():
     ensure_field_config_seeded()
-    return NightlyNumbersFieldConfig.query.order_by(
+    return nightly_numbers_config_query().order_by(
         NightlyNumbersFieldConfig.sort_order.asc(),
         NightlyNumbersFieldConfig.id.asc()
     ).all()

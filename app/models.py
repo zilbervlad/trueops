@@ -352,14 +352,17 @@ class NightlyNumbersFieldConfig(db.Model):
     __tablename__ = "nightly_numbers_field_config"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
-    field_key = db.Column(db.String(100), unique=True, nullable=False)
+    field_key = db.Column(db.String(100), nullable=False)
     field_label = db.Column(db.String(255), nullable=False)
     field_type = db.Column(db.String(50), nullable=False, default="text")
     sort_order = db.Column(db.Integer, nullable=False, default=0)
 
     is_enabled = db.Column(db.Boolean, default=True)
     is_required = db.Column(db.Boolean, default=False)
+
+    company = db.relationship("Company", backref=db.backref("nightly_numbers_field_configs", lazy=True))
 
 
 class CashLog(db.Model):
