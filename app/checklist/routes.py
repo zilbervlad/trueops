@@ -34,6 +34,64 @@ def current_company_id():
     return session.get("current_company_id")
 
 
+def checklist_template_query(include_inactive=False):
+    company_id = current_company_id()
+
+    query = ChecklistTemplateItem.query
+
+    if company_id and hasattr(ChecklistTemplateItem, "company_id"):
+        query = query.filter(ChecklistTemplateItem.company_id == company_id)
+
+    if not include_inactive:
+        query = query.filter(ChecklistTemplateItem.is_active == True)
+
+    return query
+
+
+def ensure_company_checklist_template(company_id):
+    """
+    If a company has no checklist template yet, clone the TrueOps/default template
+    so each company can edit its own checklist book independently.
+    """
+    if not company_id:
+        return
+
+    existing_count = ChecklistTemplateItem.query.filter_by(company_id=company_id).count()
+    if existing_count > 0:
+        return
+
+    source_items = ChecklistTemplateItem.query.filter(
+        ChecklistTemplateItem.company_id.isnot(None),
+        ChecklistTemplateItem.company_id != company_id,
+    ).order_by(
+        ChecklistTemplateItem.sort_order.asc(),
+        ChecklistTemplateItem.id.asc(),
+    ).all()
+
+    if not source_items:
+        source_items = ChecklistTemplateItem.query.filter(
+            ChecklistTemplateItem.company_id.is_(None)
+        ).order_by(
+            ChecklistTemplateItem.sort_order.asc(),
+            ChecklistTemplateItem.id.asc(),
+        ).all()
+
+    for item in source_items:
+        db.session.add(
+            ChecklistTemplateItem(
+                company_id=company_id,
+                section_name=item.section_name,
+                task_text=item.task_text,
+                expected_minutes=item.expected_minutes,
+                sort_order=item.sort_order,
+                is_required=item.is_required,
+                is_active=item.is_active,
+            )
+        )
+
+    db.session.commit()
+
+
 def current_ops_date():
     now = now_et()
     if now.hour < 5:
@@ -71,8 +129,12 @@ def get_or_create_daily_checklist(store_number: str, checklist_date: date):
     db.session.add(daily)
     db.session.flush()
 
-    template_items = ChecklistTemplateItem.query.filter_by(is_active=True).order_by(
-        ChecklistTemplateItem.sort_order.asc()
+    company_id = current_company_id()
+    ensure_company_checklist_template(company_id)
+
+    template_items = checklist_template_query().order_by(
+        ChecklistTemplateItem.sort_order.asc(),
+        ChecklistTemplateItem.id.asc()
     ).all()
 
     for template in template_items:
@@ -951,6 +1013,8 @@ def index():
 @role_required("admin")
 def admin():
     settings = IntegritySettings.query.first()
+    company_id = current_company_id()
+    ensure_company_checklist_template(company_id)
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
@@ -1026,6 +1090,7 @@ def admin():
 
             db.session.add(
                 ChecklistTemplateItem(
+                    company_id=company_id,
                     section_name=section_name,
                     task_text=task_text,
                     expected_minutes=expected_minutes,
@@ -1040,7 +1105,7 @@ def admin():
 
         if action == "update":
             item_id = request.form.get("item_id", "").strip()
-            item = ChecklistTemplateItem.query.get(item_id)
+            item = checklist_template_query(include_inactive=True).filter_by(id=item_id).first()
 
             if not item:
                 flash("Task not found.", "error")
@@ -1063,7 +1128,7 @@ def admin():
             flash("Checklist task updated.", "success")
             return redirect(url_for("checklist.admin"))
 
-    items = ChecklistTemplateItem.query.order_by(
+    items = checklist_template_query(include_inactive=True).order_by(
         ChecklistTemplateItem.section_name.asc(),
         ChecklistTemplateItem.sort_order.asc(),
         ChecklistTemplateItem.id.asc()

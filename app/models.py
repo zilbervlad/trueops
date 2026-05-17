@@ -95,12 +95,16 @@ class ChecklistTemplateItem(db.Model):
     __tablename__ = "checklist_template_items"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
     section_name = db.Column(db.String(120), nullable=False)
     task_text = db.Column(db.String(255), nullable=False)
     expected_minutes = db.Column(db.Integer, nullable=False, default=0)
     sort_order = db.Column(db.Integer, nullable=False, default=0)
     is_required = db.Column(db.Boolean, default=True)
     is_active = db.Column(db.Boolean, default=True)
+
+    company = db.relationship("Company", backref=db.backref("checklist_template_items", lazy=True))
 
 
 class DailyChecklist(db.Model):

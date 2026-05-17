@@ -94,6 +94,7 @@ def create_app():
         db.create_all()
 
         default_company = seed_default_company()
+        ensure_checklist_template_company_column()
         seed_admin(default_company)
 
         # Store seeding is intentionally disabled for True Ops.
@@ -166,10 +167,52 @@ def seed_stores(default_company):
     return
 
 
-def seed_checklist_template():
-    from app.models import ChecklistTemplateItem
+def ensure_checklist_template_company_column():
+    """
+    Adds company_id to checklist_template_items for existing databases.
 
-    if ChecklistTemplateItem.query.count() > 0:
+    db.create_all() does not alter existing tables, so this protects both
+    local SQLite and Render Postgres without requiring a manual migration.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("checklist_template_items")]
+
+    if "company_id" in columns:
+        return
+
+    dialect = db.engine.dialect.name
+
+    if dialect == "postgresql":
+        db.session.execute(
+            text("ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS company_id INTEGER")
+        )
+        db.session.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_checklist_template_items_company_id ON checklist_template_items (company_id)")
+        )
+    else:
+        db.session.execute(
+            text("ALTER TABLE checklist_template_items ADD COLUMN company_id INTEGER")
+        )
+
+    db.session.commit()
+
+
+def seed_checklist_template():
+    from app.models import ChecklistTemplateItem, Company
+
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    if trueops_company_id:
+        existing_trueops_items = ChecklistTemplateItem.query.filter_by(
+            company_id=trueops_company_id
+        ).count()
+
+        if existing_trueops_items > 0:
+            return
+    elif ChecklistTemplateItem.query.count() > 0:
         return
 
     items = [
@@ -248,6 +291,7 @@ def seed_checklist_template():
     for section_name, task_text, expected_minutes, sort_order, is_required in items:
         db.session.add(
             ChecklistTemplateItem(
+                company_id=trueops_company_id,
                 section_name=section_name,
                 task_text=task_text,
                 expected_minutes=expected_minutes,
