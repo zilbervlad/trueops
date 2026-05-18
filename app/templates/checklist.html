@@ -703,6 +703,229 @@
             margin-top: 0;
         }
     }
+
+/* =========================================================
+   TRUEOPS MOBILE CHECKLIST POLISH — SAFE CSS ONLY
+   Tightens mobile cards, sticky save, spacing, and typography
+   ========================================================= */
+
+@media (max-width: 760px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .checklist-page {
+        max-width: 100%;
+        padding: 0 10px 74px;
+        box-sizing: border-box;
+    }
+
+    .content-grid,
+    .mobile-checklist-layout {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        gap: 0;
+    }
+
+    .checklist-hero-panel,
+    .checklist-load-panel,
+    .checklist-info-panel,
+    .checklist-section-card,
+    .checklist-history-panel {
+        border-radius: 16px;
+        margin-bottom: 12px;
+    }
+
+    .checklist-hero-panel {
+        padding: 14px;
+    }
+
+    .checklist-topbar {
+        gap: 12px;
+    }
+
+    .checklist-store-title {
+        font-size: 1.18rem;
+        line-height: 1.15;
+    }
+
+    .checklist-date-label {
+        font-size: 0.86rem;
+    }
+
+    .checklist-score-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+    }
+
+    .checklist-progress-box {
+        padding: 9px 8px;
+        border-radius: 14px;
+    }
+
+    .metric-label {
+        font-size: 0.58rem;
+        line-height: 1.05;
+        margin-bottom: 4px;
+    }
+
+    .checklist-progress-box h3 {
+        font-size: 1rem;
+        line-height: 1.1;
+    }
+
+    .checklist-section-summary {
+        position: relative;
+        top: auto;
+        padding: 12px 12px 10px;
+        gap: 8px;
+    }
+
+    .checklist-section-title {
+        font-size: 0.98rem;
+        line-height: 1.15;
+    }
+
+    .integrity-pill {
+        font-size: 0.66rem;
+        padding: 4px 8px;
+    }
+
+    .accordion-count,
+    .accordion-percent {
+        min-width: auto;
+        padding: 6px 8px;
+        font-size: 0.78rem;
+    }
+
+    .section-progress-bar {
+        height: 6px;
+    }
+
+    .accordion-body {
+        padding: 9px;
+    }
+
+    .checklist-items {
+        gap: 8px;
+    }
+
+    .checklist-item-card {
+        border-radius: 15px;
+    }
+
+    .checklist-item-main {
+        padding: 10px 11px;
+    }
+
+    .checklist-task-row {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 9px;
+        align-items: start;
+    }
+
+    .checklist-checkbox-hitbox {
+        width: 30px;
+        height: 30px;
+        margin-top: 0;
+    }
+
+    .live-checklist-box {
+        width: 23px;
+        height: 23px;
+    }
+
+    .checklist-task-text {
+        font-size: 0.96rem;
+        line-height: 1.22;
+        font-weight: 850;
+    }
+
+    .task-meta-row {
+        margin-top: 7px;
+        gap: 6px;
+    }
+
+    .task-time-pill {
+        font-size: 0.74rem;
+        padding: 4px 8px;
+    }
+
+    .notes-toggle-btn {
+        grid-column: 2;
+        justify-self: start;
+        margin-top: 7px;
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 0.76rem;
+    }
+
+    .checklist-note-group {
+        padding: 0 11px 11px 50px;
+    }
+
+    .checklist-note-group input {
+        min-height: 38px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+    }
+
+    .mobile-sticky-save {
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        border-radius: 18px 18px 0 0;
+    }
+
+    .mobile-sticky-save .btn-primary {
+        min-height: 44px;
+        border-radius: 13px;
+        font-size: 0.95rem;
+    }
+
+    .checklist-load-panel,
+    .checklist-info-panel,
+    .checklist-history-panel {
+        display: none;
+    }
+}
+
+@media (max-width: 430px) {
+    .checklist-page {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .checklist-score-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .checklist-progress-box {
+        display: block;
+    }
+
+    .checklist-progress-box h3 {
+        font-size: 0.98rem;
+    }
+
+    .checklist-section-summary {
+        grid-template-columns: 1fr auto;
+    }
+
+    .checklist-section-meta {
+        justify-content: flex-end;
+    }
+
+    .checklist-task-text {
+        font-size: 0.93rem;
+    }
+
+    .task-time-pill,
+    .notes-toggle-btn {
+        font-size: 0.72rem;
+    }
+}
+
 </style>
 
 <div class="checklist-page mobile-checklist-page">
