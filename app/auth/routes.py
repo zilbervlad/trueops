@@ -58,7 +58,6 @@ def login():
         if user and user.check_password(password):
             effective_role = "admin" if user.role == "platform_admin" else user.role
 
-            session.permanent = True
             session["user_id"] = user.id
             session["user_name"] = user.name
             session["user_role"] = effective_role

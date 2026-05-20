@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -19,14 +18,6 @@ class Config:
         or os.getenv("FLASK_SECRET_KEY")
         or "dev-secret-key"
     )
-
-    # -------------------------
-    # SESSION / LOGIN SETTINGS
-    # -------------------------
-    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_REFRESH_EACH_REQUEST = True
 
     database_url = os.getenv("DATABASE_URL", "").strip()
 
