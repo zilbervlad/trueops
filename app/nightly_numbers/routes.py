@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from app.auth.routes import login_required, role_required
 from app.extensions import db
@@ -515,10 +515,60 @@ def admin():
     fields = get_field_config()
 
     if request.method == "POST":
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
         if session.get("user_role") != "admin":
+            if is_ajax:
+                return jsonify({
+                    "success": False,
+                    "message": "Only admins can update nightly form settings."
+                }), 403
+
             flash("Only admins can update nightly form settings.", "error")
             return redirect(url_for("nightly_numbers.admin"))
 
+        action = request.form.get("action", "").strip()
+
+        # Handles the autosave rows from nightly_numbers_admin.html.
+        if action == "update_single_field":
+            field_id = request.form.get("field_id", "").strip()
+
+            try:
+                field_id_int = int(field_id)
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid field id."
+                }), 400
+
+            field = nightly_numbers_config_query().filter(
+                NightlyNumbersFieldConfig.id == field_id_int
+            ).first()
+
+            if not field:
+                return jsonify({
+                    "success": False,
+                    "message": "Field not found."
+                }), 404
+
+            field_label = request.form.get("field_label", "").strip()
+            if field_label:
+                field.field_label = field_label
+
+            field.is_enabled = request.form.get("is_enabled") == "1"
+            field.is_required = request.form.get("is_required") == "1"
+
+            db.session.commit()
+
+            return jsonify({
+                "success": True,
+                "field_id": field.id,
+                "field_label": field.field_label,
+                "is_enabled": field.is_enabled,
+                "is_required": field.is_required,
+            })
+
+        # Keeps support for the older full-form save format, just in case.
         for field in fields:
             field.field_label = request.form.get(
                 f"label_{field.id}",
@@ -529,6 +579,13 @@ def admin():
             field.is_required = request.form.get(f"required_{field.id}") == "on"
 
         db.session.commit()
+
+        if is_ajax:
+            return jsonify({
+                "success": True,
+                "message": "Nightly form settings updated."
+            })
+
         flash("Nightly form settings updated.", "success")
         return redirect(url_for("nightly_numbers.admin"))
 
