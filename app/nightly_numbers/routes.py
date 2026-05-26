@@ -32,7 +32,7 @@ DEFAULT_FIELD_CONFIG = [
     },
     {
         "field_key": "variable_labor",
-        "field_label": "Variable Labor",
+        "field_label": "Labor Variance",
         "field_type": "text",
         "sort_order": 2,
         "is_enabled": True,
@@ -40,7 +40,7 @@ DEFAULT_FIELD_CONFIG = [
     },
     {
         "field_key": "labor_goal",
-        "field_label": "Labor Goal",
+        "field_label": "Variance to Ideal",
         "field_type": "text",
         "sort_order": 3,
         "is_enabled": True,
@@ -383,8 +383,8 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
         f"Date: {report.report_date.strftime('%B %d, %Y')}\n"
         f"Manager: {report.manager_name or 'Not provided'}\n\n"
         f"Royalty Sales: {report.royalty_sales if report.royalty_sales is not None else 'Not provided'}\n"
-        f"Variable Labor: {report.variable_labor if report.variable_labor is not None else 'Not provided'}\n"
-        f"Labor Goal: {report.labor_goal if report.labor_goal is not None else 'Not provided'}\n"
+        f"Labor Variance: {report.variable_labor if report.variable_labor is not None else 'Not provided'}\n"
+        f"Variance to Ideal: {report.labor_goal if report.labor_goal is not None else 'Not provided'}\n"
         f"Labor Status: {labor_status or 'Not available'}\n"
         f"Invoices/Transfers Checked: {'Yes' if report.invoices_transfers_checked else 'No'}\n"
         f"Food Variance: {report.food_variance if report.food_variance is not None else 'Not provided'}\n"
