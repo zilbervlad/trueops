@@ -367,6 +367,28 @@ class NightlyNumbersFieldConfig(db.Model):
     company = db.relationship("Company", backref=db.backref("nightly_numbers_field_configs", lazy=True))
 
 
+class NightlyNumbersReportValue(db.Model):
+    __tablename__ = "nightly_numbers_report_values"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    report_id = db.Column(db.Integer, db.ForeignKey("nightly_numbers_reports.id"), nullable=False, index=True)
+    field_config_id = db.Column(db.Integer, db.ForeignKey("nightly_numbers_field_config.id"), nullable=True, index=True)
+
+    field_key = db.Column(db.String(100), nullable=False)
+    field_label = db.Column(db.String(255), nullable=False)
+    field_type = db.Column(db.String(50), nullable=False, default="text")
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+    value_text = db.Column(db.Text, nullable=True)
+
+    report = db.relationship(
+        "NightlyNumbersReport",
+        backref=db.backref("custom_values", lazy=True, cascade="all, delete-orphan")
+    )
+    field_config = db.relationship("NightlyNumbersFieldConfig")
+
+
 class CashLog(db.Model):
     __tablename__ = "cash_logs"
 

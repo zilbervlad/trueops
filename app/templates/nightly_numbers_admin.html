@@ -47,7 +47,7 @@
     .nightly-airtable-head,
     .nightly-airtable-row {
         display: grid;
-        grid-template-columns: 150px minmax(220px, 1fr) 120px 120px 120px;
+        grid-template-columns: 145px minmax(220px, 1fr) 130px 90px 110px 110px 110px;
         gap: 0;
         align-items: stretch;
     }
@@ -282,6 +282,38 @@
             grid-template-columns: 1fr;
         }
     }
+
+    .nightly-create-field-panel {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .nightly-create-grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 150px 110px 110px 110px auto;
+        gap: 8px;
+        align-items: end;
+    }
+
+    .nightly-select {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        background: white;
+        color: #0f172a;
+        font-size: 0.88rem;
+    }
+
+    @media (max-width: 980px) {
+        .nightly-create-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="nightly-admin-page">
@@ -296,10 +328,67 @@
             </p>
 
             {% if session.get("user_role") == "admin" %}
+            <div class="nightly-create-field-panel">
+                <form method="POST">
+                    <input type="hidden" name="action" value="create_field">
+
+                    <div class="nightly-create-grid">
+                        <div class="form-group">
+                            <label for="new_field_label">New Field Label</label>
+                            <input
+                                type="text"
+                                id="new_field_label"
+                                name="field_label"
+                                class="nightly-inline-input"
+                                placeholder="Example: Closing Notes"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new_field_type">Type</label>
+                            <select id="new_field_type" name="field_type" class="nightly-select">
+                                <option value="text">Text</option>
+                                <option value="textarea">Textarea</option>
+                                <option value="number">Number</option>
+                                <option value="money">Money</option>
+                                <option value="percent">Percent</option>
+                                <option value="checkbox">Checkbox</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new_sort_order">Order</label>
+                            <input
+                                type="number"
+                                id="new_sort_order"
+                                name="sort_order"
+                                class="nightly-inline-input"
+                                value="999"
+                            >
+                        </div>
+
+                        <label class="nightly-checkbox-inline">
+                            <input type="checkbox" name="is_enabled" checked>
+                            Enabled
+                        </label>
+
+                        <label class="nightly-checkbox-inline">
+                            <input type="checkbox" name="is_required">
+                            Required
+                        </label>
+
+                        <button type="submit" class="btn-primary">Add Field</button>
+                    </div>
+                </form>
+            </div>
+
             <div class="nightly-airtable-wrap">
                 <div class="nightly-airtable-head">
                     <div class="nightly-airtable-head-cell">Field</div>
                     <div class="nightly-airtable-head-cell">Label</div>
+                    <div class="nightly-airtable-head-cell">Type</div>
+                    <div class="nightly-airtable-head-cell">Order</div>
                     <div class="nightly-airtable-head-cell">Enabled</div>
                     <div class="nightly-airtable-head-cell">Required</div>
                     <div class="nightly-airtable-head-cell">Status</div>
@@ -310,6 +399,8 @@
                     class="nightly-airtable-row ajax-nightly-row"
                     data-field-id="{{ field.id }}"
                     data-last-saved-label="{{ field.field_label }}"
+                    data-last-saved-type="{{ field.field_type }}"
+                    data-last-saved-order="{{ field.sort_order }}"
                     data-last-saved-enabled="{{ 1 if field.is_enabled else 0 }}"
                     data-last-saved-required="{{ 1 if field.is_required else 0 }}"
                 >
@@ -325,6 +416,25 @@
                             type="text"
                             class="nightly-inline-input nightly-label-input"
                             value="{{ field.field_label }}"
+                        >
+                    </div>
+
+                    <div class="nightly-airtable-cell">
+                        <select class="nightly-select nightly-type-input">
+                            <option value="text" {% if field.field_type == "text" %}selected{% endif %}>Text</option>
+                            <option value="textarea" {% if field.field_type == "textarea" %}selected{% endif %}>Textarea</option>
+                            <option value="number" {% if field.field_type == "number" %}selected{% endif %}>Number</option>
+                            <option value="money" {% if field.field_type == "money" %}selected{% endif %}>Money</option>
+                            <option value="percent" {% if field.field_type == "percent" %}selected{% endif %}>Percent</option>
+                            <option value="checkbox" {% if field.field_type == "checkbox" %}selected{% endif %}>Checkbox</option>
+                        </select>
+                    </div>
+
+                    <div class="nightly-airtable-cell">
+                        <input
+                            type="number"
+                            class="nightly-inline-input nightly-order-input"
+                            value="{{ field.sort_order }}"
                         >
                     </div>
 
@@ -446,99 +556,18 @@
                 </div>
 
                 <div class="nightly-report-grid">
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Manager</div>
-                        <div class="nightly-value-text">{{ report.manager_name or "Not provided" }}</div>
-                    </div>
-
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Royalty Sales</div>
-                        <div class="nightly-value-text">
-                            {{ report.royalty_sales if report.royalty_sales is not none else "Not provided" }}
+                    {% for field in fields %}
+                        {% if field.is_enabled %}
+                        <div class="nightly-value-card">
+                            <div class="nightly-value-label">{{ field.field_label }}</div>
+                            <div class="nightly-value-text">
+                                {% set value = report_field_values.get(report.id, {}).get(field.field_key) %}
+                                {{ value if value not in [none, ""] else "Not provided" }}
+                            </div>
                         </div>
-                    </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
-
-                <div class="nightly-report-grid">
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Labor Variance / Variance to Ideal</div>
-                        <div class="nightly-value-text">
-                            {{ report.variable_labor if report.variable_labor is not none else "N/A" }}
-                            /
-                            {{ report.labor_goal if report.labor_goal is not none else "N/A" }}
-                        </div>
-                    </div>
-
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Food Variance</div>
-                        <div class="nightly-value-text">
-                            {{ report.food_variance if report.food_variance is not none else "Not provided" }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="nightly-report-grid">
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">ADT</div>
-                        <div class="nightly-value-text">
-                            {{ report.adt if report.adt is not none else "Not provided" }}
-                        </div>
-                    </div>
-
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Load Time</div>
-                        <div class="nightly-value-text">{{ report.load_time or "Not provided" }}</div>
-                    </div>
-                </div>
-
-                <div class="nightly-report-grid">
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Cash +/-</div>
-                        <div class="nightly-value-text">
-                            {{ report.cash_diff if report.cash_diff is not none else "Not provided" }}
-                        </div>
-                    </div>
-
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Invoices / Transfers Checked</div>
-                        <div class="nightly-value-text">{{ "Yes" if report.invoices_transfers_checked else "No" }}</div>
-                    </div>
-                </div>
-
-                <div class="nightly-report-grid">
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Food Order Placed</div>
-                        <div class="nightly-value-text">{{ "Yes" if report.food_order_placed else "No" }}</div>
-                    </div>
-
-                    <div class="nightly-value-card">
-                        <div class="nightly-value-label">Created</div>
-                        <div class="nightly-value-text">
-                            {{ report.created_at.strftime('%b %d, %Y %I:%M %p') if report.created_at else "N/A" }}
-                        </div>
-                    </div>
-                </div>
-
-                {% if report.food_variance_details %}
-                <div class="nightly-value-card" style="margin-bottom: 8px;">
-                    <div class="nightly-value-label">Food Variance Details</div>
-                    <div class="nightly-value-text">{{ report.food_variance_details }}</div>
-                </div>
-                {% endif %}
-
-                {% if report.adt_reason %}
-                <div class="nightly-value-card" style="margin-bottom: 8px;">
-                    <div class="nightly-value-label">ADT Reason</div>
-                    <div class="nightly-value-text">{{ report.adt_reason }}</div>
-                </div>
-                {% endif %}
-
-                {% if report.bad_orders %}
-                <div class="nightly-value-card" style="margin-bottom: 8px;">
-                    <div class="nightly-value-label">Bad Orders</div>
-                    <div class="nightly-value-text">{{ report.bad_orders }}</div>
-                </div>
-                {% endif %}
 
                 {% if session.get("user_role") == "admin" %}
                 <div class="admin-check-row compact-actions" style="margin-top: 10px;">
@@ -565,6 +594,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function getRowState(row) {
         return {
             field_label: row.querySelector(".nightly-label-input")?.value || "",
+            field_type: row.querySelector(".nightly-type-input")?.value || "text",
+            sort_order: row.querySelector(".nightly-order-input")?.value || "0",
             is_enabled: row.querySelector(".nightly-enabled-input")?.checked ? "1" : "0",
             is_required: row.querySelector(".nightly-required-input")?.checked ? "1" : "0"
         };
@@ -573,6 +604,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function getSavedState(row) {
         return {
             field_label: row.dataset.lastSavedLabel || "",
+            field_type: row.dataset.lastSavedType || "text",
+            sort_order: row.dataset.lastSavedOrder || "0",
             is_enabled: row.dataset.lastSavedEnabled || "0",
             is_required: row.dataset.lastSavedRequired || "0"
         };
@@ -580,6 +613,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateSavedState(row, state) {
         row.dataset.lastSavedLabel = state.field_label;
+        row.dataset.lastSavedType = state.field_type;
+        row.dataset.lastSavedOrder = state.sort_order;
         row.dataset.lastSavedEnabled = state.is_enabled;
         row.dataset.lastSavedRequired = state.is_required;
     }
@@ -590,6 +625,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return (
             current.field_label !== saved.field_label ||
+            current.field_type !== saved.field_type ||
+            current.sort_order !== saved.sort_order ||
             current.is_enabled !== saved.is_enabled ||
             current.is_required !== saved.is_required
         );
@@ -624,6 +661,8 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("action", "update_single_field");
         formData.append("field_id", fieldId);
         formData.append("field_label", state.field_label);
+        formData.append("field_type", state.field_type);
+        formData.append("sort_order", state.sort_order);
         formData.append("is_enabled", state.is_enabled);
         formData.append("is_required", state.is_required);
 
@@ -691,6 +730,8 @@ document.addEventListener("DOMContentLoaded", function () {
         updateRowVisuals(row);
 
         const labelInput = row.querySelector(".nightly-label-input");
+        const typeInput = row.querySelector(".nightly-type-input");
+        const orderInput = row.querySelector(".nightly-order-input");
         const enabledInput = row.querySelector(".nightly-enabled-input");
         const requiredInput = row.querySelector(".nightly-required-input");
 
@@ -705,6 +746,29 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             labelInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+        }
+
+        if (typeInput) {
+            typeInput.addEventListener("change", function () {
+                updateRowVisuals(row);
+                queueSave(row, 0);
+            });
+        }
+
+        if (orderInput) {
+            orderInput.addEventListener("input", function () {
+                updateRowVisuals(row);
+            });
+
+            orderInput.addEventListener("blur", function () {
+                updateRowVisuals(row);
+                queueSave(row, 120);
+            });
+
+            orderInput.addEventListener("change", function () {
                 updateRowVisuals(row);
                 queueSave(row, 120);
             });

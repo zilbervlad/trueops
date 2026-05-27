@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
+import re
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from app.auth.routes import login_required, role_required
 from app.extensions import db
-from app.models import NightlyNumbersReport, NightlyNumbersFieldConfig, Store, User
+from app.models import NightlyNumbersReport, NightlyNumbersFieldConfig, NightlyNumbersReportValue, Store, User
 from app.services.email_service import send_email
 
 nightly_numbers_bp = Blueprint("nightly_numbers", __name__, url_prefix="/nightly-numbers")
@@ -119,6 +120,115 @@ DEFAULT_FIELD_CONFIG = [
         "is_required": False,
     },
 ]
+
+
+FIXED_NIGHTLY_REPORT_FIELDS = {
+    "manager_name",
+    "royalty_sales",
+    "variable_labor",
+    "labor_goal",
+    "invoices_transfers_checked",
+    "food_variance",
+    "food_variance_details",
+    "adt",
+    "adt_reason",
+    "load_time",
+    "bad_orders",
+    "cash_diff",
+    "food_order_placed",
+}
+
+
+def make_field_key(label):
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "_", (label or "").strip().lower()).strip("_")
+    return cleaned or "custom_field"
+
+
+def unique_field_key(base_key):
+    company_id = current_company_id()
+    key = base_key
+    counter = 2
+
+    while NightlyNumbersFieldConfig.query.filter_by(company_id=company_id, field_key=key).first():
+        key = f"{base_key}_{counter}"
+        counter += 1
+
+    return key
+
+
+def is_fixed_report_field(field_key):
+    return field_key in FIXED_NIGHTLY_REPORT_FIELDS
+
+
+def normalize_field_value(field, raw_value):
+    if field.field_type == "checkbox":
+        return "Yes" if raw_value in [True, "true", "True", "1", "yes", "Yes", "on"] else "No"
+
+    if raw_value is None:
+        return ""
+
+    return str(raw_value)
+
+
+def get_custom_report_value(report, field_key):
+    if not report:
+        return None
+
+    for value in getattr(report, "custom_values", []) or []:
+        if value.field_key == field_key:
+            return value.value_text
+
+    return None
+
+
+def set_custom_report_value(report, field, raw_value):
+    existing = None
+
+    for value in getattr(report, "custom_values", []) or []:
+        if value.field_key == field.field_key:
+            existing = value
+            break
+
+    if not existing:
+        existing = NightlyNumbersReportValue(
+            report_id=report.id,
+            field_config_id=field.id,
+            field_key=field.field_key,
+            field_label=field.field_label,
+            field_type=field.field_type,
+            sort_order=field.sort_order,
+        )
+        db.session.add(existing)
+
+    existing.field_config_id = field.id
+    existing.field_label = field.field_label
+    existing.field_type = field.field_type
+    existing.sort_order = field.sort_order
+    existing.value_text = normalize_field_value(field, raw_value)
+
+
+def get_report_display_value(report, field):
+    if is_fixed_report_field(field.field_key):
+        value = getattr(report, field.field_key, None)
+
+        if field.field_type == "checkbox":
+            return "Yes" if value else "No"
+
+        return value
+
+    return get_custom_report_value(report, field.field_key)
+
+
+def build_report_field_values(reports, fields):
+    output = {}
+
+    for report in reports:
+        output[report.id] = {}
+        for field in fields:
+            output[report.id][field.field_key] = get_report_display_value(report, field)
+
+    return output
+
 
 FIELD_META = {
     "manager_name": {
@@ -290,11 +400,23 @@ def parse_float(value):
 def get_report_value(report, field_key):
     if not report:
         return None
-    return getattr(report, field_key, None)
+
+    if is_fixed_report_field(field_key):
+        return getattr(report, field_key, None)
+
+    return get_custom_report_value(report, field_key)
 
 
 def apply_form_value_to_report(report, field):
     field_key = field.field_key
+
+    if not is_fixed_report_field(field_key):
+        if field.field_type == "checkbox":
+            raw_value = request.form.get(field_key) == "on"
+        else:
+            raw_value = request.form.get(field_key, "").strip()
+        set_custom_report_value(report, field, raw_value)
+        return
 
     if field.field_type == "checkbox":
         setattr(report, field_key, request.form.get(field_key) == "on")
@@ -367,36 +489,36 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
     if not manager_email:
         raise ValueError(f"No manager notification email configured for store {report.store_number}.")
 
-    labor_status = ""
+    fields = get_field_config()
+    enabled_fields = [field for field in fields if field.is_enabled]
+
+    lines = [
+        "Nightly Numbers Report",
+        f"Store: {report.store_number}",
+        f"Date: {report.report_date.strftime('%B %d, %Y')}",
+        "",
+    ]
+
+    for field in enabled_fields:
+        value = get_report_display_value(report, field)
+
+        if value is None or value == "":
+            value = "Not provided"
+
+        lines.append(f"{field.field_label}: {value}")
+
     if report.variable_labor is not None and report.labor_goal is not None:
         diff = round(report.variable_labor - report.labor_goal, 2)
         if diff > 0:
-            labor_status = f"Above goal by {diff}"
+            lines.append(f"Labor Status: Above ideal by {diff}")
         elif diff < 0:
-            labor_status = f"Below goal by {abs(diff)}"
+            lines.append(f"Labor Status: Below ideal by {abs(diff)}")
         else:
-            labor_status = "On goal"
+            lines.append("Labor Status: On ideal")
 
-    body = (
-        f"Nightly Numbers Report\n"
-        f"Store: {report.store_number}\n"
-        f"Date: {report.report_date.strftime('%B %d, %Y')}\n"
-        f"Manager: {report.manager_name or 'Not provided'}\n\n"
-        f"Royalty Sales: {report.royalty_sales if report.royalty_sales is not None else 'Not provided'}\n"
-        f"Labor Variance: {report.variable_labor if report.variable_labor is not None else 'Not provided'}\n"
-        f"Variance to Ideal: {report.labor_goal if report.labor_goal is not None else 'Not provided'}\n"
-        f"Labor Status: {labor_status or 'Not available'}\n"
-        f"Invoices/Transfers Checked: {'Yes' if report.invoices_transfers_checked else 'No'}\n"
-        f"Food Variance: {report.food_variance if report.food_variance is not None else 'Not provided'}\n"
-        f"Food Variance Details: {report.food_variance_details or 'None'}\n"
-        f"ADT: {report.adt if report.adt is not None else 'Not provided'}\n"
-        f"ADT Reason: {report.adt_reason or 'None'}\n"
-        f"Load Time: {report.load_time or 'Not provided'}\n"
-        f"Bad Orders: {report.bad_orders or 'None'}\n"
-        f"Cash +/-: {report.cash_diff if report.cash_diff is not None else 'Not provided'}\n"
-        f"Food Order Placed: {'Yes' if report.food_order_placed else 'No'}\n\n"
-        f"- TrueOps"
-    )
+    lines.extend(["", "- TrueOps"])
+
+    body = "\n".join(lines)
 
     send_email(
         to_email=manager_email,
@@ -462,6 +584,7 @@ def index():
                 created_by_user_id=session.get("user_id")
             )
             db.session.add(report)
+            db.session.flush()
 
         for field in fields:
             apply_form_value_to_report(report, field)
@@ -529,6 +652,46 @@ def admin():
 
         action = request.form.get("action", "").strip()
 
+
+        if action == "create_field":
+            field_label = request.form.get("field_label", "").strip()
+            field_type = request.form.get("field_type", "text").strip()
+            sort_order_raw = request.form.get("sort_order", "999").strip()
+            is_enabled = request.form.get("is_enabled") == "on"
+            is_required = request.form.get("is_required") == "on"
+
+            allowed_types = {"text", "textarea", "checkbox", "number", "money", "percent"}
+            if field_type not in allowed_types:
+                field_type = "text"
+
+            if not field_label:
+                flash("Field label is required.", "error")
+                return redirect(url_for("nightly_numbers.admin"))
+
+            try:
+                sort_order = int(sort_order_raw)
+            except ValueError:
+                sort_order = 999
+
+            base_key = make_field_key(field_label)
+            field_key = unique_field_key(base_key)
+
+            db.session.add(
+                NightlyNumbersFieldConfig(
+                    company_id=current_company_id(),
+                    field_key=field_key,
+                    field_label=field_label,
+                    field_type=field_type,
+                    sort_order=sort_order,
+                    is_enabled=is_enabled,
+                    is_required=is_required,
+                )
+            )
+            db.session.commit()
+
+            flash("Nightly field created.", "success")
+            return redirect(url_for("nightly_numbers.admin"))
+
         # Handles the autosave rows from nightly_numbers_admin.html.
         if action == "update_single_field":
             field_id = request.form.get("field_id", "").strip()
@@ -552,9 +715,23 @@ def admin():
                 }), 404
 
             field_label = request.form.get("field_label", "").strip()
+            field_type = request.form.get("field_type", field.field_type).strip()
+            sort_order_raw = request.form.get("sort_order", str(field.sort_order)).strip()
+
+            allowed_types = {"text", "textarea", "checkbox", "number", "money", "percent"}
+            if field_type not in allowed_types:
+                field_type = "text"
+
+            try:
+                sort_order = int(sort_order_raw)
+            except ValueError:
+                sort_order = field.sort_order
+
             if field_label:
                 field.field_label = field_label
 
+            field.field_type = field_type
+            field.sort_order = sort_order
             field.is_enabled = request.form.get("is_enabled") == "1"
             field.is_required = request.form.get("is_required") == "1"
 
@@ -564,6 +741,8 @@ def admin():
                 "success": True,
                 "field_id": field.id,
                 "field_label": field.field_label,
+                "field_type": field.field_type,
+                "sort_order": field.sort_order,
                 "is_enabled": field.is_enabled,
                 "is_required": field.is_required,
             })
@@ -613,6 +792,7 @@ def admin():
     ).all()
 
     reports = [r for r in reports if r.store_number in visible_store_numbers]
+    report_field_values = build_report_field_values(reports, fields)
 
     return render_template(
         "nightly_numbers_admin.html",
@@ -621,6 +801,7 @@ def admin():
         selected_store=selected_store,
         selected_date=selected_date,
         fields=fields,
+        report_field_values=report_field_values,
     )
 
 
