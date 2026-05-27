@@ -191,6 +191,7 @@ class IntegritySettings(db.Model):
     __tablename__ = "integrity_settings"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
     integrity_section = db.Column(
         db.String(120),
@@ -203,6 +204,7 @@ class IntegritySettings(db.Model):
 
     burst_threshold = db.Column(db.Integer, nullable=False, default=4)
     burst_window_seconds = db.Column(db.Integer, nullable=False, default=60)
+    burst_warning_enabled = db.Column(db.Boolean, nullable=False, default=True)
 
     full_score_ratio = db.Column(db.Float, nullable=False, default=0.70)
     medium_score_ratio = db.Column(db.Float, nullable=False, default=0.50)

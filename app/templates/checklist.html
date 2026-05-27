@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Checklist | TrueOps{% endblock %}
+{% block title %}Checklist | TrueOps
+{% endblock %}
 {% block header %}Daily Checklist{% endblock %}
 
 {% block content %}
@@ -1004,7 +1005,146 @@
 
 
 
+
+
+/* TRUEOPS CHECKLIST CONFIRMATION POPUPS */
+.trueops-reminder-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(8px);
+}
+
+.trueops-reminder-overlay.is-open {
+    display: flex;
+}
+
+.trueops-reminder-modal {
+    width: min(430px, 100%);
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    overflow: hidden;
+}
+
+.trueops-reminder-head {
+    padding: 18px 20px 12px;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 72%);
+    border-bottom: 1px solid #fed7aa;
+}
+
+.trueops-reminder-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #ffedd5;
+    color: #c2410c;
+    font-size: 0.78rem;
+    font-weight: 950;
+    border: 1px solid #fed7aa;
+    margin-bottom: 10px;
+}
+
+.trueops-reminder-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.25rem;
+    font-weight: 950;
+    line-height: 1.15;
+}
+
+.trueops-reminder-body {
+    padding: 16px 20px 4px;
+}
+
+.trueops-reminder-message {
+    margin: 0;
+    color: #334155;
+    font-size: 1rem;
+    font-weight: 750;
+    line-height: 1.38;
+}
+
+.trueops-reminder-sub {
+    margin: 10px 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.trueops-reminder-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 18px 20px 20px;
+}
+
+.trueops-reminder-btn {
+    border: 0;
+    border-radius: 15px;
+    min-height: 46px;
+    font-weight: 950;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.trueops-reminder-btn.no {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+}
+
+.trueops-reminder-btn.yes {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+@media (max-width: 760px) {
+    .trueops-reminder-modal {
+        border-radius: 20px;
+    }
+
+    .trueops-reminder-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
+
+
+<div id="trueopsReminderOverlay" class="trueops-reminder-overlay" aria-hidden="true">
+    <div class="trueops-reminder-modal" role="dialog" aria-modal="true" aria-labelledby="trueopsReminderTitle">
+        <div class="trueops-reminder-head">
+            <div class="trueops-reminder-badge" id="trueopsReminderBadge">⚠️ Manager Check</div>
+            <h3 class="trueops-reminder-title" id="trueopsReminderTitle">Quick confirmation</h3>
+        </div>
+
+        <div class="trueops-reminder-body">
+            <p class="trueops-reminder-message" id="trueopsReminderMessage">
+                Please confirm this was completed correctly.
+            </p>
+            <p class="trueops-reminder-sub" id="trueopsReminderSub">
+                This is a reminder only. It helps prevent pencil-whipping the checklist.
+            </p>
+        </div>
+
+        <div class="trueops-reminder-actions">
+            <button type="button" class="trueops-reminder-btn no" id="trueopsReminderNo">No, go back</button>
+            <button type="button" class="trueops-reminder-btn yes" id="trueopsReminderYes">Yes, confirmed</button>
+        </div>
+    </div>
+</div>
+
+
 
 <div class="checklist-page mobile-checklist-page">
     <div class="panel checklist-hero-panel mobile-checklist-hero">
@@ -1168,6 +1308,8 @@
                                                     data-item-id="{{ item.id }}"
                                                     data-section-index="{{ section_index }}"
                                                     data-section-name="{{ section }}"
+                                                    data-task-text="{{ item.task_text|lower }}"
+                                                    data-expected-minutes="{{ item.expected_minutes }}"
                                                     {% if item.is_completed %}checked{% endif %}
                                                     {% if is_read_only %}disabled{% endif %}
                                                 >
@@ -1495,4 +1637,208 @@ document.addEventListener("DOMContentLoaded", function () {
     setAutosaveStatus("Ready");
 });
 </script>
+
+
+
+<script>
+(function () {
+    const overlay = document.getElementById("trueopsReminderOverlay");
+    if (!overlay) return;
+
+    const BURST_WARNING_ENABLED = {{ burst_warning_enabled|default(true)|tojson }};
+
+    const titleEl = document.getElementById("trueopsReminderTitle");
+    const badgeEl = document.getElementById("trueopsReminderBadge");
+    const messageEl = document.getElementById("trueopsReminderMessage");
+    const subEl = document.getElementById("trueopsReminderSub");
+    const yesBtn = document.getElementById("trueopsReminderYes");
+    const noBtn = document.getElementById("trueopsReminderNo");
+
+    let pendingCheckbox = null;
+    let bypassReminder = false;
+
+    // Integrity-based burst warning.
+    // Uses each item's admin-configured expected_minutes.
+    let lastConfirmedCheckTime = null;
+
+    // Prevent absurd warnings for tiny timing differences.
+    // Example: Expected 1 minute will warn if checked under 45 seconds.
+    const INTEGRITY_WARNING_RATIO = 0.75;
+
+    function normalizeText(value) {
+        return (value || "")
+            .toString()
+            .toLowerCase()
+            .replace(/[\u2010-\u2015]/g, "-")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function getTaskText(checkbox) {
+        const card = checkbox.closest(".checklist-item-card");
+        const visibleText = card ? (card.querySelector(".checklist-task-text")?.textContent || "") : "";
+        return normalizeText(checkbox.dataset.taskText || visibleText);
+    }
+
+    function getExpectedMinutes(checkbox) {
+        const raw = checkbox.dataset.expectedMinutes || "0";
+        const parsed = parseFloat(raw);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function isDoughWalkInTask(taskText) {
+        return (
+            taskText.includes("1-way") ||
+            taskText.includes("1 way") ||
+            taskText.includes("one-way") ||
+            taskText.includes("one way") ||
+            taskText.includes("proof") ||
+            taskText.includes("proofing")
+        );
+    }
+
+    function shouldShowIntegrityBurstWarning(checkbox) {
+        if (!BURST_WARNING_ENABLED) {
+            return false;
+        }
+
+        const expectedMinutes = getExpectedMinutes(checkbox);
+
+        // If integrity setting is 0 or blank, do not warn.
+        if (!expectedMinutes || expectedMinutes <= 0) {
+            return false;
+        }
+
+        // First item checked after page load has nothing to compare against.
+        if (!lastConfirmedCheckTime) {
+            return false;
+        }
+
+        const now = Date.now();
+        const secondsSinceLastCheck = (now - lastConfirmedCheckTime) / 1000;
+        const warningThresholdSeconds = expectedMinutes * 60 * INTEGRITY_WARNING_RATIO;
+
+        return secondsSinceLastCheck < warningThresholdSeconds;
+    }
+
+    function getReminderConfig(checkbox) {
+        const taskText = getTaskText(checkbox);
+
+        if (isDoughWalkInTask(taskText)) {
+            return {
+                type: "dough",
+                badge: "🏷️ Dough Label Check",
+                title: "Is the dough labeled in the walk-in?",
+                message: "Confirm the dough is properly labeled in the walk-in before marking this complete.",
+                sub: "Dough should be marked, organized, and easy to verify."
+            };
+        }
+
+        if (shouldShowIntegrityBurstWarning(checkbox)) {
+            const expectedMinutes = getExpectedMinutes(checkbox);
+
+            return {
+                type: "burst",
+                badge: "⚠️ Integrity Warning",
+                title: "Slow down — verify the item",
+                message: "This item is set to take about " + expectedMinutes + " minute" + (expectedMinutes === 1 ? "" : "s") + ", but it was checked off very quickly after the last item.",
+                sub: "Only continue if the task was physically verified. This protects checklist integrity."
+            };
+        }
+
+        return null;
+    }
+
+    function openReminder(config, checkbox) {
+        pendingCheckbox = checkbox;
+
+        badgeEl.textContent = config.badge;
+        titleEl.textContent = config.title;
+        messageEl.textContent = config.message;
+        subEl.textContent = config.sub;
+
+        overlay.classList.add("is-open");
+        overlay.setAttribute("aria-hidden", "false");
+
+        setTimeout(function () {
+            yesBtn.focus();
+        }, 50);
+    }
+
+    function closeReminder() {
+        overlay.classList.remove("is-open");
+        overlay.setAttribute("aria-hidden", "true");
+        pendingCheckbox = null;
+    }
+
+    function markConfirmedCheckTime() {
+        lastConfirmedCheckTime = Date.now();
+    }
+
+    function confirmPendingCheckbox() {
+        if (!pendingCheckbox) {
+            closeReminder();
+            return;
+        }
+
+        const checkbox = pendingCheckbox;
+        closeReminder();
+
+        bypassReminder = true;
+        checkbox.checked = true;
+        markConfirmedCheckTime();
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+        bypassReminder = false;
+    }
+
+    function cancelPendingCheckbox() {
+        if (pendingCheckbox) {
+            pendingCheckbox.checked = false;
+        }
+        closeReminder();
+    }
+
+    document.addEventListener("change", function (event) {
+        const checkbox = event.target.closest(".live-checklist-box");
+        if (!checkbox || checkbox.disabled || bypassReminder) return;
+
+        if (!checkbox.checked) return;
+
+        const config = getReminderConfig(checkbox);
+
+        if (config) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            checkbox.checked = false;
+            openReminder(config, checkbox);
+            return;
+        }
+
+        markConfirmedCheckTime();
+    }, true);
+
+    yesBtn.addEventListener("click", confirmPendingCheckbox);
+    noBtn.addEventListener("click", cancelPendingCheckbox);
+
+    overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) {
+            cancelPendingCheckbox();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (!overlay.classList.contains("is-open")) return;
+
+        if (event.key === "Escape") {
+            cancelPendingCheckbox();
+        }
+
+        if (event.key === "Enter") {
+            confirmPendingCheckbox();
+        }
+    });
+})();
+</script>
+
 {% endblock %}

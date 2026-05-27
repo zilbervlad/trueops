@@ -34,6 +34,44 @@ def current_company_id():
     return session.get("current_company_id")
 
 
+
+def get_integrity_settings(company_id=None, store_number=None, create=False):
+    """
+    Company-aware integrity settings.
+
+    If a store is provided, use that store's company.
+    Otherwise use the current session company.
+    """
+    if company_id is None and store_number:
+        store = Store.query.filter_by(store_number=store_number).first()
+        if store and hasattr(store, "company_id"):
+            company_id = store.company_id
+
+    if company_id is None:
+        company_id = current_company_id()
+
+    query = IntegritySettings.query
+
+    if hasattr(IntegritySettings, "company_id"):
+        if company_id is not None:
+            query = query.filter(IntegritySettings.company_id == company_id)
+        else:
+            query = query.filter(IntegritySettings.company_id.is_(None))
+
+    settings = query.first()
+
+    if not settings and create:
+        settings_kwargs = {}
+        if hasattr(IntegritySettings, "company_id"):
+            settings_kwargs["company_id"] = company_id
+
+        settings = IntegritySettings(**settings_kwargs)
+        db.session.add(settings)
+        db.session.flush()
+
+    return settings
+
+
 def checklist_template_query(include_inactive=False):
     company_id = current_company_id()
 
@@ -223,7 +261,7 @@ def update_checklist_progress(daily: DailyChecklist):
     else:
         daily.percent_complete = round((completed_items / total_items) * 100, 1)
 
-    settings = IntegritySettings.query.first()
+    settings = get_integrity_settings(store_number=daily.store_number)
 
     integrity_section = (
         settings.integrity_section
@@ -994,6 +1032,13 @@ def index():
         store_number=store_number
     ).order_by(DailyChecklist.checklist_date.desc()).limit(14).all()
 
+    integrity_settings = get_integrity_settings(store_number=store_number)
+    burst_warning_enabled = (
+        integrity_settings.burst_warning_enabled
+        if integrity_settings and integrity_settings.burst_warning_enabled is not None
+        else True
+    )
+
     return render_template(
         "checklist.html",
         daily=daily,
@@ -1005,6 +1050,7 @@ def index():
         history=history,
         is_read_only=is_read_only,
         manager_walk_integrity=manager_walk_integrity,
+        burst_warning_enabled=burst_warning_enabled,
     )
 
 
@@ -1012,7 +1058,7 @@ def index():
 @login_required
 @role_required("admin")
 def admin():
-    settings = IntegritySettings.query.first()
+    settings = get_integrity_settings(create=True)
     company_id = current_company_id()
     ensure_company_checklist_template(company_id)
 
@@ -1066,6 +1112,7 @@ def admin():
             settings.timing_weight = timing_weight
             settings.burst_threshold = burst_threshold
             settings.burst_window_seconds = burst_window_seconds
+            settings.burst_warning_enabled = request.form.get("burst_warning_enabled") == "on"
             settings.full_score_ratio = full_score_ratio
             settings.medium_score_ratio = medium_score_ratio
             settings.low_score_ratio = low_score_ratio

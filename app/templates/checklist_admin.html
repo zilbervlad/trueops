@@ -331,6 +331,50 @@
             flex-direction: column;
         }
     }
+
+    .burst-toggle-card {
+        padding: 12px;
+        border-radius: 14px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        margin-bottom: 10px;
+    }
+
+    .burst-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .burst-toggle-title {
+        font-weight: 950;
+        color: #9a3412;
+        margin-bottom: 3px;
+    }
+
+    .burst-toggle-sub {
+        font-size: 0.78rem;
+        color: #9a3412;
+        line-height: 1.3;
+    }
+
+    .burst-toggle-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 900;
+        color: #0f172a;
+        white-space: nowrap;
+    }
+
+    .burst-toggle-switch input {
+        width: 20px;
+        height: 20px;
+        accent-color: #ea580c;
+    }
+
 </style>
 
 <div class="admin-page checklist-admin-page">
@@ -349,6 +393,27 @@
 
             <form method="POST" class="login-form checklist-admin-form-stack">
                 <input type="hidden" name="action" value="update_integrity">
+
+            <div class="burst-toggle-card">
+                <div class="burst-toggle-row">
+                    <div>
+                        <div class="burst-toggle-title">Burst Warning</div>
+                        <div class="burst-toggle-sub">
+                            Company-level setting. When enabled, managers get a warning if items are checked faster than the integrity expected-time setting.
+                        </div>
+                    </div>
+
+                    <label class="burst-toggle-switch">
+                        <input
+                            type="checkbox"
+                            name="burst_warning_enabled"
+                            {% if not integrity_settings or integrity_settings.burst_warning_enabled %}checked{% endif %}
+                        >
+                        Enabled
+                    </label>
+                </div>
+            </div>
+
 
                 <div class="checklist-admin-grid">
                     <div class="form-group">
