@@ -183,11 +183,20 @@ def upload_svr_photos(report, fields):
 
 
 def get_svr_photos_by_field(report_id):
-    photos = UploadedPhoto.query.filter_by(
+    query = UploadedPhoto.query.filter_by(
         module="svr",
         parent_type="svr_report",
         parent_id=report_id,
-    ).order_by(UploadedPhoto.created_at.asc(), UploadedPhoto.id.asc()).all()
+    )
+
+    company_id = current_company_id()
+    if company_id:
+        query = query.filter(UploadedPhoto.company_id == company_id)
+
+    photos = query.order_by(
+        UploadedPhoto.created_at.asc(),
+        UploadedPhoto.id.asc()
+    ).all()
 
     photos_by_field = {}
     for photo in photos:
@@ -1112,11 +1121,17 @@ def delete_report(report_id):
         else:
             ticket.details = "Original SVR was deleted"
 
-    photo_records = UploadedPhoto.query.filter_by(
+    photo_query = UploadedPhoto.query.filter_by(
         module="svr",
         parent_type="svr_report",
         parent_id=report.id,
-    ).all()
+    )
+
+    company_id = current_company_id()
+    if company_id:
+        photo_query = photo_query.filter(UploadedPhoto.company_id == company_id)
+
+    photo_records = photo_query.all()
 
     if configure_cloudinary():
         for photo in photo_records:
@@ -1126,11 +1141,8 @@ def delete_report(report_id):
                 except Exception:
                     pass
 
-    UploadedPhoto.query.filter_by(
-        module="svr",
-        parent_type="svr_report",
-        parent_id=report.id,
-    ).delete()
+    for photo in photo_records:
+        db.session.delete(photo)
 
     WeeklyFocusItem.query.filter_by(svr_report_id=report.id).delete()
     SVRReportValue.query.filter_by(report_id=report.id).delete()
