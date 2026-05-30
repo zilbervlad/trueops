@@ -86,6 +86,48 @@ def checklist_template_query(include_inactive=False):
     return query
 
 
+
+
+def get_company_id_for_store(store_number):
+    company_id = current_company_id()
+    if company_id:
+        return company_id
+
+    store = Store.query.filter_by(store_number=store_number).first()
+    if store and getattr(store, "company_id", None):
+        return store.company_id
+
+    return None
+
+
+def get_active_checklist_template_items_for_company(company_id):
+    """
+    Use one checklist template source only:
+    1. Company-specific active template items if they exist.
+    2. Otherwise fallback to global/default active template items.
+    Never combine both, or daily checklists duplicate every task.
+    """
+    if company_id:
+        company_items = ChecklistTemplateItem.query.filter(
+            ChecklistTemplateItem.company_id == company_id,
+            ChecklistTemplateItem.is_active == True,
+        ).order_by(
+            ChecklistTemplateItem.sort_order.asc(),
+            ChecklistTemplateItem.id.asc(),
+        ).all()
+
+        if company_items:
+            return company_items
+
+    return ChecklistTemplateItem.query.filter(
+        ChecklistTemplateItem.company_id.is_(None),
+        ChecklistTemplateItem.is_active == True,
+    ).order_by(
+        ChecklistTemplateItem.sort_order.asc(),
+        ChecklistTemplateItem.id.asc(),
+    ).all()
+
+
 def ensure_company_checklist_template(company_id):
     """
     If a company has no checklist template yet, clone the TrueOps/default template
@@ -167,13 +209,10 @@ def get_or_create_daily_checklist(store_number: str, checklist_date: date):
     db.session.add(daily)
     db.session.flush()
 
-    company_id = current_company_id()
+    company_id = get_company_id_for_store(store_number)
     ensure_company_checklist_template(company_id)
 
-    template_items = checklist_template_query().order_by(
-        ChecklistTemplateItem.sort_order.asc(),
-        ChecklistTemplateItem.id.asc()
-    ).all()
+    template_items = get_active_checklist_template_items_for_company(company_id)
 
     for template in template_items:
         item = DailyChecklistItem(
