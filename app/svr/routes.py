@@ -987,6 +987,44 @@ def view_report(report_id):
     )
 
 
+
+
+@svr_bp.route("/photo/<int:photo_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "supervisor")
+def delete_svr_photo(photo_id):
+    photo = UploadedPhoto.query.filter_by(
+        id=photo_id,
+        module="svr",
+        parent_type="svr_report",
+    ).first_or_404()
+
+    report = SVRReport.query.get_or_404(photo.parent_id)
+    visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
+
+    if report.store_number not in visible_store_numbers:
+        flash("You do not have access to delete that SVR photo.", "error")
+        return redirect(url_for("svr.index"))
+
+    company_id = current_company_id()
+    if company_id and photo.company_id and photo.company_id != company_id:
+        flash("You do not have access to delete that SVR photo.", "error")
+        return redirect(url_for("svr.view_report", report_id=report.id))
+
+    if configure_cloudinary() and photo.storage_key:
+        try:
+            cloudinary.uploader.destroy(photo.storage_key, resource_type="image")
+        except Exception as exc:
+            print(f"Cloudinary photo delete failed for photo {photo.id}: {exc}")
+            flash("Photo removed from TrueOps, but Cloudinary cleanup may need review.", "warning")
+
+    db.session.delete(photo)
+    db.session.commit()
+
+    flash("SVR photo deleted.", "success")
+    return redirect(url_for("svr.view_report", report_id=report.id))
+
+
 @svr_bp.route("/<int:report_id>/export-pdf")
 @login_required
 @role_required("admin", "supervisor")
