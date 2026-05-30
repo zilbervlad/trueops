@@ -864,9 +864,32 @@ def index():
             "compliance": compliance,
         })
 
+    report_ids = [report.id for report in weekly_reports]
+    report_photo_counts = {}
+
+    if report_ids:
+        photo_query = db.session.query(
+            UploadedPhoto.parent_id,
+            db.func.count(UploadedPhoto.id)
+        ).filter(
+            UploadedPhoto.module == "svr",
+            UploadedPhoto.parent_type == "svr_report",
+            UploadedPhoto.parent_id.in_(report_ids),
+        )
+
+        company_id = current_company_id()
+        if company_id:
+            photo_query = photo_query.filter(UploadedPhoto.company_id == company_id)
+
+        report_photo_counts = {
+            parent_id: count
+            for parent_id, count in photo_query.group_by(UploadedPhoto.parent_id).all()
+        }
+
     return render_template(
         "svr_list.html",
         reports=weekly_reports,
+        report_photo_counts=report_photo_counts,
         stores=stores,
         submitted_this_week=submitted_this_week,
         missing_this_week=missing_this_week,

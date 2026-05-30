@@ -119,7 +119,7 @@
         <span class="summary-pill">{{ reports|length }} reports</span>
     </div>
 
-    <div class="table-wrap premium-table-wrap">
+    <div class="table-wrap premium-table-wrap svr-desktop-report-table-wrap">
         <table class="data-table premium-table svr-report-table">
             <thead>
                 <tr>
@@ -127,16 +127,25 @@
                     <th>Store</th>
                     <th>Supervisor</th>
                     <th>Manager</th>
+                    <th>Photos</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for report in reports %}
+                {% set photo_count = report_photo_counts.get(report.id, 0) %}
                 <tr>
                     <td>{{ report.visit_date.strftime('%b %d, %Y') }}</td>
                     <td>{{ report.store_number }}</td>
                     <td>{{ report.supervisor_name or '—' }}</td>
                     <td>{{ report.manager_on_duty or '—' }}</td>
+                    <td>
+                        {% if photo_count %}
+                            <span class="summary-pill svr-photo-pill">📷 {{ photo_count }}</span>
+                        {% else %}
+                            <span class="summary-pill neutral-pill">No photos</span>
+                        {% endif %}
+                    </td>
                     <td>
                         <div class="svr-action-wrap" style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
                             <a href="{{ url_for('svr.view_report', report_id=report.id) }}"
@@ -160,11 +169,56 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5">No SVR reports for this week.</td>
+                    <td colspan="6">No SVR reports for this week.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <div class="svr-mobile-report-list">
+        {% for report in reports %}
+        {% set photo_count = report_photo_counts.get(report.id, 0) %}
+        <article class="svr-mobile-report-card">
+            <div class="svr-mobile-report-top">
+                <div>
+                    <div class="svr-mobile-store">Store {{ report.store_number }}</div>
+                    <div class="svr-mobile-date">{{ report.visit_date.strftime('%b %d, %Y') }}</div>
+                </div>
+
+                {% if photo_count %}
+                    <span class="summary-pill svr-photo-pill">📷 {{ photo_count }}</span>
+                {% else %}
+                    <span class="summary-pill neutral-pill">No photos</span>
+                {% endif %}
+            </div>
+
+            <div class="svr-mobile-meta">
+                <div>
+                    <span>Supervisor</span>
+                    <strong>{{ report.supervisor_name or '—' }}</strong>
+                </div>
+                <div>
+                    <span>Manager</span>
+                    <strong>{{ report.manager_on_duty or '—' }}</strong>
+                </div>
+            </div>
+
+            <div class="svr-mobile-actions">
+                <a href="{{ url_for('svr.view_report', report_id=report.id) }}" class="action-btn">Open SVR</a>
+
+                <form method="POST"
+                      action="{{ url_for('svr.delete_report', report_id=report.id) }}"
+                      onsubmit="return confirm('Delete this SVR? This cannot be undone.');">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </div>
+        </article>
+        {% else %}
+        <div class="svr-mobile-report-card">
+            <div class="area-subtitle">No SVR reports for this week.</div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

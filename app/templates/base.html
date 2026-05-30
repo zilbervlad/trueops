@@ -212,6 +212,50 @@
             <div class="page-content">
                 {% block content %}{% endblock %}
             </div>
+
+            <nav class="mobile-bottom-nav" aria-label="Mobile quick navigation">
+                <a href="{{ url_for('dashboard.home') }}"
+                   class="{% if request.endpoint == 'dashboard.home' %}active{% endif %}">
+                    <span>⌂</span>
+                    <small>Home</small>
+                </a>
+
+                {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                <a href="{{ url_for('svr.index') }}"
+                   class="{% if request.endpoint and request.endpoint.startswith('svr') and request.endpoint != 'svr.admin' %}active{% endif %}">
+                    <span>📋</span>
+                    <small>SVR</small>
+                </a>
+                {% endif %}
+
+                {% if session.get('user_role') in ['admin', 'supervisor'] %}
+                <a href="{{ url_for('checklist.overview') }}"
+                   class="{% if request.endpoint and request.endpoint.startswith('checklist') %}active{% endif %}">
+                    <span>✓</span>
+                    <small>Checklist</small>
+                </a>
+                {% elif session.get('user_role') == 'manager' %}
+                <a href="{{ url_for('checklist.index') }}"
+                   class="{% if request.endpoint and request.endpoint.startswith('checklist') %}active{% endif %}">
+                    <span>✓</span>
+                    <small>Checklist</small>
+                </a>
+                {% endif %}
+
+                {% if session.get('user_role') in ['admin', 'supervisor', 'maintenance'] %}
+                <a href="{{ url_for('maintenance.index') }}"
+                   class="{% if request.endpoint and request.endpoint.startswith('maintenance') %}active{% endif %}">
+                    <span>🔧</span>
+                    <small>Fix</small>
+                </a>
+                {% endif %}
+
+                <button type="button" id="mobile-bottom-more" aria-label="Open menu">
+                    <span>☰</span>
+                    <small>More</small>
+                </button>
+            </nav>
+
         </main>
     </div>
 
@@ -222,6 +266,7 @@
         const overlay = document.getElementById("mobile-sidebar-overlay");
         const openBtn = document.getElementById("mobile-nav-toggle");
         const closeBtn = document.getElementById("mobile-nav-close");
+        const mobileBottomMore = document.getElementById("mobile-bottom-more");
 
         function openSidebar() {
             body.classList.add("mobile-nav-open");
@@ -232,6 +277,7 @@
         }
 
         if (openBtn) openBtn.addEventListener("click", openSidebar);
+        if (mobileBottomMore) mobileBottomMore.addEventListener("click", openSidebar);
         if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
         if (overlay) overlay.addEventListener("click", closeSidebar);
 
