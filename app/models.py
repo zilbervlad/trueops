@@ -270,6 +270,36 @@ class SVRReportValue(db.Model):
     template_field = db.relationship("SVRTemplateField")
 
 
+class UploadedPhoto(db.Model):
+    __tablename__ = "uploaded_photos"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+    store_number = db.Column(db.String(10), nullable=True, index=True)
+    uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    module = db.Column(db.String(50), nullable=False, default="svr", index=True)
+    parent_type = db.Column(db.String(50), nullable=False, default="svr_report", index=True)
+    parent_id = db.Column(db.Integer, nullable=False, index=True)
+
+    field_key = db.Column(db.String(100), nullable=True, index=True)
+    caption = db.Column(db.String(255), nullable=True)
+
+    image_url = db.Column(db.Text, nullable=False)
+    thumbnail_url = db.Column(db.Text, nullable=True)
+    storage_key = db.Column(db.String(255), nullable=True, index=True)
+
+    original_filename = db.Column(db.String(255), nullable=True)
+    content_type = db.Column(db.String(100), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    uploaded_by = db.relationship("User")
+    company = db.relationship("Company")
+
+
 class WeeklyFocusItem(db.Model):
     __tablename__ = "weekly_focus_items"
 
