@@ -31,21 +31,24 @@ def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
     user_store = session.get("user_store")
+    company_id = session.get("current_company_id")
+    is_platform_admin = session.get("is_platform_admin", False)
+
+    query = Store.query.filter_by(is_active=True)
+
+    if company_id:
+        query = query.filter(Store.company_id == company_id)
+    elif not is_platform_admin:
+        return []
 
     if role in ["admin", "maintenance"]:
-        return Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+        return query.order_by(Store.store_number.asc()).all()
 
     if role == "supervisor":
-        return Store.query.filter_by(
-            area_name=user_area,
-            is_active=True
-        ).order_by(Store.store_number.asc()).all()
+        return query.filter(Store.area_name == user_area).order_by(Store.store_number.asc()).all()
 
     if role == "manager":
-        return Store.query.filter_by(
-            store_number=user_store,
-            is_active=True
-        ).order_by(Store.store_number.asc()).all()
+        return query.filter(Store.store_number == user_store).order_by(Store.store_number.asc()).all()
 
     return []
 
