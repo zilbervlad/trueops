@@ -238,6 +238,7 @@
             <div class="store-airtable-head-cell">Store Number</div>
             <div class="store-airtable-head-cell">Store Name</div>
             <div class="store-airtable-head-cell">Area</div>
+            <div class="store-airtable-head-cell">Supervisor</div>
             <div class="store-airtable-head-cell">Active</div>
             <div class="store-airtable-head-cell">Status</div>
         </div>
@@ -249,6 +250,7 @@
             data-last-saved-store-number="{{ store.store_number }}"
             data-last-saved-store-name="{{ store.store_name or '' }}"
             data-last-saved-area-name="{{ store.area_name }}"
+            data-last-saved-supervisor-name="{{ store.supervisor_name or '' }}"
             data-last-saved-is-active="{{ 1 if store.is_active else 0 }}"
         >
             <div class="store-airtable-cell">
@@ -277,6 +279,15 @@
                     class="store-inline-input store-area-input"
                     value="{{ store.area_name }}"
                     list="area-options-inline"
+                >
+            </div>
+
+            <div class="store-airtable-cell">
+                <input
+                    type="text"
+                    class="store-inline-input store-supervisor-input"
+                    value="{{ store.supervisor_name or '' }}"
+                    placeholder="Supervisor"
                 >
             </div>
 
@@ -329,6 +340,7 @@ document.addEventListener("DOMContentLoaded", function () {
             store_number: row.querySelector(".store-number-input")?.value || "",
             store_name: row.querySelector(".store-name-input")?.value || "",
             area_name: row.querySelector(".store-area-input")?.value || "",
+            supervisor_name: row.querySelector(".store-supervisor-input")?.value || "",
             is_active: row.querySelector(".store-active-input")?.checked ? "1" : "0"
         };
     }
@@ -338,6 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
             store_number: row.dataset.lastSavedStoreNumber || "",
             store_name: row.dataset.lastSavedStoreName || "",
             area_name: row.dataset.lastSavedAreaName || "",
+            supervisor_name: row.dataset.lastSavedSupervisorName || "",
             is_active: row.dataset.lastSavedIsActive || "0"
         };
     }
@@ -346,6 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
         row.dataset.lastSavedStoreNumber = state.store_number;
         row.dataset.lastSavedStoreName = state.store_name;
         row.dataset.lastSavedAreaName = state.area_name;
+        row.dataset.lastSavedSupervisorName = state.supervisor_name;
         row.dataset.lastSavedIsActive = state.is_active;
     }
 
@@ -357,6 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
             current.store_number !== saved.store_number ||
             current.store_name !== saved.store_name ||
             current.area_name !== saved.area_name ||
+            current.supervisor_name !== saved.supervisor_name ||
             current.is_active !== saved.is_active
         );
     }
@@ -392,6 +407,7 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("store_number", state.store_number);
         formData.append("store_name", state.store_name);
         formData.append("area_name", state.area_name);
+        formData.append("supervisor_name", state.supervisor_name);
         formData.append("is_active", state.is_active);
 
         row.dataset.saving = "1";
@@ -460,9 +476,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const numberInput = row.querySelector(".store-number-input");
         const nameInput = row.querySelector(".store-name-input");
         const areaInput = row.querySelector(".store-area-input");
+        const supervisorInput = row.querySelector(".store-supervisor-input");
         const activeInput = row.querySelector(".store-active-input");
 
-        [numberInput, nameInput, areaInput].forEach(function (input) {
+        [numberInput, nameInput, areaInput, supervisorInput].forEach(function (input) {
             if (!input) return;
 
             input.addEventListener("input", function () {

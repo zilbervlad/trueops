@@ -31,6 +31,7 @@ def index():
             store_number = request.form.get("store_number", "").strip()
             store_name = request.form.get("store_name", "").strip()
             area_name = request.form.get("area_name", "").strip()
+            supervisor_name = request.form.get("supervisor_name", "").strip()
 
             if not store_number or not area_name:
                 flash("Store number and area are required.", "error")
@@ -47,6 +48,7 @@ def index():
                     store_number=store_number,
                     store_name=store_name or f"Store {store_number}",
                     area_name=area_name,
+                    supervisor_name=supervisor_name or None,
                     is_active=True,
                 )
             )
@@ -54,6 +56,53 @@ def index():
 
             flash("Store created successfully.", "success")
             return redirect(url_for("store_admin.index"))
+
+        if action == "update_inline":
+            store_id = request.form.get("store_id", "").strip()
+            store = Store.query.get(store_id)
+
+            if not store:
+                return {"success": False, "error": "Store not found."}, 404
+
+            if not is_platform_admin and store.company_id != selected_company_id:
+                return {"success": False, "error": "You do not have permission to edit that store."}, 403
+
+            new_store_number = request.form.get("store_number", "").strip()
+            new_store_name = request.form.get("store_name", "").strip()
+            new_area_name = request.form.get("area_name", "").strip()
+            new_supervisor_name = request.form.get("supervisor_name", "").strip()
+
+            if not new_store_number or not new_area_name:
+                return {"success": False, "error": "Store number and area are required."}, 400
+
+            duplicate = Store.query.filter(
+                Store.store_number == new_store_number,
+                Store.id != store.id
+            ).first()
+
+            if duplicate:
+                return {"success": False, "error": "Another store already uses that store number."}, 400
+
+            store.company_id = target_company_id
+            store.store_number = new_store_number
+            store.store_name = new_store_name or f"Store {new_store_number}"
+            store.area_name = new_area_name
+            store.supervisor_name = new_supervisor_name or None
+            store.is_active = request.form.get("is_active") in ["1", "on", "true", "True"]
+
+            db.session.commit()
+            return {
+                "success": True,
+                "message": "Store saved.",
+                "store": {
+                    "id": store.id,
+                    "store_number": store.store_number,
+                    "store_name": store.store_name,
+                    "area_name": store.area_name,
+                    "supervisor_name": store.supervisor_name or "",
+                    "is_active": 1 if store.is_active else 0,
+                }
+            }
 
         if action == "update":
             store_id = request.form.get("store_id", "").strip()
@@ -70,6 +119,7 @@ def index():
             new_store_number = request.form.get("store_number", "").strip()
             new_store_name = request.form.get("store_name", "").strip()
             new_area_name = request.form.get("area_name", "").strip()
+            new_supervisor_name = request.form.get("supervisor_name", "").strip()
 
             if not new_store_number or not new_area_name:
                 flash("Store number and area are required.", "error")
@@ -88,6 +138,7 @@ def index():
             store.store_number = new_store_number
             store.store_name = new_store_name or f"Store {new_store_number}"
             store.area_name = new_area_name
+            store.supervisor_name = new_supervisor_name or None
             store.is_active = request.form.get("is_active") == "on"
 
             db.session.commit()
