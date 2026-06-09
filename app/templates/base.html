@@ -110,50 +110,9 @@
                     {% endif %}
                 </div>
 
-                {% if session.get('user_role') == 'admin' %}
-                <div class="nav-section">
-                    <div class="nav-section-label">Admin</div>
+                {# Admin tools moved to topbar gear menu #}
 
-                    <a href="{{ url_for('checklist.admin') }}"
-                       class="{% if request.endpoint == 'checklist.admin' %}active{% endif %}">
-                        Checklist Admin
-                    </a>
-
-                    <a href="{{ url_for('svr.admin') }}"
-                       class="{% if request.endpoint == 'svr.admin' %}active{% endif %}">
-                        SVR Admin
-                    </a>
-
-                    <a href="{{ url_for('verification.admin') }}"
-                       class="{% if request.endpoint == 'verification.admin' %}active{% endif %}">
-                        Verification Admin
-                    </a>
-
-                    <a href="{{ url_for('nightly_numbers.admin') }}"
-                       class="{% if request.endpoint == 'nightly_numbers.admin' or request.endpoint == 'nightly_numbers.edit_report' %}active{% endif %}">
-                        Nightly Numbers Admin
-                    </a>
-
-                    <a href="{{ url_for('store_admin.index') }}"
-                       class="{% if request.endpoint and request.endpoint.startswith('store_admin') %}active{% endif %}">
-                        Store Admin
-                    </a>
-
-                    <a href="{{ url_for('company_admin.index') }}"
-                       class="{% if request.endpoint and request.endpoint.startswith('company_admin') %}active{% endif %}">
-                        Companies
-                    </a>
-
-                    <a href="{{ url_for('auth.manage_users') }}"
-                       class="{% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
-                        Users
-                    </a>
-                </div>
-                {% endif %}
-
-                <div class="nav-section nav-section-bottom">
-                    <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
-                </div>
+                {# Logout moved to topbar menu #}
 
             </nav>
         </aside>
@@ -164,7 +123,7 @@
                     <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open menu">
                         ☰
                     </button>
-                    <div>
+                    <div class="topbar-title-block">
                         <h2>{% block header %}Dashboard{% endblock %}</h2>
                         <p class="subtitle" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span>
@@ -173,7 +132,7 @@
                             </span>
 
                             {% if session.get('current_company_name') %}
-                            <span class="summary-pill" style="background: rgba(56, 189, 248, 0.14); border-color: rgba(56, 189, 248, 0.28); color: #dff6ff;">
+                            <span class="summary-pill company-pill">
                                 {{ session.get('current_company_name') }}
                             </span>
                             {% endif %}
@@ -181,10 +140,10 @@
                             {% if session.get('is_platform_admin') and companies %}
                             <form method="POST"
                                   action="{{ url_for('auth.switch_company') }}"
-                                  style="display: inline-flex; align-items: center; margin: 0;">
+                                  class="company-switcher-form">
                                 <select name="company_id"
                                         onchange="this.form.submit()"
-                                        style="min-width: 180px; padding: 8px 12px; border-radius: 10px;">
+                                        class="company-switcher-select">
                                     {% for company in companies %}
                                     <option value="{{ company.id }}"
                                             {% if company.id == session.get('current_company_id') %}selected{% endif %}>
@@ -196,6 +155,62 @@
                             {% endif %}
                         </p>
                     </div>
+
+                    <details class="admin-gear-menu account-menu">
+                        <summary aria-label="Account and tools">
+                            <span class="admin-gear-icon">⚙</span>
+                        </summary>
+
+                        <div class="admin-gear-dropdown">
+                            <div class="admin-gear-user">
+                                <strong>{{ session.get('user_name', 'User') }}</strong>
+                                <span>{{ session.get('user_role', 'role')|title }}</span>
+                            </div>
+
+                            {% if session.get('user_role') == 'admin' %}
+                            <div class="admin-gear-label">Admin Tools</div>
+
+                            <a href="{{ url_for('checklist.admin') }}"
+                               class="{% if request.endpoint == 'checklist.admin' %}active{% endif %}">
+                                Checklist Admin
+                            </a>
+
+                            <a href="{{ url_for('svr.admin') }}"
+                               class="{% if request.endpoint == 'svr.admin' %}active{% endif %}">
+                                SVR Admin
+                            </a>
+
+                            <a href="{{ url_for('verification.admin') }}"
+                               class="{% if request.endpoint == 'verification.admin' %}active{% endif %}">
+                                Verification Admin
+                            </a>
+
+                            <a href="{{ url_for('nightly_numbers.admin') }}"
+                               class="{% if request.endpoint == 'nightly_numbers.admin' or request.endpoint == 'nightly_numbers.edit_report' %}active{% endif %}">
+                                Nightly Numbers Admin
+                            </a>
+
+                            <a href="{{ url_for('store_admin.index') }}"
+                               class="{% if request.endpoint and request.endpoint.startswith('store_admin') %}active{% endif %}">
+                                Store Admin
+                            </a>
+
+                            <a href="{{ url_for('company_admin.index') }}"
+                               class="{% if request.endpoint and request.endpoint.startswith('company_admin') %}active{% endif %}">
+                                Companies
+                            </a>
+
+                            <a href="{{ url_for('auth.manage_users') }}"
+                               class="{% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
+                                Users
+                            </a>
+                            {% endif %}
+                        </div>
+                    </details>
+
+                    <a href="{{ url_for('auth.logout') }}" class="topbar-logout-btn">
+                        Logout
+                    </a>
                 </div>
             </header>
 

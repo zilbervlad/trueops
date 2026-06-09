@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404, scoped_store_by_number, scoped_user_query
 from app.models import (
     ChecklistTemplateItem,
     DailyChecklist,
@@ -43,7 +44,7 @@ def get_integrity_settings(company_id=None, store_number=None, create=False):
     Otherwise use the current session company.
     """
     if company_id is None and store_number:
-        store = Store.query.filter_by(store_number=store_number).first()
+        store = scoped_store_by_number(store_number, active_only=False)
         if store and hasattr(store, "company_id"):
             company_id = store.company_id
 
@@ -93,7 +94,7 @@ def get_company_id_for_store(store_number):
     if company_id:
         return company_id
 
-    store = Store.query.filter_by(store_number=store_number).first()
+    store = scoped_store_by_number(store_number, active_only=False)
     if store and getattr(store, "company_id", None):
         return store.company_id
 
@@ -666,7 +667,7 @@ def send_store_summary_email(store_number: str):
 
 
 def send_owner_summary_email(user_id: int, visible_stores, send_results):
-    user = User.query.get(user_id)
+    user = scoped_get_or_404(User, user_id)
     if not user:
         return {"success": False, "error": "Sending user not found."}
 
@@ -1269,7 +1270,7 @@ def autosave_item():
     is_completed = bool(data.get("is_completed", False))
     notes = (data.get("notes") or "").strip()
 
-    item = DailyChecklistItem.query.get(item_id)
+    item = scoped_get_or_404(DailyChecklistItem, item_id)
     if not item:
         return jsonify({"success": False, "error": "Item not found"}), 404
 

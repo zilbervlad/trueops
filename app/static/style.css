@@ -2839,3 +2839,1552 @@ textarea {
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   TrueOps UI Polish — BPI Ops-style tighter shell
+   Safe override layer only
+   ========================================================= */
+
+:root {
+    --bg-main: #f4f6f8;
+    --bg-main-alt: #eef2f6;
+    --bg-panel: rgba(255, 255, 255, 0.98);
+    --bg-panel-strong: #ffffff;
+    --bg-sidebar: #ffffff;
+
+    --text-main: #101827;
+    --text-muted: #64748b;
+    --text-soft: #475569;
+
+    --accent: #2563eb;
+    --accent-2: #1d4ed8;
+
+    --border: rgba(15, 23, 42, 0.09);
+    --border-soft: rgba(15, 23, 42, 0.075);
+    --border-strong: rgba(15, 23, 42, 0.14);
+
+    --shadow: 0 14px 34px rgba(15, 23, 42, 0.075);
+    --shadow-soft: 0 7px 18px rgba(15, 23, 42, 0.055);
+
+    --radius: 15px;
+    --radius-sm: 10px;
+}
+
+body {
+    background: #f4f6f8;
+    color: var(--text-main);
+}
+
+.layout {
+    background: #f4f6f8;
+}
+
+/* Sidebar — cleaner, flatter, more like BPI Ops */
+.sidebar {
+    width: 258px;
+    padding: 18px 13px;
+    background: #ffffff;
+    border-right: 1px solid var(--border);
+    box-shadow: 8px 0 22px rgba(15, 23, 42, 0.035);
+}
+
+.sidebar::before {
+    display: none;
+}
+
+.brand {
+    padding: 8px 8px 16px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.065);
+}
+
+.brand img {
+    height: 34px !important;
+    width: 34px !important;
+    border-radius: 9px !important;
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+}
+
+.brand h1 {
+    font-size: 19px !important;
+    font-weight: 850;
+    letter-spacing: -0.045em;
+}
+
+.brand p {
+    margin-top: 2px !important;
+    font-size: 11px !important;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    color: #64748b;
+}
+
+.nav {
+    margin-top: 14px;
+    gap: 12px;
+}
+
+.nav-section {
+    display: grid;
+    gap: 3px;
+}
+
+.nav-section-label {
+    padding: 8px 10px 4px;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.105em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.nav a {
+    min-height: 34px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    border: 1px solid transparent;
+}
+
+.nav a:hover {
+    transform: none;
+    background: #f6f8fb;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.07);
+}
+
+.nav a.active {
+    background: #eef4ff;
+    color: #123b88;
+    border-color: rgba(37, 99, 235, 0.16);
+    box-shadow: none;
+}
+
+.logout-link {
+    color: #b91c1c !important;
+    background: #fff5f5 !important;
+    border-color: rgba(220, 38, 38, 0.12) !important;
+}
+
+/* Main area */
+.main-content {
+    padding: 16px 18px 24px;
+    background: #f4f6f8;
+}
+
+.topbar {
+    margin-bottom: 14px;
+    padding: 10px 2px 4px;
+}
+
+.topbar h2 {
+    font-size: 25px;
+    font-weight: 875;
+    letter-spacing: -0.055em;
+}
+
+.subtitle {
+    margin-top: 5px;
+    font-size: 12.5px;
+    color: #64748b;
+}
+
+.page-content {
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+/* Command bar */
+.command-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 16px 17px !important;
+    margin-bottom: 16px !important;
+}
+
+.command-eyebrow {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: #2563eb;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.command-title {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -0.055em;
+}
+
+.command-subtitle {
+    margin: 5px 0 0;
+    max-width: 760px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.command-bar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.command-chip,
+.summary-pill,
+.exception-chip,
+.legend-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: -0.01em;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #f8fafc;
+    color: #334155;
+}
+
+/* Panels/cards — tighter and sharper */
+.panel,
+.metric-card,
+.premium-panel {
+    background: #ffffff;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: none;
+}
+
+.panel {
+    padding: 15px;
+}
+
+.panel:hover,
+.metric-card:hover,
+.premium-panel:hover {
+    border-color: var(--border-strong);
+}
+
+.panel-head {
+    margin-bottom: 10px;
+}
+
+.panel-head h3,
+.panel h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 875;
+    letter-spacing: -0.025em;
+}
+
+.area-subtitle {
+    margin-top: 3px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.dashboard-grid {
+    gap: 11px;
+    margin-bottom: 14px;
+}
+
+.content-grid {
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.metric-card {
+    padding: 13px 14px;
+    min-height: 86px;
+}
+
+.metric-label {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.105em;
+}
+
+.metric-card h3 {
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: -0.055em;
+}
+
+/* Heat map — tighter screenshot-friendly tiles */
+.heatmap-panel {
+    padding: 15px !important;
+}
+
+.heatmap-grid {
+    gap: 8px !important;
+}
+
+.heatmap-tile {
+    min-height: 76px;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.heatmap-store {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.04em;
+}
+
+.heatmap-area {
+    font-size: 10px !important;
+    font-weight: 800;
+    opacity: 0.78;
+}
+
+.heatmap-metrics {
+    margin-top: 6px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.heatmap-metrics span {
+    font-size: 10px !important;
+    font-weight: 850;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.62);
+}
+
+/* Status colors */
+.success-pill,
+.badge-success {
+    background: #ecfdf5 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+
+.warning-pill,
+.badge-warning {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+}
+
+.danger-pill,
+.badge-danger {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+.neutral-pill {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #475569 !important;
+}
+
+/* Forms/buttons/tables */
+button,
+.btn,
+.action-btn,
+input[type="submit"] {
+    border-radius: 10px;
+    font-weight: 850;
+}
+
+.action-btn {
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: #111827;
+    border-color: #111827;
+    box-shadow: none;
+}
+
+.action-btn:hover {
+    transform: none;
+    background: #1f2937;
+    box-shadow: none;
+}
+
+input,
+select,
+textarea {
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.13);
+    box-shadow: none;
+}
+
+table {
+    font-size: 12.5px;
+}
+
+th {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    background: #f8fafc;
+}
+
+th,
+td {
+    padding: 8px 10px;
+}
+
+/* Flash messages */
+.flash-wrap {
+    margin-bottom: 12px;
+}
+
+.flash {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+/* Mobile polish */
+.mobile-nav-toggle,
+.mobile-nav-close {
+    border-radius: 10px;
+}
+
+.mobile-bottom-nav {
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 980px) {
+    .main-content {
+        padding: 13px 13px 78px;
+    }
+
+    .command-bar {
+        flex-direction: column;
+    }
+
+    .command-bar-right {
+        justify-content: flex-start;
+    }
+
+    .dashboard-grid,
+    .content-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .topbar h2 {
+        font-size: 22px;
+    }
+}
+
+@media (min-width: 981px) {
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: rgba(244, 246, 248, 0.92);
+        backdrop-filter: blur(12px);
+    }
+
+    .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+}
+
+
+/* =========================================================
+   TrueOps UI Polish — BPI Ops-style tighter shell
+   Safe override layer only
+   ========================================================= */
+
+:root {
+    --bg-main: #f4f6f8;
+    --bg-main-alt: #eef2f6;
+    --bg-panel: rgba(255, 255, 255, 0.98);
+    --bg-panel-strong: #ffffff;
+    --bg-sidebar: #ffffff;
+
+    --text-main: #101827;
+    --text-muted: #64748b;
+    --text-soft: #475569;
+
+    --accent: #2563eb;
+    --accent-2: #1d4ed8;
+
+    --border: rgba(15, 23, 42, 0.09);
+    --border-soft: rgba(15, 23, 42, 0.075);
+    --border-strong: rgba(15, 23, 42, 0.14);
+
+    --shadow: 0 14px 34px rgba(15, 23, 42, 0.075);
+    --shadow-soft: 0 7px 18px rgba(15, 23, 42, 0.055);
+
+    --radius: 15px;
+    --radius-sm: 10px;
+}
+
+body {
+    background: #f4f6f8;
+    color: var(--text-main);
+}
+
+.layout {
+    background: #f4f6f8;
+}
+
+/* Sidebar — cleaner, flatter, more like BPI Ops */
+.sidebar {
+    width: 258px;
+    padding: 18px 13px;
+    background: #ffffff;
+    border-right: 1px solid var(--border);
+    box-shadow: 8px 0 22px rgba(15, 23, 42, 0.035);
+}
+
+.sidebar::before {
+    display: none;
+}
+
+.brand {
+    padding: 8px 8px 16px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.065);
+}
+
+.brand img {
+    height: 34px !important;
+    width: 34px !important;
+    border-radius: 9px !important;
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+}
+
+.brand h1 {
+    font-size: 19px !important;
+    font-weight: 850;
+    letter-spacing: -0.045em;
+}
+
+.brand p {
+    margin-top: 2px !important;
+    font-size: 11px !important;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    color: #64748b;
+}
+
+.nav {
+    margin-top: 14px;
+    gap: 12px;
+}
+
+.nav-section {
+    display: grid;
+    gap: 3px;
+}
+
+.nav-section-label {
+    padding: 8px 10px 4px;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.105em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.nav a {
+    min-height: 34px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    border: 1px solid transparent;
+}
+
+.nav a:hover {
+    transform: none;
+    background: #f6f8fb;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.07);
+}
+
+.nav a.active {
+    background: #eef4ff;
+    color: #123b88;
+    border-color: rgba(37, 99, 235, 0.16);
+    box-shadow: none;
+}
+
+.logout-link {
+    color: #b91c1c !important;
+    background: #fff5f5 !important;
+    border-color: rgba(220, 38, 38, 0.12) !important;
+}
+
+/* Main area */
+.main-content {
+    padding: 16px 18px 24px;
+    background: #f4f6f8;
+}
+
+.topbar {
+    margin-bottom: 14px;
+    padding: 10px 2px 4px;
+}
+
+.topbar h2 {
+    font-size: 25px;
+    font-weight: 875;
+    letter-spacing: -0.055em;
+}
+
+.subtitle {
+    margin-top: 5px;
+    font-size: 12.5px;
+    color: #64748b;
+}
+
+.page-content {
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+/* Command bar */
+.command-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 16px 17px !important;
+    margin-bottom: 16px !important;
+}
+
+.command-eyebrow {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: #2563eb;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.command-title {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -0.055em;
+}
+
+.command-subtitle {
+    margin: 5px 0 0;
+    max-width: 760px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.command-bar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.command-chip,
+.summary-pill,
+.exception-chip,
+.legend-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: -0.01em;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #f8fafc;
+    color: #334155;
+}
+
+/* Panels/cards — tighter and sharper */
+.panel,
+.metric-card,
+.premium-panel {
+    background: #ffffff;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: none;
+}
+
+.panel {
+    padding: 15px;
+}
+
+.panel:hover,
+.metric-card:hover,
+.premium-panel:hover {
+    border-color: var(--border-strong);
+}
+
+.panel-head {
+    margin-bottom: 10px;
+}
+
+.panel-head h3,
+.panel h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 875;
+    letter-spacing: -0.025em;
+}
+
+.area-subtitle {
+    margin-top: 3px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.dashboard-grid {
+    gap: 11px;
+    margin-bottom: 14px;
+}
+
+.content-grid {
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.metric-card {
+    padding: 13px 14px;
+    min-height: 86px;
+}
+
+.metric-label {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.105em;
+}
+
+.metric-card h3 {
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: -0.055em;
+}
+
+/* Heat map — tighter screenshot-friendly tiles */
+.heatmap-panel {
+    padding: 15px !important;
+}
+
+.heatmap-grid {
+    gap: 8px !important;
+}
+
+.heatmap-tile {
+    min-height: 76px;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.heatmap-store {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.04em;
+}
+
+.heatmap-area {
+    font-size: 10px !important;
+    font-weight: 800;
+    opacity: 0.78;
+}
+
+.heatmap-metrics {
+    margin-top: 6px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.heatmap-metrics span {
+    font-size: 10px !important;
+    font-weight: 850;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.62);
+}
+
+/* Status colors */
+.success-pill,
+.badge-success {
+    background: #ecfdf5 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+
+.warning-pill,
+.badge-warning {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+}
+
+.danger-pill,
+.badge-danger {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+.neutral-pill {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #475569 !important;
+}
+
+/* Forms/buttons/tables */
+button,
+.btn,
+.action-btn,
+input[type="submit"] {
+    border-radius: 10px;
+    font-weight: 850;
+}
+
+.action-btn {
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: #111827;
+    border-color: #111827;
+    box-shadow: none;
+}
+
+.action-btn:hover {
+    transform: none;
+    background: #1f2937;
+    box-shadow: none;
+}
+
+input,
+select,
+textarea {
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.13);
+    box-shadow: none;
+}
+
+table {
+    font-size: 12.5px;
+}
+
+th {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    background: #f8fafc;
+}
+
+th,
+td {
+    padding: 8px 10px;
+}
+
+/* Flash messages */
+.flash-wrap {
+    margin-bottom: 12px;
+}
+
+.flash {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+/* Mobile polish */
+.mobile-nav-toggle,
+.mobile-nav-close {
+    border-radius: 10px;
+}
+
+.mobile-bottom-nav {
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 980px) {
+    .main-content {
+        padding: 13px 13px 78px;
+    }
+
+    .command-bar {
+        flex-direction: column;
+    }
+
+    .command-bar-right {
+        justify-content: flex-start;
+    }
+
+    .dashboard-grid,
+    .content-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .topbar h2 {
+        font-size: 22px;
+    }
+}
+
+@media (min-width: 981px) {
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: rgba(244, 246, 248, 0.92);
+        backdrop-filter: blur(12px);
+    }
+
+    .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+}
+
+
+/* =========================================================
+   Independent sidebar + content scrolling
+   ========================================================= */
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.layout {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar {
+    flex: 0 0 258px;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+.main-content {
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+/* Keeps the topbar visible while scrolling the main content */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(244, 246, 248, 0.94);
+    backdrop-filter: blur(12px);
+}
+
+/* Cleaner sidebar scrollbar */
+.sidebar::-webkit-scrollbar,
+.main-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.24);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.38);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+
+/* Mobile should scroll normally */
+@media (max-width: 980px) {
+    html,
+    body {
+        height: auto;
+        overflow: auto;
+    }
+
+    .layout {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    .sidebar {
+        height: 100vh;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .main-content {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .topbar {
+        position: relative;
+        top: auto;
+    }
+}
+
+
+/* =========================================================
+   Sidebar cleanup — tighter BPI Ops style
+   ========================================================= */
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Brand block */
+.brand {
+    margin: 0 0 8px;
+    padding: 7px 7px 13px;
+}
+
+.brand-mobile-row {
+    min-height: 52px;
+}
+
+.brand h1 {
+    font-size: 18px !important;
+}
+
+.brand p {
+    font-size: 10.5px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.065em;
+}
+
+/* Navigation structure */
+.nav {
+    flex: 1;
+    margin-top: 8px;
+    gap: 14px;
+}
+
+.nav-section {
+    display: grid;
+    gap: 4px;
+}
+
+.nav-section-label {
+    padding: 7px 9px 3px;
+    font-size: 9.5px;
+    font-weight: 900;
+    letter-spacing: 0.13em;
+    color: #94a3b8;
+}
+
+/* Cleaner nav links */
+.nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 33px;
+    padding: 7px 10px 7px 12px;
+    border-radius: 9px;
+    font-size: 12.75px;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    color: #475569;
+    background: transparent;
+    border: 1px solid transparent;
+    line-height: 1.15;
+}
+
+/* Small left rail marker */
+.nav a::before {
+    content: "";
+    width: 3px;
+    height: 16px;
+    border-radius: 999px;
+    background: transparent;
+    margin-right: 8px;
+    flex: 0 0 auto;
+}
+
+.nav a:hover {
+    background: #f7f9fc;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.06);
+}
+
+.nav a:hover::before {
+    background: #cbd5e1;
+}
+
+.nav a.active {
+    background: #eef4ff;
+    color: #153e90;
+    border-color: rgba(37, 99, 235, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
+}
+
+.nav a.active::before {
+    background: #2563eb;
+}
+
+/* Separate admin area a little more cleanly */
+.nav-section + .nav-section {
+    padding-top: 4px;
+    border-top: 1px solid rgba(15, 23, 42, 0.055);
+}
+
+/* Keep logout at bottom when sidebar has room */
+.nav-section-bottom {
+    margin-top: auto;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(15, 23, 42, 0.075) !important;
+}
+
+.logout-link {
+    justify-content: center;
+    color: #b91c1c !important;
+    background: #fff7f7 !important;
+    border-color: rgba(220, 38, 38, 0.12) !important;
+}
+
+.logout-link::before {
+    display: none;
+}
+
+.logout-link:hover {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+/* Sidebar scroll position feels cleaner */
+.sidebar {
+    scrollbar-gutter: stable;
+}
+
+/* Make mobile close button less ugly */
+.mobile-nav-close {
+    min-height: 30px;
+    width: 30px;
+    padding: 0 !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    color: #475569;
+    box-shadow: none;
+}
+
+/* Mobile sidebar */
+@media (max-width: 980px) {
+    .sidebar {
+        width: min(286px, 86vw);
+        flex-basis: auto;
+        padding: 14px 11px;
+    }
+
+    .mobile-nav-close {
+        display: inline-flex;
+    }
+
+    .brand {
+        padding-bottom: 12px;
+    }
+
+    .nav a {
+        min-height: 38px;
+        font-size: 13.5px;
+    }
+
+    .nav-section-label {
+        font-size: 10px;
+    }
+}
+
+
+/* =========================================================
+   Admin gear menu — BPI Ops-style
+   ========================================================= */
+
+.topbar-left {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.topbar-title-block {
+    min-width: 0;
+}
+
+.company-pill {
+    background: #eef4ff !important;
+    border-color: rgba(37, 99, 235, 0.16) !important;
+    color: #1e3a8a !important;
+}
+
+.company-switcher-form {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+
+.company-switcher-select {
+    min-width: 180px;
+    max-width: 240px;
+    height: 32px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 750;
+    background: #ffffff;
+}
+
+.admin-gear-menu {
+    position: relative;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.admin-gear-menu summary {
+    list-style: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.055);
+    transition: 0.16s ease;
+}
+
+.admin-gear-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-gear-menu summary:hover {
+    background: #f8fafc;
+    border-color: rgba(37, 99, 235, 0.20);
+}
+
+.admin-gear-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.admin-gear-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 9px);
+    z-index: 60;
+    width: 245px;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+}
+
+.admin-gear-label {
+    padding: 8px 9px 7px;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.admin-gear-dropdown a {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    border: 1px solid transparent;
+}
+
+.admin-gear-dropdown a:hover {
+    background: #f7f9fc;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.06);
+}
+
+.admin-gear-dropdown a.active {
+    background: #eef4ff;
+    color: #153e90;
+    border-color: rgba(37, 99, 235, 0.16);
+}
+
+@media (max-width: 980px) {
+    .topbar-left {
+        align-items: flex-start;
+    }
+
+    .admin-gear-menu {
+        margin-top: 2px;
+    }
+
+    .admin-gear-dropdown {
+        right: 0;
+        width: min(260px, 84vw);
+    }
+
+    .company-switcher-select {
+        max-width: 190px;
+    }
+}
+
+
+/* =========================================================
+   Account / logout menu in top-right gear
+   ========================================================= */
+
+.account-menu .admin-gear-dropdown {
+    width: 255px;
+}
+
+.admin-gear-user {
+    padding: 9px 10px 10px;
+    margin-bottom: 5px;
+    border-radius: 11px;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.admin-gear-user strong {
+    display: block;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+}
+
+.admin-gear-user span {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.admin-gear-divider {
+    height: 1px;
+    margin: 7px 2px;
+    background: rgba(15, 23, 42, 0.08);
+}
+
+.admin-gear-dropdown .gear-logout-link {
+    color: #b91c1c;
+    background: #fff7f7;
+    border-color: rgba(220, 38, 38, 0.12);
+}
+
+.admin-gear-dropdown .gear-logout-link:hover {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: rgba(220, 38, 38, 0.18);
+}
+
+/* Since logout moved out of sidebar */
+.nav-section-bottom {
+    display: none !important;
+}
+
+/* Mobile top-right menu stays usable */
+@media (max-width: 980px) {
+    .account-menu {
+        margin-left: auto;
+    }
+
+    .account-menu .admin-gear-dropdown {
+        right: 0;
+        width: min(270px, 86vw);
+        max-height: calc(100vh - 88px);
+        overflow-y: auto;
+    }
+
+    .admin-gear-menu summary {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+
+/* =========================================================
+   Separate logout button next to admin gear
+   ========================================================= */
+
+.topbar-logout-btn {
+    flex: 0 0 auto;
+    height: 38px;
+    min-width: 78px;
+    padding: 0 14px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff7f7;
+    color: #b91c1c;
+    border: 1px solid rgba(220, 38, 38, 0.15);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.045);
+    font-size: 13px;
+    font-weight: 850;
+    letter-spacing: -0.01em;
+}
+
+.topbar-logout-btn:hover {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: rgba(220, 38, 38, 0.24);
+}
+
+/* Hide old dropdown logout styling if it exists from prior pass */
+.gear-logout-link,
+.admin-gear-divider {
+    display: none !important;
+}
+
+@media (max-width: 980px) {
+    .topbar-logout-btn {
+        height: 40px;
+        min-width: auto;
+        padding: 0 11px;
+        font-size: 12.5px;
+    }
+
+    .topbar-left {
+        gap: 8px;
+    }
+}
+
+
+/* =========================================================
+   Quick Actions cleanup — make them match the new UI
+   ========================================================= */
+
+.action-grid {
+    display: grid;
+    gap: 8px;
+}
+
+/* Turn old chunky buttons into clean action rows */
+.action-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 9px 11px 9px 13px;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #172033;
+    border: 1px solid rgba(15, 23, 42, 0.075);
+    box-shadow: none;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 850;
+    letter-spacing: -0.015em;
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+
+/* Little arrow on the right */
+.action-btn::after {
+    content: "›";
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px;
+    background: #ffffff;
+    color: #64748b;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.action-btn:hover {
+    background: #eef4ff;
+    color: #123b88;
+    border-color: rgba(37, 99, 235, 0.16);
+    transform: translateY(-1px);
+    box-shadow: none;
+    filter: none;
+}
+
+.action-btn:hover::after {
+    color: #1d4ed8;
+    border-color: rgba(37, 99, 235, 0.18);
+}
+
+/* If quick actions sit inside a panel, make spacing cleaner */
+.panel .action-grid {
+    margin-top: 6px;
+}
+
+/* Optional: make panels with only quick actions feel less bulky */
+.panel:has(.action-grid) {
+    padding: 14px;
+}
+
+/* Mobile: keep them thumb-friendly but not huge */
+@media (max-width: 980px) {
+    .action-btn {
+        min-height: 44px;
+        font-size: 13.25px;
+    }
+}

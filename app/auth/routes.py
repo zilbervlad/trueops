@@ -2,6 +2,7 @@ from functools import wraps
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
+from app.services.tenant import scoped_get_or_404
 from app.models import User, Company
 from app.extensions import db
 from app.services.email_service import send_email
@@ -191,7 +192,7 @@ def manage_users():
 
         if action == "reset_password":
             user_id = request.form.get("user_id", "").strip()
-            user = User.query.get(user_id)
+            user = scoped_get_or_404(User, user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -215,7 +216,7 @@ def manage_users():
 
         if action == "update":
             user_id = request.form.get("user_id", "").strip()
-            user = User.query.get(user_id)
+            user = scoped_get_or_404(User, user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -302,7 +303,7 @@ def manage_users():
 
         if action == "deactivate":
             user_id = request.form.get("user_id", "").strip()
-            user = User.query.get(user_id)
+            user = scoped_get_or_404(User, user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -324,7 +325,7 @@ def manage_users():
 
         if action == "activate":
             user_id = request.form.get("user_id", "").strip()
-            user = User.query.get(user_id)
+            user = scoped_get_or_404(User, user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -360,7 +361,7 @@ def manage_users():
 @login_required
 @role_required("admin")
 def send_test_email_to_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = scoped_get_or_404(User, user_id)
 
     selected_company_id = current_company_id()
     is_platform_admin = session.get("is_platform_admin", False)

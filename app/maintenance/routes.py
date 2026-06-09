@@ -18,6 +18,7 @@ from openpyxl.utils import get_column_letter
 
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import MaintenanceTicket, Store
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
@@ -337,7 +338,7 @@ def index():
 
         if action == "update":
             ticket_id = request.form.get("ticket_id", "").strip()
-            ticket = MaintenanceTicket.query.get(ticket_id)
+            ticket = scoped_get_or_404(MaintenanceTicket, ticket_id)
 
             if not ticket:
                 flash("Ticket not found.", "error")
@@ -381,7 +382,7 @@ def index():
                 return redirect(url_for("maintenance.index"))
 
             ticket_id = request.form.get("ticket_id", "").strip()
-            ticket = MaintenanceTicket.query.get(ticket_id)
+            ticket = scoped_get_or_404(MaintenanceTicket, ticket_id)
 
             if not ticket:
                 flash("Ticket not found.", "error")
@@ -463,7 +464,7 @@ def calendar():
 
         if action == "schedule":
             ticket_id = request.form.get("ticket_id", "").strip()
-            ticket = MaintenanceTicket.query.get(ticket_id)
+            ticket = scoped_get_or_404(MaintenanceTicket, ticket_id)
 
             if not ticket:
                 flash("Ticket not found.", "error")
@@ -601,7 +602,7 @@ def move_calendar_ticket():
     scheduled_date_raw = request.form.get("scheduled_date", "").strip()
     scheduled_time_raw = request.form.get("scheduled_time", "").strip()
 
-    ticket = MaintenanceTicket.query.get(ticket_id)
+    ticket = scoped_get_or_404(MaintenanceTicket, ticket_id)
 
     if not ticket:
         return jsonify({"ok": False, "message": "Ticket not found."}), 404

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import Store, Company
 
 store_admin_bp = Blueprint("store_admin", __name__, url_prefix="/store-admin")
@@ -37,7 +38,7 @@ def index():
                 flash("Store number and area are required.", "error")
                 return redirect(url_for("store_admin.index"))
 
-            existing = Store.query.filter_by(store_number=store_number).first()
+            existing = Store.query.filter_by(company_id=target_company_id, store_number=store_number).first()
             if existing:
                 flash("That store number already exists.", "error")
                 return redirect(url_for("store_admin.index"))
@@ -59,7 +60,7 @@ def index():
 
         if action == "update_inline":
             store_id = request.form.get("store_id", "").strip()
-            store = Store.query.get(store_id)
+            store = scoped_get_or_404(Store, store_id)
 
             if not store:
                 return {"success": False, "error": "Store not found."}, 404
@@ -106,7 +107,7 @@ def index():
 
         if action == "update":
             store_id = request.form.get("store_id", "").strip()
-            store = Store.query.get(store_id)
+            store = scoped_get_or_404(Store, store_id)
 
             if not store:
                 flash("Store not found.", "error")

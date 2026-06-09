@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 
 from app.auth.routes import login_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import CashLog, Store
 
 cash_bp = Blueprint("cash", __name__, url_prefix="/cash")
@@ -114,7 +115,7 @@ def index():
             cash_over_short = total_cash - amount_to_account_for
 
         if edit_log_id:
-            log = CashLog.query.get(edit_log_id)
+            log = scoped_get_or_404(CashLog, edit_log_id)
 
             if not log:
                 flash("Cash log not found.", "error")
@@ -165,7 +166,7 @@ def index():
     edit_log = None
 
     if edit_id:
-        edit_log = CashLog.query.get(edit_id)
+        edit_log = scoped_get_or_404(CashLog, edit_id)
 
         if not edit_log:
             flash("Cash log not found.", "error")

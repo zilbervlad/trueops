@@ -19,6 +19,7 @@ from openpyxl.utils import get_column_letter
 
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import (
     VerificationTemplateField,
     VerificationReport,
@@ -30,6 +31,11 @@ from app.services.email_service import send_email
 
 
 verification_bp = Blueprint("verification", __name__, url_prefix="/verification")
+
+def is_admin_like():
+    return bool(session.get("is_platform_admin")) or session.get("user_role") in ["admin", "platform_admin"]
+
+
 
 
 CORE_VERIFICATION_KEYS = {
@@ -64,7 +70,7 @@ def get_active_company_id():
 
     user_id = session.get("user_id")
     if user_id:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if user and getattr(user, "company_id", None):
             return user.company_id
 
@@ -276,7 +282,7 @@ def get_dashboard_week_range():
 @login_required
 @role_required("admin", "supervisor")
 def index():
-    if session.get("user_role") == "admin":
+    if is_admin_like():
         return redirect(url_for("verification.dashboard"))
 
     return redirect(url_for("verification.new_report"))
@@ -639,7 +645,7 @@ def new_report():
             supervisor_email = None
             user_id = session.get("user_id")
             if user_id:
-                submitting_user = User.query.get(user_id)
+                submitting_user = db.session.get(User, user_id)
                 if submitting_user:
                     supervisor_email = submitting_user.get_notification_email()
 

@@ -31,7 +31,7 @@ def get_visible_stores():
     user_store = session.get("user_store")
     company_id = current_company_id()
 
-    if role == "admin":
+    if session.get("is_platform_admin") or role in ["platform_admin", "admin"]:
         query = Store.query.filter_by(is_active=True)
         if company_id:
             query = query.filter_by(company_id=company_id)
@@ -61,8 +61,8 @@ def get_visible_stores():
 
 
 def user_can_access(store_number):
-    visible_store_numbers = {store.store_number for store in get_visible_stores()}
-    return store_number in visible_store_numbers
+    visible_store_numbers = {str(store.store_number) for store in get_visible_stores()}
+    return str(store_number) in visible_store_numbers
 
 
 def calculate_section_stats(daily, section_name):
@@ -213,11 +213,13 @@ def detail(store_number):
 
     today = business_date()
 
-    selected_store = Store.query.filter_by(
-        company_id=current_company_id(),
-        store_number=store_number,
-        is_active=True
-    ).first_or_404()
+    selected_store = next(
+        (store for store in visible_stores if str(store.store_number) == str(store_number)),
+        None,
+    )
+
+    if not selected_store:
+        abort(404)
 
     heat_map, daily_by_store = build_heat_map(today, visible_stores)
     selected_daily = daily_by_store.get(store_number)

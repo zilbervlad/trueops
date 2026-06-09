@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import NightlyNumbersReport, NightlyNumbersFieldConfig, NightlyNumbersReportValue, Store, User
 from app.services.email_service import send_email
 
@@ -809,7 +810,7 @@ def admin():
 @login_required
 @role_required("admin")
 def edit_report(report_id):
-    report = NightlyNumbersReport.query.get_or_404(report_id)
+    report = scoped_get_or_404(NightlyNumbersReport, report_id)
 
     visible_store_numbers = {store.store_number for store in get_visible_stores()}
     if report.store_number not in visible_store_numbers:

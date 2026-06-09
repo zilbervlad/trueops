@@ -11,6 +11,7 @@ import cloudinary.utils
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404, scoped_store_by_number
 from app.models import (
     Store,
     SVRTemplateField,
@@ -989,7 +990,7 @@ def new_report():
 @login_required
 @role_required("admin", "supervisor")
 def view_report(report_id):
-    report = SVRReport.query.get_or_404(report_id)
+    report = scoped_get_or_404(SVRReport, report_id)
     visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
 
     if report.store_number not in visible_store_numbers:
@@ -1022,7 +1023,7 @@ def delete_svr_photo(photo_id):
         parent_type="svr_report",
     ).first_or_404()
 
-    report = SVRReport.query.get_or_404(photo.parent_id)
+    report = scoped_get_or_404(SVRReport, photo.parent_id)
     visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
 
     if report.store_number not in visible_store_numbers:
@@ -1052,7 +1053,7 @@ def delete_svr_photo(photo_id):
 @login_required
 @role_required("admin", "supervisor")
 def export_pdf(report_id):
-    report = SVRReport.query.get_or_404(report_id)
+    report = scoped_get_or_404(SVRReport, report_id)
     visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
 
     if report.store_number not in visible_store_numbers:
@@ -1162,7 +1163,7 @@ def admin():
 @login_required
 @role_required("admin", "supervisor")
 def delete_report(report_id):
-    report = SVRReport.query.get_or_404(report_id)
+    report = scoped_get_or_404(SVRReport, report_id)
 
     visible_store_numbers = {store.store_number for store in get_supervisor_visible_stores()}
 

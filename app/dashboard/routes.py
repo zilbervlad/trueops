@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, render_template, session, jsonify, request, redirect, url_for, flash
 from app.auth.routes import login_required, role_required
 from app.extensions import db
+from app.services.tenant import scoped_get_or_404
 from app.models import (
     Store,
     DailyChecklist,
@@ -362,7 +363,7 @@ def complete_weekly_focus():
     data = request.get_json() or {}
     item_id = data.get("item_id")
 
-    item = WeeklyFocusItem.query.get(item_id)
+    item = scoped_get_or_404(WeeklyFocusItem, item_id)
     if not item:
         return jsonify({"success": False, "error": "Item not found"}), 404
 
