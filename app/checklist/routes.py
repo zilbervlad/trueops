@@ -31,6 +31,9 @@ def today_et():
     return now_et().date()
 
 
+def current_ops_date():
+    return today_et()
+
 def current_company_id():
     return session.get("current_company_id")
 
