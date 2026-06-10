@@ -131,8 +131,10 @@ def get_active_checklist_template_items_for_company(company_id):
 
 def ensure_company_checklist_template(company_id):
     """
-    If a company has no checklist template yet, clone the TrueOps/default template
+    If a company has no checklist template yet, clone the TrueOps default template
     so each company can edit its own checklist book independently.
+
+    Important: clone only from the TrueOps company, never from another customer/company.
     """
     if not company_id:
         return
@@ -141,17 +143,23 @@ def ensure_company_checklist_template(company_id):
     if existing_count > 0:
         return
 
-    source_items = ChecklistTemplateItem.query.filter(
-        ChecklistTemplateItem.company_id.isnot(None),
-        ChecklistTemplateItem.company_id != company_id,
-    ).order_by(
-        ChecklistTemplateItem.sort_order.asc(),
-        ChecklistTemplateItem.id.asc(),
-    ).all()
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    source_items = []
+    if trueops_company_id and trueops_company_id != company_id:
+        source_items = ChecklistTemplateItem.query.filter(
+            ChecklistTemplateItem.company_id == trueops_company_id,
+            ChecklistTemplateItem.is_active == True,
+        ).order_by(
+            ChecklistTemplateItem.sort_order.asc(),
+            ChecklistTemplateItem.id.asc(),
+        ).all()
 
     if not source_items:
         source_items = ChecklistTemplateItem.query.filter(
-            ChecklistTemplateItem.company_id.is_(None)
+            ChecklistTemplateItem.company_id.is_(None),
+            ChecklistTemplateItem.is_active == True,
         ).order_by(
             ChecklistTemplateItem.sort_order.asc(),
             ChecklistTemplateItem.id.asc(),

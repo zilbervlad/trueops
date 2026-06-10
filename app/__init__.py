@@ -309,12 +309,19 @@ def seed_checklist_template():
     trueops_company = Company.query.filter_by(slug="trueops").first()
     trueops_company_id = trueops_company.id if trueops_company else None
 
+    # TrueOps is multi-company now. We should never keep global/default
+    # checklist template rows because they can bleed into company views.
     if trueops_company_id:
+        ChecklistTemplateItem.query.filter(
+            ChecklistTemplateItem.company_id.is_(None)
+        ).delete(synchronize_session=False)
+
         existing_trueops_items = ChecklistTemplateItem.query.filter_by(
             company_id=trueops_company_id
         ).count()
 
         if existing_trueops_items > 0:
+            db.session.commit()
             return
     elif ChecklistTemplateItem.query.count() > 0:
         return
