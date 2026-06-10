@@ -423,6 +423,7 @@ class CashLog(db.Model):
     __tablename__ = "cash_logs"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
     store_number = db.Column(db.String(10), nullable=False)
     log_date = db.Column(db.Date, nullable=False, default=today_et)

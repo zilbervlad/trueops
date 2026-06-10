@@ -13,17 +13,26 @@ from app.models import CashLog, Store
 cash_review_bp = Blueprint("cash_review", __name__, url_prefix="/cash-review")
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
+    company_id = current_company_id()
+
+    query = Store.query.filter_by(is_active=True)
+
+    if company_id:
+        query = query.filter_by(company_id=company_id)
 
     if role == "admin":
-        return Store.query.filter_by(is_active=True).order_by(Store.store_number.asc()).all()
+        return query.order_by(Store.store_number.asc()).all()
 
     if role == "supervisor":
-        return Store.query.filter_by(
+        return query.filter_by(
             area_name=user_area,
-            is_active=True
         ).order_by(Store.store_number.asc()).all()
 
     return []
@@ -110,7 +119,10 @@ def build_cash_review_payload():
 
     dashboard_date = selected_date or today
 
+    company_id = current_company_id()
+
     query = CashLog.query.filter(
+        CashLog.company_id == company_id,
         CashLog.store_number.in_(visible_store_numbers),
         CashLog.log_date == dashboard_date
     ).order_by(
@@ -141,6 +153,7 @@ def build_cash_review_payload():
     )
 
     diff_base_query = CashLog.query.filter(
+        CashLog.company_id == company_id,
         CashLog.store_number.in_(visible_store_numbers)
     )
 

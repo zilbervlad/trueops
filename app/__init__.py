@@ -83,6 +83,7 @@ def create_app():
         from app import models
 
         db.create_all()
+        ensure_cash_logs_company_id_column()
         return "Database tables created"
 
     # -------------------------
@@ -129,6 +130,41 @@ def seed_default_company():
     db.session.commit()
 
     return company
+
+
+def ensure_cash_logs_company_id_column():
+    """
+    Adds company_id to cash_logs for existing databases.
+    db.create_all() does not alter existing tables.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    if "cash_logs" not in inspector.get_table_names():
+        return
+
+    columns = [column["name"] for column in inspector.get_columns("cash_logs")]
+    if "company_id" in columns:
+        return
+
+    try:
+        db.session.execute(
+            text("ALTER TABLE cash_logs ADD COLUMN IF NOT EXISTS company_id INTEGER")
+        )
+    except Exception:
+        db.session.rollback()
+        db.session.execute(
+            text("ALTER TABLE cash_logs ADD COLUMN company_id INTEGER")
+        )
+
+    try:
+        db.session.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_cash_logs_company_id ON cash_logs (company_id)")
+        )
+    except Exception:
+        pass
+
+    db.session.commit()
 
 
 def seed_admin(default_company):

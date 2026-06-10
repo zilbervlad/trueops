@@ -62,6 +62,7 @@ def is_log_date_editable(log_date):
 @cash_bp.route("/", methods=["GET", "POST"])
 @login_required
 def index():
+    company_id = current_company_id()
     store_number = get_manager_store()
     if not store_number:
         return redirect(url_for("dashboard.home"))
@@ -121,7 +122,7 @@ def index():
                 flash("Cash log not found.", "error")
                 return redirect(url_for("cash.index"))
 
-            if log.store_number != store_number:
+            if getattr(log, "company_id", None) != company_id or log.store_number != store_number:
                 flash("You can only edit cash logs for your own store.", "error")
                 return redirect(url_for("cash.index"))
 
@@ -144,6 +145,7 @@ def index():
             return redirect(url_for("cash.index"))
 
         log = CashLog(
+            company_id=company_id,
             store_number=store_number,
             log_date=log_date,
             shift_type=shift_type,
@@ -172,12 +174,12 @@ def index():
             flash("Cash log not found.", "error")
             return redirect(url_for("cash.index"))
 
-        if edit_log.store_number != store_number:
+        if getattr(edit_log, "company_id", None) != company_id or edit_log.store_number != store_number:
             flash("You can only view cash logs for your own store.", "error")
             return redirect(url_for("cash.index"))
 
     logs = (
-        CashLog.query.filter_by(store_number=store_number)
+        CashLog.query.filter_by(company_id=company_id, store_number=store_number)
         .order_by(CashLog.log_date.desc(), CashLog.created_at.desc())
         .limit(10)
         .all()
