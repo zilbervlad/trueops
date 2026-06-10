@@ -105,8 +105,10 @@ def get_active_checklist_template_items_for_company(company_id):
     """
     Use one checklist template source only:
     1. Company-specific active template items if they exist.
-    2. Otherwise fallback to global/default active template items.
-    Never combine both, or daily checklists duplicate every task.
+    2. Otherwise fallback to the TrueOps master template.
+    3. Otherwise fallback to old global/default active template items.
+
+    Important: never auto-clone templates for every company.
     """
     if company_id:
         company_items = ChecklistTemplateItem.query.filter(
@@ -120,6 +122,21 @@ def get_active_checklist_template_items_for_company(company_id):
         if company_items:
             return company_items
 
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    if trueops_company_id:
+        master_items = ChecklistTemplateItem.query.filter(
+            ChecklistTemplateItem.company_id == trueops_company_id,
+            ChecklistTemplateItem.is_active == True,
+        ).order_by(
+            ChecklistTemplateItem.sort_order.asc(),
+            ChecklistTemplateItem.id.asc(),
+        ).all()
+
+        if master_items:
+            return master_items
+
     return ChecklistTemplateItem.query.filter(
         ChecklistTemplateItem.company_id.is_(None),
         ChecklistTemplateItem.is_active == True,
@@ -131,71 +148,13 @@ def get_active_checklist_template_items_for_company(company_id):
 
 def ensure_company_checklist_template(company_id):
     """
-    If a company has no checklist template yet, clone the TrueOps default template
-    so each company can edit its own checklist book independently.
+    No-op by design.
 
-    Important: clone only from the TrueOps company, never from another customer/company.
+    TrueOps should not automatically clone checklist templates for every company.
+    Companies use the TrueOps master template as fallback unless/until they
+    intentionally customize their own checklist template.
     """
-    if not company_id:
-        return
-
-    existing_count = ChecklistTemplateItem.query.filter_by(company_id=company_id).count()
-    if existing_count > 0:
-        return
-
-    trueops_company = Company.query.filter_by(slug="trueops").first()
-    trueops_company_id = trueops_company.id if trueops_company else None
-
-    source_items = []
-    if trueops_company_id and trueops_company_id != company_id:
-        source_items = ChecklistTemplateItem.query.filter(
-            ChecklistTemplateItem.company_id == trueops_company_id,
-            ChecklistTemplateItem.is_active == True,
-        ).order_by(
-            ChecklistTemplateItem.sort_order.asc(),
-            ChecklistTemplateItem.id.asc(),
-        ).all()
-
-    if not source_items:
-        source_items = ChecklistTemplateItem.query.filter(
-            ChecklistTemplateItem.company_id.is_(None),
-            ChecklistTemplateItem.is_active == True,
-        ).order_by(
-            ChecklistTemplateItem.sort_order.asc(),
-            ChecklistTemplateItem.id.asc(),
-        ).all()
-
-    for item in source_items:
-        db.session.add(
-            ChecklistTemplateItem(
-                company_id=company_id,
-                section_name=item.section_name,
-                task_text=item.task_text,
-                expected_minutes=item.expected_minutes,
-                sort_order=item.sort_order,
-                is_required=item.is_required,
-                is_active=item.is_active,
-            )
-        )
-
-    db.session.commit()
-
-
-def current_ops_date():
-    now = now_et()
-    if now.hour < 5:
-        return now.date() - timedelta(days=1)
-    return now.date()
-
-
-def is_past_ops_day(checklist_date: date):
-    return checklist_date < current_ops_date()
-
-
-def utc_naive_to_et(dt):
-    if not dt:
-        return None
-    return dt.replace(tzinfo=UTC_TZ).astimezone(APP_TZ)
+    return
 
 
 def get_or_create_daily_checklist(store_number: str, checklist_date: date):
@@ -219,8 +178,9 @@ def get_or_create_daily_checklist(store_number: str, checklist_date: date):
     db.session.flush()
 
     company_id = get_company_id_for_store(store_number)
-    ensure_company_checklist_template(company_id)
 
+    # Do not auto-clone templates for this company.
+    # Pull from company-specific template only if it exists, otherwise TrueOps master.
     template_items = get_active_checklist_template_items_for_company(company_id)
 
     for template in template_items:
@@ -238,7 +198,6 @@ def get_or_create_daily_checklist(store_number: str, checklist_date: date):
 
     db.session.commit()
     return daily
-
 
 def calculate_manager_walk_integrity(daily: DailyChecklist):
     manager_walk_items = [

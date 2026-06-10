@@ -213,58 +213,49 @@ def current_company_id():
 def svr_template_query(include_inactive=False):
     company_id = current_company_id()
 
-    query = SVRTemplateField.query
+    def apply_active_filter(query):
+        if not include_inactive:
+            query = query.filter(SVRTemplateField.is_active == True)
+        return query
 
+    # 1. Use company-specific SVR template only if it exists.
     if company_id and hasattr(SVRTemplateField, "company_id"):
-        query = query.filter(SVRTemplateField.company_id == company_id)
+        company_query = apply_active_filter(
+            SVRTemplateField.query.filter(SVRTemplateField.company_id == company_id)
+        )
 
-    if not include_inactive:
-        query = query.filter(SVRTemplateField.is_active == True)
+        if company_query.count() > 0:
+            return company_query
 
-    return query
+    # 2. Otherwise fall back to TrueOps master template.
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    if trueops_company_id and hasattr(SVRTemplateField, "company_id"):
+        master_query = apply_active_filter(
+            SVRTemplateField.query.filter(SVRTemplateField.company_id == trueops_company_id)
+        )
+
+        if master_query.count() > 0:
+            return master_query
+
+    # 3. Last fallback: old global/default template rows.
+    query = SVRTemplateField.query
+    if hasattr(SVRTemplateField, "company_id"):
+        query = query.filter(SVRTemplateField.company_id.is_(None))
+
+    return apply_active_filter(query)
 
 
 def ensure_company_svr_template(company_id):
     """
-    If a company has no SVR template yet, clone the TrueOps/default SVR template
-    so each company can edit its own SVR fields independently.
+    No-op by design.
+
+    TrueOps should not automatically clone SVR templates for every company.
+    Companies use the TrueOps master template as fallback unless/until they
+    intentionally customize their own SVR template.
     """
-    if not company_id:
-        return
-
-    existing_count = SVRTemplateField.query.filter_by(company_id=company_id).count()
-    if existing_count > 0:
-        return
-
-    source_items = SVRTemplateField.query.filter(
-        SVRTemplateField.company_id.isnot(None),
-        SVRTemplateField.company_id != company_id,
-    ).order_by(
-        SVRTemplateField.sort_order.asc(),
-        SVRTemplateField.id.asc(),
-    ).all()
-
-    if not source_items:
-        source_items = SVRTemplateField.query.filter(
-            SVRTemplateField.company_id.is_(None)
-        ).order_by(
-            SVRTemplateField.sort_order.asc(),
-            SVRTemplateField.id.asc(),
-        ).all()
-
-    for item in source_items:
-        db.session.add(
-            SVRTemplateField(
-                company_id=company_id,
-                field_key=item.field_key,
-                field_label=item.field_label,
-                field_type=item.field_type,
-                sort_order=item.sort_order,
-                is_active=item.is_active,
-            )
-        )
-
-    db.session.commit()
+    return
 
 
 def get_svr_week_range():
