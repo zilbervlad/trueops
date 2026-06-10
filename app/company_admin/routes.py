@@ -1,65 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.auth.routes import login_required
 from app.extensions import db
-from app.models import Company, ChecklistTemplateItem, SVRTemplateField, VerificationTemplateField
+from app.models import Company
 
 company_admin_bp = Blueprint("company_admin", __name__, url_prefix="/companies")
-
-
-def clone_company_template_rows(model, new_company_id, master_company_id):
-    """
-    Copy template rows from TrueOps master to a new company exactly once.
-    If the company already has rows, do nothing.
-    """
-    if not new_company_id or not master_company_id:
-        return 0
-
-    existing_count = model.query.filter_by(company_id=new_company_id).count()
-    if existing_count > 0:
-        return 0
-
-    master_rows = (
-        model.query
-        .filter_by(company_id=master_company_id)
-        .order_by(model.id.asc())
-        .all()
-    )
-
-    clone_columns = [
-        column.name
-        for column in model.__table__.columns
-        if column.name not in ("id", "company_id")
-    ]
-
-    copied = 0
-    for row in master_rows:
-        clone = model(company_id=new_company_id)
-        for column_name in clone_columns:
-            setattr(clone, column_name, getattr(row, column_name))
-        db.session.add(clone)
-        copied += 1
-
-    return copied
-
-
-def clone_master_templates_for_company(company_id):
-    """
-    New companies start with TrueOps master templates.
-    After that, edits/deletes/adds are company-specific.
-    """
-    master_company = Company.query.filter_by(slug="trueops").first()
-    if not master_company:
-        return {
-            "checklist": 0,
-            "svr": 0,
-            "verification": 0,
-        }
-
-    return {
-        "checklist": clone_company_template_rows(ChecklistTemplateItem, company_id, master_company.id),
-        "svr": clone_company_template_rows(SVRTemplateField, company_id, master_company.id),
-        "verification": clone_company_template_rows(VerificationTemplateField, company_id, master_company.id),
-    }
 
 
 def platform_admin_required(view):
@@ -111,13 +55,7 @@ def index():
             db.session.add(company)
             db.session.commit()
 
-            copied = clone_master_templates_for_company(company.id)
-            db.session.commit()
-
-            flash(
-                f"Company created successfully. Templates copied: checklist {copied['checklist']}, SVR {copied['svr']}, verification {copied['verification']}.",
-                "success"
-            )
+            flash("Company created successfully.", "success")
             return redirect(url_for("company_admin.index"))
 
         if action == "update":
