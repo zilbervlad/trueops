@@ -258,6 +258,58 @@ def ensure_company_svr_template(company_id):
     return
 
 
+
+def ensure_company_svr_template_for_edit(company_id):
+    """
+    Copy-on-edit only.
+
+    If a company intentionally edits SVR templates, create its private copy
+    once from the TrueOps master template. Normal viewing must not call this.
+    """
+    if not company_id:
+        return
+
+    existing_count = SVRTemplateField.query.filter_by(company_id=company_id).count()
+    if existing_count > 0:
+        return
+
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    source_items = []
+    if trueops_company_id and trueops_company_id != company_id:
+        source_items = SVRTemplateField.query.filter(
+            SVRTemplateField.company_id == trueops_company_id,
+            SVRTemplateField.is_active == True,
+        ).order_by(
+            SVRTemplateField.sort_order.asc(),
+            SVRTemplateField.id.asc(),
+        ).all()
+
+    if not source_items:
+        source_items = SVRTemplateField.query.filter(
+            SVRTemplateField.company_id.is_(None),
+            SVRTemplateField.is_active == True,
+        ).order_by(
+            SVRTemplateField.sort_order.asc(),
+            SVRTemplateField.id.asc(),
+        ).all()
+
+    for item in source_items:
+        db.session.add(
+            SVRTemplateField(
+                company_id=company_id,
+                field_key=item.field_key,
+                field_label=item.field_label,
+                field_type=item.field_type,
+                sort_order=item.sort_order,
+                is_active=item.is_active,
+            )
+        )
+
+    db.session.commit()
+
+
 def get_svr_week_range():
     today = today_et()
     week_offset_raw = (request.args.get("week_offset") or "0").strip()
