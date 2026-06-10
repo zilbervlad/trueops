@@ -1192,7 +1192,7 @@ def admin():
             return redirect(url_for("svr.admin"))
 
     company_id = current_company_id()
-    ensure_company_svr_template(company_id)
+    ensure_company_svr_template_for_edit(company_id)
 
     fields = svr_template_query(include_inactive=True).order_by(
         SVRTemplateField.sort_order.asc(),

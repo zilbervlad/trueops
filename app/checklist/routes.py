@@ -1123,7 +1123,7 @@ def index():
 def admin():
     settings = get_integrity_settings(create=True)
     company_id = current_company_id()
-    ensure_company_checklist_template(company_id)
+    ensure_company_checklist_template_for_edit(company_id)
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
