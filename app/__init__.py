@@ -312,9 +312,14 @@ def seed_checklist_template():
     # TrueOps is multi-company now. We should never keep global/default
     # checklist template rows because they can bleed into company views.
     if trueops_company_id:
+        # Do not delete old global rows: daily_checklist_items may still
+        # reference them by template_item_id. Reassign them to TrueOps instead.
         ChecklistTemplateItem.query.filter(
             ChecklistTemplateItem.company_id.is_(None)
-        ).delete(synchronize_session=False)
+        ).update(
+            {"company_id": trueops_company_id},
+            synchronize_session=False,
+        )
 
         existing_trueops_items = ChecklistTemplateItem.query.filter_by(
             company_id=trueops_company_id
