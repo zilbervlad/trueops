@@ -11,6 +11,7 @@ from app.models import (
     DailyChecklist,
     DailyChecklistItem,
     Store,
+    Company,
     ChecklistException,
     User,
     IntegritySettings,
@@ -34,6 +35,20 @@ def today_et():
 def current_ops_date():
     return today_et()
 
+
+def is_past_ops_day(checklist_date):
+    return checklist_date < current_ops_date()
+
+
+def utc_naive_to_et(value):
+    if not value:
+        return None
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC_TZ)
+
+    return value.astimezone(APP_TZ)
+
 def current_company_id():
     return session.get("current_company_id")
 
@@ -43,11 +58,12 @@ def get_integrity_settings(company_id=None, store_number=None, create=False):
     """
     Company-aware integrity settings.
 
-    If a store is provided, use that store's company.
-    Otherwise use the current session company.
+    If a store is provided, infer that store's company directly.
+    Do not use scoped store lookup here because checklist may need to
+    establish company context from the selected store.
     """
     if company_id is None and store_number:
-        store = scoped_store_by_number(store_number, active_only=False)
+        store = Store.query.filter_by(store_number=str(store_number)).first()
         if store and hasattr(store, "company_id"):
             company_id = store.company_id
 
@@ -97,7 +113,10 @@ def get_company_id_for_store(store_number):
     if company_id:
         return company_id
 
-    store = scoped_store_by_number(store_number, active_only=False)
+    # Infer company from the selected store without tenant-scoped lookup.
+    # This prevents platform/admin checklist access from 403-ing before
+    # the checklist page can load.
+    store = Store.query.filter_by(store_number=str(store_number)).first()
     if store and getattr(store, "company_id", None):
         return store.company_id
 

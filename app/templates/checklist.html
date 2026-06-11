@@ -1526,13 +1526,15 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                setAutosaveStatus("Save failed");
+                console.error("Checklist autosave item failed", response.status, data);
+                setAutosaveStatus(data.error ? `Save failed: ${data.error}` : "Save failed");
                 return;
             }
 
             updateStatsFromServer(data);
             setAutosaveStatus("Saved");
         } catch (error) {
+            console.error("Checklist autosave item error", error);
             setAutosaveStatus("Save failed");
         }
     }
@@ -1559,12 +1561,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                setAutosaveStatus("Save failed");
+                console.error("Checklist autosave item failed", response.status, data);
+                setAutosaveStatus(data.error ? `Save failed: ${data.error}` : "Save failed");
                 return;
             }
 
             setAutosaveStatus("Saved");
         } catch (error) {
+            console.error("Checklist autosave manager error", error);
             setAutosaveStatus("Save failed");
         }
     }
