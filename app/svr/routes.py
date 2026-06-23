@@ -384,10 +384,17 @@ def sync_maintenance_from_svr(report: SVRReport):
             maintenance_value = (value.value_text or "").strip()
             break
 
-    existing_tickets = MaintenanceTicket.query.filter_by(
+    existing_tickets_query = MaintenanceTicket.query.filter_by(
         svr_report_id=report.id,
         source_type="svr"
-    ).all()
+    )
+
+    if hasattr(MaintenanceTicket, "company_id"):
+        existing_tickets_query = existing_tickets_query.filter(
+            MaintenanceTicket.company_id == getattr(report, "company_id", None)
+        )
+
+    existing_tickets = existing_tickets_query.all()
 
     for ticket in existing_tickets:
         db.session.delete(ticket)
@@ -397,6 +404,7 @@ def sync_maintenance_from_svr(report: SVRReport):
     for line in maintenance_lines:
         db.session.add(
             MaintenanceTicket(
+                company_id=getattr(report, "company_id", None),
                 store_number=report.store_number,
                 title=line,
                 details=f"Created from SVR #{report.id}",
@@ -419,10 +427,17 @@ def sync_weekly_focus_from_svr(report: SVRReport):
         elif value.field_key == "goals_for_week":
             goals_value = (value.value_text or "").strip()
 
-    existing_items = WeeklyFocusItem.query.filter_by(
+    existing_items_query = WeeklyFocusItem.query.filter_by(
         store_number=report.store_number,
         source_type="svr"
-    ).all()
+    )
+
+    if hasattr(WeeklyFocusItem, "company_id"):
+        existing_items_query = existing_items_query.filter(
+            WeeklyFocusItem.company_id == getattr(report, "company_id", None)
+        )
+
+    existing_items = existing_items_query.all()
 
     for item in existing_items:
         db.session.delete(item)
@@ -430,6 +445,7 @@ def sync_weekly_focus_from_svr(report: SVRReport):
     for line in split_lines(cleaning_value):
         db.session.add(
             WeeklyFocusItem(
+                company_id=getattr(report, "company_id", None),
                 store_number=report.store_number,
                 item_type="cleaning",
                 item_text=line,
@@ -442,6 +458,7 @@ def sync_weekly_focus_from_svr(report: SVRReport):
     for line in split_lines(goals_value):
         db.session.add(
             WeeklyFocusItem(
+                company_id=getattr(report, "company_id", None),
                 store_number=report.store_number,
                 item_type="goal",
                 item_text=line,
@@ -505,10 +522,17 @@ def build_report_context(report: SVRReport):
         elif value.field_key == "goals_for_week":
             manager_summary["goals_for_week"] = value.value_text or ""
 
-    current_action_items = WeeklyFocusItem.query.filter_by(
+    current_action_query = WeeklyFocusItem.query.filter_by(
         store_number=report.store_number,
         source_type="svr"
-    ).order_by(
+    )
+
+    if hasattr(WeeklyFocusItem, "company_id"):
+        current_action_query = current_action_query.filter(
+            WeeklyFocusItem.company_id == getattr(report, "company_id", None)
+        )
+
+    current_action_items = current_action_query.order_by(
         WeeklyFocusItem.is_completed.asc(),
         WeeklyFocusItem.item_type.asc(),
         WeeklyFocusItem.id.asc()
@@ -859,7 +883,12 @@ def index():
     stores = get_supervisor_visible_stores()
     visible_store_numbers = {store.store_number for store in stores}
 
-    reports = SVRReport.query.order_by(
+    report_query = SVRReport.query
+
+    if hasattr(SVRReport, "company_id"):
+        report_query = report_query.filter(SVRReport.company_id == current_company_id())
+
+    reports = report_query.order_by(
         SVRReport.visit_date.desc(),
         SVRReport.created_at.desc()
     ).all()
@@ -981,6 +1010,7 @@ def new_report():
         manager_on_duty = request.form.get("manager_on_duty", "").strip()
 
         report = SVRReport(
+            company_id=current_company_id(),
             store_number=store_number,
             visit_date=visit_date,
             manager_on_duty=manager_on_duty,
@@ -1214,10 +1244,15 @@ def delete_report(report_id):
         flash("You do not have access to delete that SVR.", "error")
         return redirect(url_for("svr.index"))
 
-    linked_tickets = MaintenanceTicket.query.filter_by(
+    linked_tickets_query = MaintenanceTicket.query.filter_by(
         svr_report_id=report.id,
         source_type="svr"
-    ).all()
+    )
+
+    if hasattr(MaintenanceTicket, "company_id"):
+        linked_tickets_query = linked_tickets_query.filter(MaintenanceTicket.company_id == current_company_id())
+
+    linked_tickets = linked_tickets_query.all()
 
     for ticket in linked_tickets:
         ticket.svr_report_id = None
@@ -1249,7 +1284,12 @@ def delete_report(report_id):
     for photo in photo_records:
         db.session.delete(photo)
 
-    WeeklyFocusItem.query.filter_by(svr_report_id=report.id).delete()
+    focus_delete_query = WeeklyFocusItem.query.filter_by(svr_report_id=report.id)
+
+    if hasattr(WeeklyFocusItem, "company_id"):
+        focus_delete_query = focus_delete_query.filter(WeeklyFocusItem.company_id == current_company_id())
+
+    focus_delete_query.delete()
     SVRReportValue.query.filter_by(report_id=report.id).delete()
 
     db.session.delete(report)

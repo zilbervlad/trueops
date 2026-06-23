@@ -28,6 +28,10 @@ def get_current_role():
     return (session.get("user_role") or "").strip()
 
 
+def current_company_id():
+    return session.get("current_company_id")
+
+
 def get_visible_stores():
     role = session.get("user_role")
     user_area = session.get("user_area")
@@ -143,7 +147,12 @@ def get_filtered_tickets():
     status_filter = request.args.get("status", "").strip()
     store_filter = request.args.get("store", "").strip()
 
-    tickets = MaintenanceTicket.query.order_by(
+    ticket_query = MaintenanceTicket.query
+
+    if hasattr(MaintenanceTicket, "company_id"):
+        ticket_query = ticket_query.filter(MaintenanceTicket.company_id == current_company_id())
+
+    tickets = ticket_query.order_by(
         MaintenanceTicket.created_at.asc(),
         MaintenanceTicket.id.asc()
     ).all()
@@ -242,6 +251,9 @@ def create_maintenance_excel(tickets, status_filter, store_filter):
 
 
 def apply_ticket_form_fields(ticket):
+    if hasattr(ticket, "company_id"):
+        ticket.company_id = current_company_id()
+
     ticket.store_number = request.form.get("store_number", "").strip()
     ticket.title = request.form.get("title", "").strip()
     ticket.details = request.form.get("details", "").strip()
@@ -401,7 +413,12 @@ def index():
     status_filter = request.args.get("status", "").strip()
     store_filter = request.args.get("store", "").strip()
 
-    tickets = MaintenanceTicket.query.order_by(
+    ticket_query = MaintenanceTicket.query
+
+    if hasattr(MaintenanceTicket, "company_id"):
+        ticket_query = ticket_query.filter(MaintenanceTicket.company_id == current_company_id())
+
+    tickets = ticket_query.order_by(
         MaintenanceTicket.created_at.asc(),
         MaintenanceTicket.id.asc()
     ).all()
@@ -519,7 +536,12 @@ def calendar():
     next_week = week_start + timedelta(days=7)
     time_slots = build_time_slots()
 
-    tickets = MaintenanceTicket.query.order_by(
+    ticket_query = MaintenanceTicket.query
+
+    if hasattr(MaintenanceTicket, "company_id"):
+        ticket_query = ticket_query.filter(MaintenanceTicket.company_id == current_company_id())
+
+    tickets = ticket_query.order_by(
         MaintenanceTicket.scheduled_date.asc(),
         MaintenanceTicket.scheduled_time.asc(),
         MaintenanceTicket.created_at.asc(),

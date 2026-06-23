@@ -111,8 +111,11 @@ class DailyChecklist(db.Model):
     __tablename__ = "daily_checklists"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
     store_number = db.Column(db.String(20), nullable=False)
     checklist_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    company = db.relationship("Company", backref=db.backref("daily_checklists", lazy=True))
 
     manager_on_duty = db.Column(db.String(120), nullable=True)
     opening_manager = db.Column(db.String(120), nullable=True)
@@ -167,9 +170,12 @@ class ChecklistException(db.Model):
     __tablename__ = "checklist_exceptions"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
     store_number = db.Column(db.String(10), nullable=False)
     checklist_date = db.Column(db.Date, nullable=False)
+
+    company = db.relationship("Company", backref=db.backref("checklist_exceptions", lazy=True))
 
     manager_on_duty = db.Column(db.String(120), nullable=True)
 
@@ -233,8 +239,12 @@ class SVRReport(db.Model):
     __tablename__ = "svr_reports"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
     store_number = db.Column(db.String(10), nullable=False)
     visit_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    company = db.relationship("Company", backref=db.backref("svr_reports", lazy=True))
     manager_on_duty = db.Column(db.String(120), nullable=True)
 
     supervisor_name = db.Column(db.String(120), nullable=True)
@@ -304,7 +314,11 @@ class WeeklyFocusItem(db.Model):
     __tablename__ = "weekly_focus_items"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
     store_number = db.Column(db.String(10), nullable=False)
+
+    company = db.relationship("Company", backref=db.backref("weekly_focus_items", lazy=True))
 
     item_type = db.Column(db.String(50), nullable=False)
     item_text = db.Column(db.String(255), nullable=False)
@@ -324,8 +338,11 @@ class MaintenanceTicket(db.Model):
     __tablename__ = "maintenance_tickets"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
     store_number = db.Column(db.String(10), nullable=False)
+
+    company = db.relationship("Company", backref=db.backref("maintenance_tickets", lazy=True))
     title = db.Column(db.String(255), nullable=False)
     details = db.Column(db.Text, nullable=True)
 
@@ -349,9 +366,12 @@ class NightlyNumbersReport(db.Model):
     __tablename__ = "nightly_numbers_reports"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
 
     store_number = db.Column(db.String(10), nullable=False)
     report_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    company = db.relationship("Company", backref=db.backref("nightly_numbers_reports", lazy=True))
 
     manager_name = db.Column(db.String(120), nullable=True)
 
@@ -462,8 +482,12 @@ class VerificationReport(db.Model):
     __tablename__ = "verification_reports"
 
     id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True, index=True)
+
     store_number = db.Column(db.String(10), nullable=False)
     report_date = db.Column(db.Date, nullable=False, default=today_et)
+
+    company = db.relationship("Company", backref=db.backref("verification_reports", lazy=True))
 
     supervisor_name = db.Column(db.String(120), nullable=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

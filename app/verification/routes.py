@@ -581,7 +581,7 @@ def new_report():
         flash("No stores available for verification.", "error")
         return redirect(url_for("dashboard.home"))
 
-    fields = VerificationTemplateField.query.filter_by(is_active=True).order_by(
+    fields = verification_template_query().order_by(
         VerificationTemplateField.sort_order.asc(),
         VerificationTemplateField.id.asc(),
     ).all()

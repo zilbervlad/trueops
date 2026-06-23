@@ -110,10 +110,15 @@ def build_heat_map(today, visible_stores):
 
     visible_store_numbers = [store.store_number for store in visible_stores]
 
-    all_daily = DailyChecklist.query.filter(
+    daily_query = DailyChecklist.query.filter(
         DailyChecklist.checklist_date == today,
         DailyChecklist.store_number.in_(visible_store_numbers)
-    ).all()
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        daily_query = daily_query.filter(DailyChecklist.company_id == current_company_id())
+
+    all_daily = daily_query.all()
 
     daily_by_store = {row.store_number: row for row in all_daily}
 
@@ -243,10 +248,15 @@ def detail(store_number):
     else:
         checklist_status_label = "Not Started"
 
-    open_focus_items = WeeklyFocusItem.query.filter_by(
+    focus_query = WeeklyFocusItem.query.filter_by(
         store_number=store_number,
         is_completed=False
-    ).order_by(
+    )
+
+    if hasattr(WeeklyFocusItem, "company_id"):
+        focus_query = focus_query.filter(WeeklyFocusItem.company_id == current_company_id())
+
+    open_focus_items = focus_query.order_by(
         WeeklyFocusItem.created_at.asc(),
         WeeklyFocusItem.id.asc()
     ).all()

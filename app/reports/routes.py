@@ -147,22 +147,32 @@ def build_report_payload():
 
     checklist_rows = []
     if filtered_store_numbers:
-        checklist_rows = DailyChecklist.query.filter(
+        checklist_query = DailyChecklist.query.filter(
             DailyChecklist.store_number.in_(filtered_store_numbers),
             DailyChecklist.checklist_date >= start_date,
             DailyChecklist.checklist_date <= end_date,
-        ).order_by(
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            checklist_query = checklist_query.filter(DailyChecklist.company_id == current_company_id())
+
+        checklist_rows = checklist_query.order_by(
             DailyChecklist.checklist_date.desc(),
             DailyChecklist.store_number.asc()
         ).all()
 
     nightly_rows = []
     if filtered_store_numbers:
-        nightly_rows = NightlyNumbersReport.query.filter(
+        nightly_query = NightlyNumbersReport.query.filter(
             NightlyNumbersReport.store_number.in_(filtered_store_numbers),
             NightlyNumbersReport.report_date >= start_date,
             NightlyNumbersReport.report_date <= end_date,
-        ).order_by(
+        )
+
+        if hasattr(NightlyNumbersReport, "company_id"):
+            nightly_query = nightly_query.filter(NightlyNumbersReport.company_id == current_company_id())
+
+        nightly_rows = nightly_query.order_by(
             NightlyNumbersReport.report_date.desc(),
             NightlyNumbersReport.store_number.asc()
         ).all()
@@ -667,11 +677,16 @@ def build_store_detail_payload(store_number):
 
     start_date, end_date, start_date_str, end_date_str = parse_report_dates()
 
-    store_rows = DailyChecklist.query.filter(
+    store_query = DailyChecklist.query.filter(
         DailyChecklist.store_number == store_number,
         DailyChecklist.checklist_date >= start_date,
         DailyChecklist.checklist_date <= end_date,
-    ).order_by(
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        store_query = store_query.filter(DailyChecklist.company_id == current_company_id())
+
+    store_rows = store_query.order_by(
         DailyChecklist.checklist_date.desc()
     ).all()
 

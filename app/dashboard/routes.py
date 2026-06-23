@@ -103,10 +103,15 @@ def build_dashboard_data():
     today = business_date_et()
 
     for store in stores:
-        daily = DailyChecklist.query.filter_by(
+        daily_query = DailyChecklist.query.filter_by(
             store_number=store.store_number,
             checklist_date=today
-        ).first()
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            daily_query = daily_query.filter(DailyChecklist.company_id == current_company_id())
+
+        daily = daily_query.first()
 
         checklist_percent = daily.percent_complete if daily else 0.0
         integrity_score = daily.integrity_score if daily else 0.0
@@ -210,9 +215,14 @@ def build_dashboard_data():
 
     week_start = today - timedelta(days=today.weekday())
 
-    weekly_svr_reports = SVRReport.query.filter(
+    weekly_svr_query = SVRReport.query.filter(
         SVRReport.visit_date >= week_start
-    ).all()
+    )
+
+    if hasattr(SVRReport, "company_id"):
+        weekly_svr_query = weekly_svr_query.filter(SVRReport.company_id == current_company_id())
+
+    weekly_svr_reports = weekly_svr_query.all()
 
     weekly_svr_store_numbers = {
         report.store_number
@@ -224,18 +234,31 @@ def build_dashboard_data():
     svr_missing_stores = sorted(list(visible_store_numbers - weekly_svr_store_numbers))
     svr_compliance_percent = round((svr_completed_count / total_stores) * 100, 1) if total_stores else 0.0
 
-    visible_tickets = MaintenanceTicket.query.filter(
-        MaintenanceTicket.store_number.in_(visible_store_numbers)
-    ).all() if visible_store_numbers else []
+    if visible_store_numbers:
+        ticket_query = MaintenanceTicket.query.filter(
+            MaintenanceTicket.store_number.in_(visible_store_numbers)
+        )
+
+        if hasattr(MaintenanceTicket, "company_id"):
+            ticket_query = ticket_query.filter(MaintenanceTicket.company_id == current_company_id())
+
+        visible_tickets = ticket_query.all()
+    else:
+        visible_tickets = []
 
     open_maintenance_count = sum(1 for t in visible_tickets if t.status != "complete")
     complete_maintenance_count = sum(1 for t in visible_tickets if t.status == "complete")
 
     manager_weekly_focus = []
     if user_role == "manager" and visible_store_numbers:
-        focus_items = WeeklyFocusItem.query.filter(
+        focus_query = WeeklyFocusItem.query.filter(
             WeeklyFocusItem.store_number.in_(visible_store_numbers)
-        ).order_by(
+        )
+
+        if hasattr(WeeklyFocusItem, "company_id"):
+            focus_query = focus_query.filter(WeeklyFocusItem.company_id == current_company_id())
+
+        focus_items = focus_query.order_by(
             WeeklyFocusItem.is_completed.asc(),
             WeeklyFocusItem.item_type.asc(),
             WeeklyFocusItem.id.asc()
@@ -385,16 +408,24 @@ def action_board():
     visible_stores = get_visible_stores()
     visible_store_numbers = {store.store_number for store in visible_stores}
 
-    items = WeeklyFocusItem.query.filter(
-        WeeklyFocusItem.source_type == "svr",
-        WeeklyFocusItem.store_number.in_(visible_store_numbers)
-    ).order_by(
-        WeeklyFocusItem.store_number.asc(),
-        WeeklyFocusItem.is_completed.asc(),
-        WeeklyFocusItem.item_type.asc(),
-        WeeklyFocusItem.created_at.asc(),
-        WeeklyFocusItem.id.asc(),
-    ).all() if visible_store_numbers else []
+    if visible_store_numbers:
+        focus_query = WeeklyFocusItem.query.filter(
+            WeeklyFocusItem.source_type == "svr",
+            WeeklyFocusItem.store_number.in_(visible_store_numbers)
+        )
+
+        if hasattr(WeeklyFocusItem, "company_id"):
+            focus_query = focus_query.filter(WeeklyFocusItem.company_id == current_company_id())
+
+        items = focus_query.order_by(
+            WeeklyFocusItem.store_number.asc(),
+            WeeklyFocusItem.is_completed.asc(),
+            WeeklyFocusItem.item_type.asc(),
+            WeeklyFocusItem.created_at.asc(),
+            WeeklyFocusItem.id.asc(),
+        ).all()
+    else:
+        items = []
 
     grouped = defaultdict(lambda: {
         "open_cleaning": [],
@@ -479,11 +510,16 @@ def clear_weekly_focus_items():
 
     cleared_count = 0
 
-    items = WeeklyFocusItem.query.filter(
+    clear_query = WeeklyFocusItem.query.filter(
         WeeklyFocusItem.id.in_(item_ids),
         WeeklyFocusItem.source_type == "svr",
         WeeklyFocusItem.store_number.in_(visible_store_numbers)
-    ).all()
+    )
+
+    if hasattr(WeeklyFocusItem, "company_id"):
+        clear_query = clear_query.filter(WeeklyFocusItem.company_id == current_company_id())
+
+    items = clear_query.all()
 
     for item in items:
         if item.is_completed:

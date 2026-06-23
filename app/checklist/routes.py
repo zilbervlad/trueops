@@ -58,17 +58,20 @@ def get_integrity_settings(company_id=None, store_number=None, create=False):
     """
     Company-aware integrity settings.
 
-    If a store is provided, infer that store's company directly.
-    Do not use scoped store lookup here because checklist may need to
-    establish company context from the selected store.
+    Prefer the active company context. If none exists, infer from store_number.
     """
-    if company_id is None and store_number:
-        store = Store.query.filter_by(store_number=str(store_number)).first()
-        if store and hasattr(store, "company_id"):
-            company_id = store.company_id
-
     if company_id is None:
         company_id = current_company_id()
+
+    if company_id is None and store_number:
+        store_query = Store.query.filter_by(store_number=str(store_number))
+
+        if current_company_id():
+            store_query = store_query.filter(Store.company_id == current_company_id())
+
+        store = store_query.first()
+        if store and hasattr(store, "company_id"):
+            company_id = store.company_id
 
     query = IntegritySettings.query
 
@@ -113,9 +116,7 @@ def get_company_id_for_store(store_number):
     if company_id:
         return company_id
 
-    # Infer company from the selected store without tenant-scoped lookup.
-    # This prevents platform/admin checklist access from 403-ing before
-    # the checklist page can load.
+    # Fallback only when no active company context exists.
     store = Store.query.filter_by(store_number=str(store_number)).first()
     if store and getattr(store, "company_id", None):
         return store.company_id
@@ -233,15 +234,23 @@ def ensure_company_checklist_template_for_edit(company_id):
 
 
 def get_or_create_daily_checklist(store_number: str, checklist_date: date):
-    daily = DailyChecklist.query.filter_by(
+    company_id = get_company_id_for_store(store_number)
+
+    query = DailyChecklist.query.filter_by(
         store_number=store_number,
         checklist_date=checklist_date
-    ).first()
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        query = query.filter(DailyChecklist.company_id == company_id)
+
+    daily = query.first()
 
     if daily:
         return daily
 
     daily = DailyChecklist(
+        company_id=company_id,
         store_number=store_number,
         checklist_date=checklist_date,
         status="in_progress",
@@ -251,8 +260,6 @@ def get_or_create_daily_checklist(store_number: str, checklist_date: date):
     )
     db.session.add(daily)
     db.session.flush()
-
-    company_id = get_company_id_for_store(store_number)
 
     # Do not auto-clone templates for this company.
     # Pull from company-specific template only if it exists, otherwise TrueOps master.
@@ -522,21 +529,31 @@ def run_checklist_closeout(closeout_date: date):
     archived_shell_count = 0
 
     for store in active_stores:
-        existing_exception = ChecklistException.query.filter_by(
+        exception_query = ChecklistException.query.filter_by(
             store_number=store.store_number,
             checklist_date=closeout_date,
             closeout_type="auto_5am"
-        ).first()
+        )
+
+        if hasattr(ChecklistException, "company_id"):
+            exception_query = exception_query.filter(ChecklistException.company_id == current_company_id())
+
+        existing_exception = exception_query.first()
 
         if existing_exception:
             skipped_count += 1
             skipped_existing_count += 1
             continue
 
-        daily = DailyChecklist.query.filter_by(
+        daily_query = DailyChecklist.query.filter_by(
             store_number=store.store_number,
             checklist_date=closeout_date
-        ).first()
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            daily_query = daily_query.filter(DailyChecklist.company_id == current_company_id())
+
+        daily = daily_query.first()
 
         if not daily:
             daily = get_or_create_daily_checklist(store.store_number, closeout_date)
@@ -631,16 +648,23 @@ def run_checklist_closeout(closeout_date: date):
 def send_store_summary_email(store_number: str):
     ops_date = current_ops_date()
 
-    checklist = DailyChecklist.query.filter_by(
+    company_id = current_company_id()
+
+    checklist_query = DailyChecklist.query.filter_by(
         store_number=store_number,
         checklist_date=ops_date
-    ).first()
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        checklist_query = checklist_query.filter(DailyChecklist.company_id == company_id)
+
+    checklist = checklist_query.first()
 
     if not checklist:
         return {"success": False, "error": f"No checklist found for store {store_number} for today."}
 
     store = Store.query.filter_by(
-        company_id=current_company_id(),
+        company_id=company_id,
         store_number=store_number
     ).first()
 
@@ -648,7 +672,7 @@ def send_store_summary_email(store_number: str):
         return {"success": False, "error": f"Store {store_number} is not in the selected company."}
 
     manager = User.query.filter_by(
-        company_id=current_company_id(),
+        company_id=company_id,
         store_number=store_number,
         role="manager",
         is_active=True
@@ -662,7 +686,7 @@ def send_store_summary_email(store_number: str):
         return {"success": False, "error": f"Manager email is not configured for store {store_number}."}
 
     supervisor = User.query.filter_by(
-        company_id=current_company_id(),
+        company_id=company_id,
         area_name=store.area_name,
         role="supervisor",
         is_active=True
@@ -726,10 +750,18 @@ def send_owner_summary_email(user_id: int, visible_stores, send_results):
 
     store_numbers = [store.store_number for store in visible_stores]
 
-    today_checklists = DailyChecklist.query.filter(
-        DailyChecklist.store_number.in_(store_numbers),
-        DailyChecklist.checklist_date == ops_date
-    ).all() if store_numbers else []
+    if store_numbers:
+        today_query = DailyChecklist.query.filter(
+            DailyChecklist.store_number.in_(store_numbers),
+            DailyChecklist.checklist_date == ops_date
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            today_query = today_query.filter(DailyChecklist.company_id == current_company_id())
+
+        today_checklists = today_query.all()
+    else:
+        today_checklists = []
 
     not_started_count = total_visible - len(today_checklists)
     completed_count = sum(1 for c in today_checklists if c.status == "completed")
@@ -803,10 +835,15 @@ def overview():
     recent_archives = []
 
     for store in visible_stores:
-        today_checklist = DailyChecklist.query.filter_by(
+        today_query = DailyChecklist.query.filter_by(
             store_number=store.store_number,
             checklist_date=today
-        ).first()
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            today_query = today_query.filter(DailyChecklist.company_id == current_company_id())
+
+        today_checklist = today_query.first()
 
         if not today_checklist:
             not_started.append({
@@ -835,10 +872,15 @@ def overview():
                 "checklist_date": today_checklist.checklist_date,
             })
 
-        archive_rows = DailyChecklist.query.filter(
+        archive_query = DailyChecklist.query.filter(
             DailyChecklist.store_number == store.store_number,
             DailyChecklist.checklist_date < today
-        ).order_by(DailyChecklist.checklist_date.desc()).limit(5).all()
+        )
+
+        if hasattr(DailyChecklist, "company_id"):
+            archive_query = archive_query.filter(DailyChecklist.company_id == current_company_id())
+
+        archive_rows = archive_query.order_by(DailyChecklist.checklist_date.desc()).limit(5).all()
 
         for row in archive_rows:
             recent_archives.append({
@@ -984,19 +1026,29 @@ def delete_archive():
         flash("You do not have access to that store.", "error")
         return redirect(url_for("checklist.overview"))
 
-    daily = DailyChecklist.query.filter_by(
+    daily_query = DailyChecklist.query.filter_by(
         store_number=store_number,
         checklist_date=checklist_date
-    ).first()
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        daily_query = daily_query.filter(DailyChecklist.company_id == current_company_id())
+
+    daily = daily_query.first()
 
     if not daily:
         flash("Checklist archive not found.", "error")
         return redirect(url_for("checklist.overview"))
 
-    exception_rows = ChecklistException.query.filter_by(
+    exception_query = ChecklistException.query.filter_by(
         store_number=store_number,
         checklist_date=checklist_date
-    ).all()
+    )
+
+    if hasattr(ChecklistException, "company_id"):
+        exception_query = exception_query.filter(ChecklistException.company_id == current_company_id())
+
+    exception_rows = exception_query.all()
 
     for row in exception_rows:
         db.session.delete(row)
@@ -1110,9 +1162,14 @@ def index():
         for section in section_order
     }
 
-    history = DailyChecklist.query.filter_by(
+    history_query = DailyChecklist.query.filter_by(
         store_number=store_number
-    ).order_by(DailyChecklist.checklist_date.desc()).limit(14).all()
+    )
+
+    if hasattr(DailyChecklist, "company_id"):
+        history_query = history_query.filter(DailyChecklist.company_id == current_company_id())
+
+    history = history_query.order_by(DailyChecklist.checklist_date.desc()).limit(14).all()
 
     integrity_settings = get_integrity_settings(store_number=store_number)
     burst_warning_enabled = (

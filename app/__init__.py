@@ -132,6 +132,189 @@ def seed_default_company():
     return company
 
 
+
+def ensure_checklist_company_id_columns():
+    """
+    Adds company_id to checklist tables for existing databases and backfills
+    from stores using the current globally-unique store_number.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    daily_columns = {col["name"] for col in inspector.get_columns("daily_checklists")}
+    if "company_id" not in daily_columns:
+        try:
+            db.session.execute(text("ALTER TABLE daily_checklists ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE daily_checklists ADD COLUMN company_id INTEGER"))
+
+        try:
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_checklists_company_id ON daily_checklists (company_id)"))
+        except Exception:
+            db.session.rollback()
+
+    exception_columns = {col["name"] for col in inspector.get_columns("checklist_exceptions")}
+    if "company_id" not in exception_columns:
+        try:
+            db.session.execute(text("ALTER TABLE checklist_exceptions ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE checklist_exceptions ADD COLUMN company_id INTEGER"))
+
+        try:
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_checklist_exceptions_company_id ON checklist_exceptions (company_id)"))
+        except Exception:
+            db.session.rollback()
+
+    db.session.execute(text("""
+        UPDATE daily_checklists
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE daily_checklists.company_id IS NULL
+          AND daily_checklists.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.execute(text("""
+        UPDATE checklist_exceptions
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE checklist_exceptions.company_id IS NULL
+          AND checklist_exceptions.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.commit()
+
+
+def ensure_nightly_numbers_company_id_column():
+    """
+    Adds company_id to nightly_numbers_reports for existing databases and
+    backfills from stores using the current globally-unique store_number.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    columns = {col["name"] for col in inspector.get_columns("nightly_numbers_reports")}
+    if "company_id" not in columns:
+        try:
+            db.session.execute(text("ALTER TABLE nightly_numbers_reports ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE nightly_numbers_reports ADD COLUMN company_id INTEGER"))
+
+        try:
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_nightly_numbers_reports_company_id ON nightly_numbers_reports (company_id)"))
+        except Exception:
+            db.session.rollback()
+
+    db.session.execute(text("""
+        UPDATE nightly_numbers_reports
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE nightly_numbers_reports.company_id IS NULL
+          AND nightly_numbers_reports.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.commit()
+
+
+def ensure_svr_maintenance_company_id_columns():
+    """
+    Adds company_id to SVR, weekly focus, and maintenance tables for existing
+    databases and backfills from stores using the current globally-unique store_number.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    table_names = [
+        "svr_reports",
+        "weekly_focus_items",
+        "maintenance_tickets",
+    ]
+
+    for table_name in table_names:
+        columns = {col["name"] for col in inspector.get_columns(table_name)}
+        if "company_id" not in columns:
+            try:
+                db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+            except Exception:
+                db.session.rollback()
+                db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN company_id INTEGER"))
+
+            try:
+                db.session.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_company_id ON {table_name} (company_id)"))
+            except Exception:
+                db.session.rollback()
+
+    db.session.execute(text("""
+        UPDATE svr_reports
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE svr_reports.company_id IS NULL
+          AND svr_reports.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.execute(text("""
+        UPDATE weekly_focus_items
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE weekly_focus_items.company_id IS NULL
+          AND weekly_focus_items.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.execute(text("""
+        UPDATE maintenance_tickets
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE maintenance_tickets.company_id IS NULL
+          AND maintenance_tickets.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.commit()
+
+
+def ensure_verification_reports_company_id_column():
+    """
+    Adds company_id to verification_reports for existing databases and backfills
+    from stores using the current globally-unique store_number.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    columns = {col["name"] for col in inspector.get_columns("verification_reports")}
+    if "company_id" not in columns:
+        try:
+            db.session.execute(text("ALTER TABLE verification_reports ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE verification_reports ADD COLUMN company_id INTEGER"))
+
+        try:
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_verification_reports_company_id ON verification_reports (company_id)"))
+        except Exception:
+            db.session.rollback()
+
+    db.session.execute(text("""
+        UPDATE verification_reports
+        SET company_id = stores.company_id
+        FROM stores
+        WHERE verification_reports.company_id IS NULL
+          AND verification_reports.store_number = stores.store_number
+          AND stores.company_id IS NOT NULL
+    """))
+
+    db.session.commit()
+
 def ensure_cash_logs_company_id_column():
     """
     Adds company_id to cash_logs for existing databases.
