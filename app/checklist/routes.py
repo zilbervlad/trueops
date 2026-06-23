@@ -33,7 +33,10 @@ def today_et():
 
 
 def current_ops_date():
-    return today_et()
+    now = now_et()
+    if now.hour < 5:
+        return (now - timedelta(days=1)).date()
+    return now.date()
 
 
 def is_past_ops_day(checklist_date):
