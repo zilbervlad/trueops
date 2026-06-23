@@ -83,6 +83,10 @@ def create_app():
         from app import models
 
         db.create_all()
+        ensure_checklist_company_id_columns()
+        ensure_nightly_numbers_company_id_column()
+        ensure_svr_maintenance_company_id_columns()
+        ensure_verification_reports_company_id_column()
         ensure_cash_logs_company_id_column()
         return "Database tables created"
 
@@ -95,6 +99,13 @@ def create_app():
         db.create_all()
 
         default_company = seed_default_company()
+
+        ensure_checklist_company_id_columns()
+        ensure_nightly_numbers_company_id_column()
+        ensure_svr_maintenance_company_id_columns()
+        ensure_verification_reports_company_id_column()
+        ensure_cash_logs_company_id_column()
+
         ensure_checklist_template_company_column()
         ensure_svr_template_company_column()
         ensure_verification_template_company_column()
