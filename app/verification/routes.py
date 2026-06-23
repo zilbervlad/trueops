@@ -26,6 +26,7 @@ from app.models import (
     VerificationReportValue,
     Store,
     User,
+    Company,
 )
 from app.services.email_service import send_email
 
@@ -80,21 +81,56 @@ def get_active_company_id():
 def verification_template_query(include_inactive=False):
     company_id = get_active_company_id()
 
-    query = VerificationTemplateField.query
+    def apply_active_filter(query):
+        if not include_inactive:
+            query = query.filter(VerificationTemplateField.is_active == True)
+        return query
 
+    # 1. Use company-specific verification template only if it exists.
     if company_id and hasattr(VerificationTemplateField, "company_id"):
-        query = query.filter(VerificationTemplateField.company_id == company_id)
+        company_query = apply_active_filter(
+            VerificationTemplateField.query.filter(VerificationTemplateField.company_id == company_id)
+        )
 
-    if not include_inactive:
-        query = query.filter(VerificationTemplateField.is_active == True)
+        if company_query.count() > 0:
+            return company_query
 
-    return query
+    # 2. Otherwise fall back to TrueOps master template.
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
+
+    if trueops_company_id and hasattr(VerificationTemplateField, "company_id"):
+        master_query = apply_active_filter(
+            VerificationTemplateField.query.filter(VerificationTemplateField.company_id == trueops_company_id)
+        )
+
+        if master_query.count() > 0:
+            return master_query
+
+    # 3. Last fallback: old global/default template rows.
+    query = VerificationTemplateField.query
+    if hasattr(VerificationTemplateField, "company_id"):
+        query = query.filter(VerificationTemplateField.company_id.is_(None))
+
+    return apply_active_filter(query)
 
 
 def ensure_company_verification_template(company_id):
     """
-    If a company has no verification template yet, clone an existing/default template
-    so each company can edit its own verification fields independently.
+    No-op by design.
+
+    Companies use the TrueOps master verification template as fallback unless/until
+    they intentionally customize their own verification template.
+    """
+    return
+
+
+def ensure_company_verification_template_for_edit(company_id):
+    """
+    Copy-on-edit only.
+
+    If a company intentionally edits verification templates, create its private copy
+    once from the TrueOps master/global template. Normal viewing must not call this.
     """
     if not company_id:
         return
@@ -103,44 +139,63 @@ def ensure_company_verification_template(company_id):
     if existing_count > 0:
         return
 
-    source_items = VerificationTemplateField.query.filter(
-        VerificationTemplateField.company_id.isnot(None),
-        VerificationTemplateField.company_id != company_id,
-    ).order_by(
-        VerificationTemplateField.sort_order.asc(),
-        VerificationTemplateField.id.asc(),
-    ).all()
+    trueops_company = Company.query.filter_by(slug="trueops").first()
+    trueops_company_id = trueops_company.id if trueops_company else None
 
-    if not source_items:
+    source_items = []
+    if trueops_company_id and trueops_company_id != company_id:
         source_items = VerificationTemplateField.query.filter(
-            VerificationTemplateField.company_id.is_(None)
+            VerificationTemplateField.company_id == trueops_company_id,
+            VerificationTemplateField.is_active == True,
         ).order_by(
             VerificationTemplateField.sort_order.asc(),
             VerificationTemplateField.id.asc(),
         ).all()
 
     if not source_items:
-        defaults = [
-            ("bad_orders", "Bad order / cancel log system in place?", "textarea", 1),
-            ("suspicious_activity", "Anyone identified for suspicious activity / callbacks made?", "textarea", 2),
-            ("csr_program", "Is CSR development program in use?", "textarea", 3),
-            ("dumpster_check", "Check dumpsters for waste - what did you see?", "textarea", 4),
+        source_items = VerificationTemplateField.query.filter(
+            VerificationTemplateField.company_id.is_(None),
+            VerificationTemplateField.is_active == True,
+        ).order_by(
+            VerificationTemplateField.sort_order.asc(),
+            VerificationTemplateField.id.asc(),
+        ).all()
+
+    if not source_items:
+        source_items = [
+            VerificationTemplateField(
+                company_id=None,
+                field_key="bad_orders",
+                field_label="Bad order / cancel log system in place?",
+                field_type="textarea",
+                sort_order=1,
+                is_active=True,
+            ),
+            VerificationTemplateField(
+                company_id=None,
+                field_key="suspicious_activity",
+                field_label="Anyone identified for suspicious activity / callbacks made?",
+                field_type="textarea",
+                sort_order=2,
+                is_active=True,
+            ),
+            VerificationTemplateField(
+                company_id=None,
+                field_key="csr_program",
+                field_label="Is CSR development program in use?",
+                field_type="textarea",
+                sort_order=3,
+                is_active=True,
+            ),
+            VerificationTemplateField(
+                company_id=None,
+                field_key="dumpster_check",
+                field_label="Check dumpsters for waste - what did you see?",
+                field_type="textarea",
+                sort_order=4,
+                is_active=True,
+            ),
         ]
-
-        for field_key, field_label, field_type, sort_order in defaults:
-            db.session.add(
-                VerificationTemplateField(
-                    company_id=company_id,
-                    field_key=field_key,
-                    field_label=field_label,
-                    field_type=field_type,
-                    sort_order=sort_order,
-                    is_active=True,
-                )
-            )
-
-        db.session.commit()
-        return
 
     for item in source_items:
         db.session.add(
@@ -698,6 +753,9 @@ def new_report():
 @login_required
 @role_required("admin")
 def admin():
+    company_id = get_active_company_id()
+    ensure_company_verification_template_for_edit(company_id)
+
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
 
@@ -724,7 +782,7 @@ def admin():
 
             db.session.add(
                 VerificationTemplateField(
-                    company_id=get_active_company_id(),
+                    company_id=company_id,
                     field_key=field_key,
                     field_label=field_label,
                     field_type=field_type,
@@ -769,7 +827,7 @@ def admin():
 
             field.is_active = "is_active" in request.form
 
-            duplicate = VerificationTemplateField.query.filter(
+            duplicate = verification_template_query(include_inactive=True).filter(
                 VerificationTemplateField.field_key == field.field_key,
                 VerificationTemplateField.id != field.id,
             ).first()
@@ -786,7 +844,7 @@ def admin():
             flash("Verification field updated.", "success")
             return redirect(url_for("verification.admin"))
 
-    fields = VerificationTemplateField.query.order_by(
+    fields = verification_template_query(include_inactive=True).order_by(
         VerificationTemplateField.sort_order.asc(),
         VerificationTemplateField.id.asc(),
     ).all()

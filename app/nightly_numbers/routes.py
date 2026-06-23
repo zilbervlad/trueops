@@ -777,6 +777,10 @@ def admin():
 
     query = NightlyNumbersReport.query
 
+    company_id = current_company_id()
+    if company_id and hasattr(NightlyNumbersReport, "company_id"):
+        query = query.filter(NightlyNumbersReport.company_id == company_id)
+
     if selected_store:
         query = query.filter_by(store_number=selected_store)
 
