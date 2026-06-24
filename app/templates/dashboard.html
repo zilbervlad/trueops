@@ -65,6 +65,169 @@
     .manager-weekly-focus-card.is-completed .checklist-checkbox-row {
         cursor: default;
     }
+
+    .ops-flow-panel {
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background:
+            radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 34%),
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96));
+    }
+
+    .ops-flow-toggle {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .ops-flow-title-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .ops-flow-eyebrow {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+        color: rgba(71, 85, 105, 0.78);
+    }
+
+    .ops-flow-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .ops-flow-title-row h3 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: -0.03em;
+    }
+
+    .ops-flow-subtitle {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .ops-flow-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .ops-stage-card {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.07);
+        padding: 16px;
+        min-height: 185px;
+    }
+
+    .ops-stage-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .ops-stage-kicker {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .ops-stage-title {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+    }
+
+    .ops-stage-count {
+        white-space: nowrap;
+        border-radius: 999px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #f1f5f9;
+        color: #334155;
+    }
+
+    .ops-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .ops-store-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #f8fafc;
+        color: #334155;
+    }
+
+    .ops-store-chip strong {
+        color: #0f172a;
+    }
+
+    .ops-store-chip.is-complete {
+        background: rgba(22, 163, 74, 0.10);
+        color: #166534;
+        border-color: rgba(22, 163, 74, 0.18);
+    }
+
+    .ops-store-chip.is-progress {
+        background: rgba(245, 158, 11, 0.12);
+        color: #92400e;
+        border-color: rgba(245, 158, 11, 0.22);
+    }
+
+    .ops-store-chip.is-empty {
+        background: rgba(100, 116, 139, 0.10);
+        color: #475569;
+        border-color: rgba(100, 116, 139, 0.16);
+    }
+
+    .ops-empty-state {
+        border-radius: 16px;
+        background: rgba(248, 250, 252, 0.9);
+        border: 1px dashed rgba(100, 116, 139, 0.24);
+        padding: 14px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    @media (max-width: 1100px) {
+        .ops-flow-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="command-bar panel" style="margin-bottom: 24px;">
@@ -116,73 +279,93 @@
 </div>
 
 {% if is_ops_view %}
-<div class="panel premium-panel" style="margin-bottom: 24px;">
+<div class="panel premium-panel ops-flow-panel" style="margin-bottom: 24px;">
     <button
         type="button"
         id="section-progress-toggle"
-        class="panel-head"
-        style="width: 100%; background: transparent; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; justify-content: space-between;"
+        class="ops-flow-toggle"
         aria-expanded="false"
     >
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <h3 style="margin: 0;">Section Progress Board</h3>
-            <span class="summary-pill">{{ opening_progress|length }} stores</span>
+        <div class="ops-flow-title-wrap">
+            <div class="ops-flow-eyebrow">Live checklist execution</div>
+            <div class="ops-flow-title-row">
+                <h3>Today's Ops Flow</h3>
+                <span class="summary-pill">{{ opening_progress|length }} stores</span>
+            </div>
+            <div class="ops-flow-subtitle">
+                Opening, 3 PM Restock, and Manager's Walk progress by store.
+            </div>
         </div>
         <span id="section-progress-chevron" class="summary-pill">Show ▼</span>
     </button>
 
-    <div id="section-progress-body" style="margin-top: 16px; display: none;">
-        <div class="content-grid exceptions-grid">
-            <section class="panel premium-panel exception-panel">
-                <div class="panel-head">
-                    <h3>Opening</h3>
-                    <span class="summary-pill neutral-pill" id="opening-progress-count">
+    <div id="section-progress-body" style="margin-top: 18px; display: none;">
+        <div class="ops-flow-grid">
+            <section class="ops-stage-card">
+                <div class="ops-stage-head">
+                    <div>
+                        <div class="ops-stage-kicker">Morning</div>
+                        <h3 class="ops-stage-title">Opening</h3>
+                    </div>
+                    <span class="ops-stage-count" id="opening-progress-count">
                         {{ opening_progress|length }} stores
                     </span>
                 </div>
-                <div class="exception-list detailed" id="opening-progress-list">
+
+                <div class="ops-chip-list" id="opening-progress-list">
                     {% for store in opening_progress %}
-                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
-                        {{ store.store_number }} - {{ store.percent }}%
+                    <span class="ops-store-chip {% if store.percent >= 90 %}is-complete{% elif store.percent >= 50 %}is-progress{% else %}is-empty{% endif %}">
+                        <strong>{{ store.store_number }}</strong>
+                        <span>{{ store.percent }}%</span>
                     </span>
                     {% else %}
-                    <span class="exception-chip neutral-pill">None</span>
+                    <div class="ops-empty-state">No stores to show.</div>
                     {% endfor %}
                 </div>
             </section>
 
-            <section class="panel premium-panel exception-panel">
-                <div class="panel-head">
-                    <h3>3 O'Clock Restock</h3>
-                    <span class="summary-pill warning-pill" id="restock-progress-count">
+            <section class="ops-stage-card">
+                <div class="ops-stage-head">
+                    <div>
+                        <div class="ops-stage-kicker">Midday</div>
+                        <h3 class="ops-stage-title">3 O'Clock Restock</h3>
+                    </div>
+                    <span class="ops-stage-count" id="restock-progress-count">
                         {{ restock_progress|length }} stores
                     </span>
                 </div>
-                <div class="exception-list detailed" id="restock-progress-list">
+
+                <div class="ops-chip-list" id="restock-progress-list">
                     {% for store in restock_progress %}
-                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
-                        {{ store.store_number }} - {{ store.percent }}%
+                    <span class="ops-store-chip {% if store.percent >= 90 %}is-complete{% elif store.percent >= 50 %}is-progress{% else %}is-empty{% endif %}">
+                        <strong>{{ store.store_number }}</strong>
+                        <span>{{ store.percent }}%</span>
                     </span>
                     {% else %}
-                    <span class="exception-chip neutral-pill">None</span>
+                    <div class="ops-empty-state">No stores to show.</div>
                     {% endfor %}
                 </div>
             </section>
 
-            <section class="panel premium-panel exception-panel">
-                <div class="panel-head">
-                    <h3>Manager's Walk</h3>
-                    <span class="summary-pill success-pill" id="manager-walk-progress-count">
+            <section class="ops-stage-card">
+                <div class="ops-stage-head">
+                    <div>
+                        <div class="ops-stage-kicker">Closing rhythm</div>
+                        <h3 class="ops-stage-title">Manager's Walk</h3>
+                    </div>
+                    <span class="ops-stage-count" id="manager-walk-progress-count">
                         {{ manager_walk_progress|length }} stores
                     </span>
                 </div>
-                <div class="exception-list detailed" id="manager-walk-progress-list">
+
+                <div class="ops-chip-list" id="manager-walk-progress-list">
                     {% for store in manager_walk_progress %}
-                    <span class="exception-chip {% if store.percent >= 90 %}success-pill{% elif store.percent >= 50 %}warning-pill{% else %}neutral-pill{% endif %}">
-                        {{ store.store_number }} - {{ store.percent }}%
+                    <span class="ops-store-chip {% if store.percent >= 90 %}is-complete{% elif store.percent >= 50 %}is-progress{% else %}is-empty{% endif %}">
+                        <strong>{{ store.store_number }}</strong>
+                        <span>{{ store.percent }}%</span>
                     </span>
                     {% else %}
-                    <span class="exception-chip neutral-pill">None</span>
+                    <div class="ops-empty-state">No stores to show.</div>
                     {% endfor %}
                 </div>
             </section>
@@ -536,34 +719,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let refreshInFlight = false;
 
-    function renderChipList(containerId, items) {
-        const el = document.getElementById(containerId);
-        if (!el) return;
+    function renderChipList(elementId, stores) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
 
-        el.innerHTML = "";
-
-        if (!items || items.length === 0) {
-            const span = document.createElement("span");
-            span.className = "exception-chip neutral-pill";
-            span.textContent = "None";
-            el.appendChild(span);
+        if (!stores || stores.length === 0) {
+            container.innerHTML = `<div class="ops-empty-state">No stores to show.</div>`;
             return;
         }
 
-        items.forEach(item => {
-            const span = document.createElement("span");
+        container.innerHTML = stores.map((store) => {
+            const percent = Number(store.percent || 0);
+            const chipClass = percent >= 90 ? "is-complete" : percent >= 50 ? "is-progress" : "is-empty";
 
-            let pillClass = "neutral-pill";
-            if (Number(item.percent) >= 90) {
-                pillClass = "success-pill";
-            } else if (Number(item.percent) >= 50) {
-                pillClass = "warning-pill";
-            }
-
-            span.className = `exception-chip ${pillClass}`;
-            span.textContent = `${item.store_number} - ${item.percent}%`;
-            el.appendChild(span);
-        });
+            return `
+                <span class="ops-store-chip ${chipClass}">
+                    <strong>${store.store_number}</strong>
+                    <span>${percent}%</span>
+                </span>
+            `;
+        }).join("");
     }
 
     function updateRefreshChip(text) {
