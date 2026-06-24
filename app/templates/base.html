@@ -59,6 +59,13 @@
                     </a>
                     {% endif %}
 
+                    {% if session.get('user_role') in ['admin', 'supervisor', 'manager'] %}
+                    <a href="{{ url_for('dashboard.action_board') }}"
+                       class="{% if request.endpoint == 'dashboard.action_board' %}active{% endif %}">
+                        Action Board
+                    </a>
+                    {% endif %}
+
                     {% if session.get('user_role') == 'manager' %}
                     <a href="{{ url_for('nightly_numbers.index') }}"
                        class="{% if request.endpoint and request.endpoint.startswith('nightly_numbers') and request.endpoint != 'nightly_numbers.admin' %}active{% endif %}">
