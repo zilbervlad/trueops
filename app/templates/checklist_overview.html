@@ -4,193 +4,571 @@
 {% block header %}Checklist Overview{% endblock %}
 
 {% block content %}
-<div class="command-bar panel" style="margin-bottom: 24px;">
-    <div class="command-bar-left">
-        <div class="command-eyebrow">SUPERVISOR VIEW</div>
-        <h2 class="command-title">Checklist Control Board</h2>
-        <p class="command-subtitle">
-            In-progress checklists, completed stores, and recent archives for {{ today_label }}.
-        </p>
-    </div>
-    <div class="command-bar-right">
-        <div class="command-chip">Oversight View</div>
-        <div class="command-chip">{{ today_label }}</div>
+<style>
+    .overview-board {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
 
-        {% if session.get("user_role") in ["admin", "supervisor"] %}
-        <form method="POST" action="{{ url_for('checklist.send_all_summaries') }}" style="margin: 0;">
-            <button
-                type="submit"
-                class="btn-primary"
-                onclick="return confirm('Send individual summary emails for all visible stores?');"
-            >
-                Send All Summaries
-            </button>
-        </form>
+    .overview-command {
+        margin-bottom: 0 !important;
+    }
+
+    .overview-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .overview-kpi {
+        border-radius: 18px;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
+        padding: 16px;
+        border-left: 4px solid #cbd5e1;
+    }
+
+    .overview-kpi.is-blue {
+        border-left-color: #2563eb;
+    }
+
+    .overview-kpi.is-red {
+        border-left-color: #dc2626;
+    }
+
+    .overview-kpi.is-green {
+        border-left-color: #16a34a;
+    }
+
+    .overview-kpi-label {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .overview-kpi-value {
+        margin-top: 8px;
+        font-size: 30px;
+        line-height: 1;
+        font-weight: 950;
+        letter-spacing: -0.05em;
+        color: #0f172a;
+    }
+
+    .overview-kpi-note {
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .report-panel {
+        padding: 16px;
+        border-radius: 20px;
+    }
+
+    .report-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .report-eyebrow {
+        color: #2563eb;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .report-title {
+        margin: 3px 0 0;
+        font-size: 18px;
+        letter-spacing: -0.035em;
+    }
+
+    .report-subtitle {
+        margin-top: 3px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .report-table-wrap {
+        overflow-x: auto;
+        border-radius: 15px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 920px;
+        background: #fff;
+    }
+
+    .report-table th {
+        text-align: left;
+        padding: 10px 12px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        white-space: nowrap;
+    }
+
+    .report-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        font-size: 13px;
+        vertical-align: middle;
+    }
+
+    .report-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .report-table tr:hover td {
+        background: #f8fafc;
+    }
+
+    .store-link-cell {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+    }
+
+    .store-strong {
+        font-weight: 950;
+        color: #0f172a;
+    }
+
+    .store-muted {
+        margin-top: 2px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .issue-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .issue-pill {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 5px 8px;
+        font-size: 11px;
+        font-weight: 900;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #f8fafc;
+        color: #334155;
+        white-space: nowrap;
+    }
+
+    .issue-pill.is-red {
+        background: #fef2f2;
+        border-color: rgba(220, 38, 38, 0.16);
+        color: #b91c1c;
+    }
+
+    .issue-pill.is-yellow {
+        background: #fffbeb;
+        border-color: rgba(245, 158, 11, 0.20);
+        color: #92400e;
+    }
+
+    .issue-pill.is-green {
+        background: #f0fdf4;
+        border-color: rgba(22, 163, 74, 0.16);
+        color: #166534;
+    }
+
+    .mini-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        font-size: 12px;
+        font-weight: 900;
+        padding: 8px 10px;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+    }
+
+    .compact-section-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .compact-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .compact-store-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 7px 10px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    .compact-store-chip.is-green {
+        background: #f0fdf4;
+        color: #166534;
+        border-color: rgba(22, 163, 74, 0.16);
+    }
+
+    .archive-search {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        font-size: 14px;
+        box-sizing: border-box;
+        margin-bottom: 12px;
+    }
+
+    @media (max-width: 1000px) {
+        .overview-kpis,
+        .compact-section-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .report-head {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="overview-board">
+    <div class="command-bar panel overview-command">
+        <div class="command-bar-left">
+            <div class="command-eyebrow">SUPERVISOR VIEW</div>
+            <h2 class="command-title">Checklist Reporting Board</h2>
+            <p class="command-subtitle">
+                At-a-glance execution, exceptions, and store follow-up for {{ today_label }}.
+            </p>
+        </div>
+        <div class="command-bar-right">
+            <div class="command-chip">Oversight View</div>
+            <div class="command-chip">{{ today_label }}</div>
+
+            {% if session.get("user_role") in ["admin", "supervisor"] %}
+            <form method="POST" action="{{ url_for('checklist.send_all_summaries') }}" style="margin: 0;">
+                <button
+                    type="submit"
+                    class="btn-primary"
+                    onclick="return confirm('Send individual summary emails for all visible stores?');"
+                >
+                    Send All Summaries
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% set attention = namespace(count=0) %}
+    {% for item in not_started %}
+        {% set attention.count = attention.count + 1 %}
+    {% endfor %}
+    {% for item in in_progress %}
+        {% if item.percent_complete < 70 or (item.integrity_score > 0 and item.integrity_score < 80) %}
+            {% set attention.count = attention.count + 1 %}
         {% endif %}
+    {% endfor %}
+
+    <div class="overview-kpis">
+        <div class="overview-kpi is-red">
+            <div class="overview-kpi-label">Needs Attention</div>
+            <div class="overview-kpi-value">{{ attention.count }}</div>
+            <div class="overview-kpi-note">Not started, low completion, or low integrity</div>
+        </div>
+
+        <div class="overview-kpi is-blue">
+            <div class="overview-kpi-label">In Progress</div>
+            <div class="overview-kpi-value">{{ in_progress|length }}</div>
+            <div class="overview-kpi-note">Stores currently working today’s checklist</div>
+        </div>
+
+        <div class="overview-kpi is-green">
+            <div class="overview-kpi-label">Completed</div>
+            <div class="overview-kpi-value">{{ completed|length }}</div>
+            <div class="overview-kpi-note">Stores finished today’s checklist</div>
+        </div>
+
+        <div class="overview-kpi">
+            <div class="overview-kpi-label">Archives</div>
+            <div class="overview-kpi-value">{{ recent_archives|length }}</div>
+            <div class="overview-kpi-note">Recent completed or saved prior-day checklists</div>
+        </div>
     </div>
-</div>
 
-<div class="dashboard-grid dashboard-grid-premium" style="margin-bottom: 24px;">
-    <div class="metric-card premium-card premium-card-alert">
-        <span class="metric-label">Not Started</span>
-        <h3>{{ not_started|length }}</h3>
-        <p class="metric-footnote">Stores with no checklist started today</p>
-    </div>
+    <section class="panel premium-panel report-panel">
+        <div class="report-head">
+            <div>
+                <div class="report-eyebrow">Exceptions</div>
+                <h3 class="report-title">Needs Attention</h3>
+                <div class="report-subtitle">Stores that are behind, low-integrity, or not started.</div>
+            </div>
+            <span class="summary-pill">{{ attention.count }} stores</span>
+        </div>
 
-    <div class="metric-card premium-card premium-card-blue">
-        <span class="metric-label">In Progress</span>
-        <h3>{{ in_progress|length }}</h3>
-        <p class="metric-footnote">Stores currently working today’s checklist</p>
-    </div>
+        <div class="report-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Area</th>
+                        <th>Issues</th>
+                        <th>Completion</th>
+                        <th>Integrity</th>
+                        <th>Walk</th>
+                        {% if session.get("user_role") in ["admin", "supervisor"] %}
+                        <th>Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in not_started %}
+                    <tr>
+                        <td>
+                            <a class="store-link-cell" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                                <div class="store-strong">Store {{ item.store_number }}</div>
+                                <div class="store-muted">{{ item.store_name }}</div>
+                            </a>
+                        </td>
+                        <td>{{ item.area_name }}</td>
+                        <td>
+                            <div class="issue-stack">
+                                <span class="issue-pill is-red">Not Started</span>
+                            </div>
+                        </td>
+                        <td><span class="table-badge badge-neutral">0%</span></td>
+                        <td><span class="table-badge badge-neutral">0%</span></td>
+                        <td><span class="table-badge badge-neutral">0%</span></td>
+                        {% if session.get("user_role") in ["admin", "supervisor"] %}
+                        <td>
+                            <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
+                                <button type="submit" class="mini-action-btn">Send</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
 
-    <div class="metric-card premium-card">
-        <span class="metric-label">Completed</span>
-        <h3>{{ completed|length }}</h3>
-        <p class="metric-footnote">Stores that finished today’s checklist</p>
-    </div>
+                    {% for item in in_progress %}
+                        {% if item.percent_complete < 70 or (item.integrity_score > 0 and item.integrity_score < 80) %}
+                        <tr>
+                            <td>
+                                <a class="store-link-cell" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                                    <div class="store-strong">Store {{ item.store_number }}</div>
+                                    <div class="store-muted">{{ item.store_name }}</div>
+                                </a>
+                            </td>
+                            <td>{{ item.area_name }}</td>
+                            <td>
+                                <div class="issue-stack">
+                                    {% if item.percent_complete < 70 %}
+                                    <span class="issue-pill is-yellow">Under 70%</span>
+                                    {% endif %}
+                                    {% if item.integrity_score > 0 and item.integrity_score < 80 %}
+                                    <span class="issue-pill is-red">Low Integrity</span>
+                                    {% endif %}
+                                    {% if item.manager_walk_integrity > 0 and item.manager_walk_integrity < 90 %}
+                                    <span class="issue-pill is-yellow">Walk Partial</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                    {{ item.percent_complete }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                    {{ item.integrity_score }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="table-badge {% if item.manager_walk_integrity >= 90 %}badge-success{% elif item.manager_walk_integrity > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                    {{ item.manager_walk_integrity }}%
+                                </span>
+                            </td>
+                            {% if session.get("user_role") in ["admin", "supervisor"] %}
+                            <td>
+                                <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
+                                    <button type="submit" class="mini-action-btn">Send</button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
 
-    <div class="metric-card premium-card">
-        <span class="metric-label">Archives</span>
-        <h3>{{ recent_archives|length }}</h3>
-        <p class="metric-footnote">Recent completed or saved prior-day checklists</p>
-    </div>
-</div>
+                    {% if attention.count == 0 %}
+                    <tr>
+                        <td colspan="{% if session.get('user_role') in ['admin', 'supervisor'] %}7{% else %}6{% endif %}">
+                            No attention items right now.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-<div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
-
-    <details class="panel premium-panel" open>
-        <summary class="panel-head" style="cursor:pointer;">
-            <h3>In Progress</h3>
+    <section class="panel premium-panel report-panel">
+        <div class="report-head">
+            <div>
+                <div class="report-eyebrow">Live Store Status</div>
+                <h3 class="report-title">All Active Checklists</h3>
+                <div class="report-subtitle">Compact operational view of every store currently in progress.</div>
+            </div>
             <span class="summary-pill">{{ in_progress|length }} stores</span>
-        </summary>
-
-        <div class="admin-task-list">
-            {% for item in in_progress %}
-            <div class="admin-task-card">
-                <a href="{{ url_for('checklist.index', store=item.store_number) }}" style="display:block; color:inherit;">
-                    <div class="admin-task-top">
-                        <span class="summary-pill">Store {{ item.store_number }}</span>
-                        <span class="table-badge badge-warning">{{ item.percent_complete }}%</span>
-                        <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
-                            Integrity {{ item.integrity_score }}%
-                        </span>
-                        <span class="table-badge {% if item.manager_walk_integrity >= 90 %}badge-success{% elif item.manager_walk_integrity > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
-                            Walk {{ item.manager_walk_integrity }}%
-                        </span>
-                    </div>
-                    <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
-                </a>
-
-                {% if session.get("user_role") in ["admin", "supervisor"] %}
-                <div style="margin-top: 14px;">
-                    <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
-                        <button type="submit" class="btn-primary">Send Summary</button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
-            <div class="admin-task-card">No stores currently in progress.</div>
-            {% endfor %}
         </div>
-    </details>
 
-    <details class="panel premium-panel">
-        <summary class="panel-head" style="cursor:pointer;">
-            <h3>Not Started</h3>
-            <span class="summary-pill">{{ not_started|length }} stores</span>
-        </summary>
-
-        <div class="admin-task-list">
-            {% for item in not_started %}
-            <div class="admin-task-card">
-                <a href="{{ url_for('checklist.index', store=item.store_number) }}" style="display:block; color:inherit;">
-                    <div class="admin-task-top">
-                        <span class="summary-pill">Store {{ item.store_number }}</span>
-                        <span class="table-badge badge-neutral">0%</span>
-                    </div>
-                    <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
-                </a>
-
-                {% if session.get("user_role") in ["admin", "supervisor"] %}
-                <div style="margin-top: 14px;">
-                    <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
-                        <button type="submit" class="btn-primary">Send Summary</button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
-            <div class="admin-task-card">Every visible store has started today’s checklist.</div>
-            {% endfor %}
+        <div class="report-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Store</th>
+                        <th>Area</th>
+                        <th>Completion</th>
+                        <th>Integrity</th>
+                        <th>Walk</th>
+                        <th>Status</th>
+                        {% if session.get("user_role") in ["admin", "supervisor"] %}
+                        <th>Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in in_progress %}
+                    <tr>
+                        <td>
+                            <a class="store-link-cell" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                                <div class="store-strong">Store {{ item.store_number }}</div>
+                                <div class="store-muted">{{ item.store_name }}</div>
+                            </a>
+                        </td>
+                        <td>{{ item.area_name }}</td>
+                        <td>
+                            <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ item.percent_complete }}%
+                            </span>
+                        </td>
+                        <td>
+                            <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ item.integrity_score }}%
+                            </span>
+                        </td>
+                        <td>
+                            <span class="table-badge {% if item.manager_walk_integrity >= 90 %}badge-success{% elif item.manager_walk_integrity > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                {{ item.manager_walk_integrity }}%
+                            </span>
+                        </td>
+                        <td><span class="issue-pill is-yellow">In Progress</span></td>
+                        {% if session.get("user_role") in ["admin", "supervisor"] %}
+                        <td>
+                            <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
+                                <button type="submit" class="mini-action-btn">Send</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if session.get('user_role') in ['admin', 'supervisor'] %}7{% else %}6{% endif %}">
+                            No stores currently in progress.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </details>
+    </section>
 
-</div>
-
-<div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
-
-    <details class="panel premium-panel">
-        <summary class="panel-head" style="cursor:pointer;">
-            <h3>Completed Today</h3>
-            <span class="summary-pill">{{ completed|length }} stores</span>
-        </summary>
-
-        <div class="admin-task-list">
-            {% for item in completed %}
-            <div class="admin-task-card">
-                <a href="{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}" style="display:block; color:inherit;">
-                    <div class="admin-task-top">
-                        <span class="summary-pill">Store {{ item.store_number }}</span>
-                        <span class="table-badge badge-success">{{ item.percent_complete }}%</span>
-                        <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
-                            Integrity {{ item.integrity_score }}%
-                        </span>
-                        <span class="table-badge {% if item.manager_walk_integrity >= 90 %}badge-success{% elif item.manager_walk_integrity > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
-                            Walk {{ item.manager_walk_integrity }}%
-                        </span>
-                    </div>
-                    <div class="area-subtitle">{{ item.store_name }} | {{ item.area_name }}</div>
-                </a>
-
-                {% if session.get("user_role") in ["admin", "supervisor"] %}
-                <div style="margin-top: 14px;">
-                    <form method="POST" action="{{ url_for('checklist.send_daily_summary', store_number=item.store_number) }}">
-                        <button type="submit" class="btn-primary">Send Summary</button>
-                    </form>
+    <div class="compact-section-grid">
+        <section class="panel premium-panel report-panel">
+            <div class="report-head">
+                <div>
+                    <div class="report-eyebrow">Not Started</div>
+                    <h3 class="report-title">No Checklist Yet</h3>
                 </div>
-                {% endif %}
+                <span class="summary-pill">{{ not_started|length }} stores</span>
             </div>
-            {% else %}
-            <div class="admin-task-card">No stores have completed today’s checklist yet.</div>
-            {% endfor %}
-        </div>
-    </details>
 
-    <details class="panel premium-panel">
+            <div class="compact-list">
+                {% for item in not_started %}
+                <a class="compact-store-chip" href="{{ url_for('checklist.index', store=item.store_number) }}">
+                    Store {{ item.store_number }}
+                </a>
+                {% else %}
+                <span class="compact-store-chip is-green">All stores started</span>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panel premium-panel report-panel">
+            <div class="report-head">
+                <div>
+                    <div class="report-eyebrow">Completed</div>
+                    <h3 class="report-title">Finished Today</h3>
+                </div>
+                <span class="summary-pill">{{ completed|length }} stores</span>
+            </div>
+
+            <div class="compact-list">
+                {% for item in completed %}
+                <a class="compact-store-chip is-green" href="{{ url_for('checklist.index', store=item.store_number, date=item.checklist_date.strftime('%Y-%m-%d')) }}">
+                    Store {{ item.store_number }} · {{ item.percent_complete }}%
+                </a>
+                {% else %}
+                <span class="compact-store-chip">No completed stores yet</span>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <details class="panel premium-panel report-panel">
         <summary class="panel-head" style="cursor:pointer;">
             <h3>Checklist Archives</h3>
             <span class="summary-pill">{{ recent_archives|length }} items</span>
         </summary>
 
-        <div style="margin-bottom: 16px;">
-            <input
-                id="archiveSearch"
-                type="text"
-                placeholder="Search store, name, area, date, status..."
-                style="
-                    width: 100%;
-                    padding: 10px 12px;
-                    border-radius: 10px;
-                    border: 1px solid #d1d5db;
-                    font-size: 14px;
-                    box-sizing: border-box;
-                "
-            />
-        </div>
+        <input
+            id="archiveSearch"
+            type="text"
+            placeholder="Search store, name, area, date, status..."
+            class="archive-search"
+        />
 
-        <div class="table-wrap premium-table-wrap">
-            <table class="data-table premium-table" id="archiveTable">
+        <div class="report-table-wrap">
+            <table class="report-table" id="archiveTable">
                 <thead>
                     <tr>
                         <th>Store</th>
@@ -199,7 +577,7 @@
                         <th>Date</th>
                         <th>Completion</th>
                         <th>Integrity</th>
-                        <th>Walk Integrity</th>
+                        <th>Walk</th>
                         <th>Status</th>
                         {% if session.get("user_role") == "admin" %}
                         <th>Actions</th>
@@ -213,25 +591,21 @@
                         <td>{{ item.store_name }}</td>
                         <td>{{ item.area_name }}</td>
                         <td>{{ item.checklist_date.strftime('%b %d, %Y') }}</td>
-
                         <td>
                             <span class="table-badge {% if item.percent_complete >= 100 %}badge-success{% elif item.percent_complete > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
                                 {{ item.percent_complete }}%
                             </span>
                         </td>
-
                         <td>
                             <span class="table-badge {% if item.integrity_score >= 90 %}badge-success{% elif item.integrity_score > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
                                 {{ item.integrity_score }}%
                             </span>
                         </td>
-
                         <td>
                             <span class="table-badge {% if item.manager_walk_integrity >= 90 %}badge-success{% elif item.manager_walk_integrity > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
                                 {{ item.manager_walk_integrity }}%
                             </span>
                         </td>
-
                         <td>{{ item.status.replace('_', ' ')|title }}</td>
 
                         {% if session.get("user_role") == "admin" %}
@@ -265,9 +639,7 @@
                 </tbody>
             </table>
         </div>
-
     </details>
-
 </div>
 
 <script>
@@ -286,18 +658,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     }
-
-    document.querySelectorAll("details.premium-panel").forEach(section => {
-        section.addEventListener("toggle", function () {
-            if (this.open) {
-                document.querySelectorAll("details.premium-panel").forEach(other => {
-                    if (other !== this) {
-                        other.removeAttribute("open");
-                    }
-                });
-            }
-        });
-    });
 });
 </script>
 
