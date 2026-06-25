@@ -84,6 +84,34 @@
         gap: 8px;
     }
 
+    .checklist-section-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .checklist-section-summary-card {
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .checklist-section-summary-title {
+        font-weight: 950;
+        color: #0f172a;
+        font-size: 0.84rem;
+        margin-bottom: 6px;
+        line-height: 1.15;
+    }
+
+    .checklist-section-summary-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
     .checklist-admin-note-card {
         padding: 9px 10px;
         border-radius: 12px;
@@ -586,15 +614,18 @@
 
         <div class="command-bar panel checklist-admin-command">
             <div>
-                <div class="command-eyebrow">ADMIN</div>
+                <div class="command-eyebrow">ADMIN · {{ session.get('current_company_name', 'Selected Company') }}</div>
                 <h2 class="command-title">Checklist Template Manager</h2>
                 <p class="command-subtitle">
-                    Add new tasks, clean up old ones, and keep the checklist structured so managers can move through it faster.
+                    {{ template_status_label }}. Add new tasks, clean up old ones, and keep the checklist structured so managers can move through it faster.
                 </p>
             </div>
 
             <div class="checklist-admin-chip-row">
-                <div class="checklist-admin-chip">{{ items|length }} Tasks</div>
+                <div class="checklist-admin-chip">{{ template_status_label }}</div>
+                <div class="checklist-admin-chip">{{ active_task_count }} Active</div>
+                <div class="checklist-admin-chip">{{ inactive_task_count }} Inactive</div>
+                <div class="checklist-admin-chip">{{ required_task_count }} Required</div>
                 <div class="checklist-admin-chip">{{ section_options|length }} Sections</div>
             </div>
         </div>
@@ -665,6 +696,19 @@
                     </div>
                 </div>
                 <span class="summary-pill">{{ items|length }} Items</span>
+            </div>
+
+            <div class="checklist-section-summary-grid">
+                {% for section in section_summaries %}
+                <div class="checklist-section-summary-card">
+                    <div class="checklist-section-summary-title">{{ section.name }}</div>
+                    <div class="checklist-section-summary-stats">
+                        <span class="checklist-admin-stat">{{ section.total_count }} Total</span>
+                        <span class="checklist-admin-stat">{{ section.active_count }} Active</span>
+                        <span class="checklist-admin-stat">{{ section.required_count }} Required</span>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
 
             <div class="checklist-admin-toolbar">

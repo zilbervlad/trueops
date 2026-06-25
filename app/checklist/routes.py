@@ -1364,12 +1364,32 @@ def admin():
         "Manager's Walk",
     ]
 
+    active_task_count = sum(1 for item in items if item.is_active)
+    inactive_task_count = sum(1 for item in items if not item.is_active)
+    required_task_count = sum(1 for item in items if item.is_required)
+    template_status_label = "Inherited from TrueOps Master" if using_inherited_template else "Company Customized"
+
+    section_summaries = []
+    for section in section_options:
+        section_items = [item for item in items if item.section_name == section]
+        section_summaries.append({
+            "name": section,
+            "total_count": len(section_items),
+            "active_count": sum(1 for item in section_items if item.is_active),
+            "required_count": sum(1 for item in section_items if item.is_required),
+        })
+
     return render_template(
         "checklist_admin.html",
         items=items,
         section_options=section_options,
         integrity_settings=settings,
         using_inherited_template=using_inherited_template,
+        active_task_count=active_task_count,
+        inactive_task_count=inactive_task_count,
+        required_task_count=required_task_count,
+        template_status_label=template_status_label,
+        section_summaries=section_summaries,
     )
 
 
