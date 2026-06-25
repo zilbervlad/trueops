@@ -707,6 +707,15 @@
                         <span class="checklist-admin-stat">{{ section.active_count }} Active</span>
                         <span class="checklist-admin-stat">{{ section.required_count }} Required</span>
                     </div>
+                    {% if section.key %}
+                    <div class="checklist-admin-actions" style="margin-top: 8px;">
+                        <a href="{{ url_for('checklist.admin_section', section_key=section.key) }}"
+                           class="btn-secondary"
+                           style="padding: 6px 10px; font-size: 0.78rem;">
+                            Manage Section
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

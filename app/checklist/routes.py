@@ -1325,6 +1325,9 @@ def admin():
                 ).first()
 
             if not item:
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return jsonify({"success": False, "error": "Task not found. Refresh the page and try again."}), 404
+
                 flash("Task not found. Refresh the page and try again.", "error")
                 return redirect(url_for("checklist.admin"))
 
@@ -1342,6 +1345,19 @@ def admin():
             item.is_active = request.form.get("is_active") == "on"
 
             db.session.commit()
+
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({
+                    "success": True,
+                    "item_id": item.id,
+                    "section_name": item.section_name,
+                    "task_text": item.task_text,
+                    "expected_minutes": item.expected_minutes,
+                    "sort_order": item.sort_order,
+                    "is_required": item.is_required,
+                    "is_active": item.is_active,
+                })
+
             flash("Checklist task updated.", "success")
             return redirect(url_for("checklist.admin"))
 
@@ -1369,11 +1385,19 @@ def admin():
     required_task_count = sum(1 for item in items if item.is_required)
     template_status_label = "Inherited from TrueOps Master" if using_inherited_template else "Company Customized"
 
+    section_key_map = {
+        "Before Open / Before 10:30": "before-open",
+        "During Dayshift": "dayshift",
+        "3-O'Clock Restock": "restock",
+        "Manager's Walk": "manager-walk",
+    }
+
     section_summaries = []
     for section in section_options:
         section_items = [item for item in items if item.section_name == section]
         section_summaries.append({
             "name": section,
+            "key": section_key_map.get(section, ""),
             "total_count": len(section_items),
             "active_count": sum(1 for item in section_items if item.is_active),
             "required_count": sum(1 for item in section_items if item.is_required),
@@ -1390,6 +1414,59 @@ def admin():
         required_task_count=required_task_count,
         template_status_label=template_status_label,
         section_summaries=section_summaries,
+    )
+
+
+
+@checklist_bp.route("/admin/section/<section_key>", methods=["GET"])
+@login_required
+@role_required("admin")
+def admin_section(section_key):
+    company_id = current_company_id()
+
+    section_map = {
+        "before-open": "Before Open / Before 10:30",
+        "dayshift": "During Dayshift",
+        "restock": "3-O'Clock Restock",
+        "manager-walk": "Manager's Walk",
+    }
+
+    section_name = section_map.get(section_key)
+    if not section_name:
+        flash("Checklist section not found.", "error")
+        return redirect(url_for("checklist.admin"))
+
+    items = checklist_template_query(include_inactive=True).filter(
+        ChecklistTemplateItem.section_name == section_name
+    ).order_by(
+        ChecklistTemplateItem.sort_order.asc(),
+        ChecklistTemplateItem.id.asc()
+    ).all()
+
+    using_inherited_template = False
+
+    if not items:
+        all_items = get_active_checklist_template_items_for_company(company_id)
+        items = [item for item in all_items if item.section_name == section_name]
+        using_inherited_template = True
+
+    section_options = [
+        "Before Open / Before 10:30",
+        "During Dayshift",
+        "3-O'Clock Restock",
+        "Manager's Walk",
+    ]
+
+    template_status_label = "Inherited from TrueOps Master" if using_inherited_template else "Company Customized"
+
+    return render_template(
+        "checklist_admin_section.html",
+        items=items,
+        section_key=section_key,
+        section_name=section_name,
+        section_options=section_options,
+        using_inherited_template=using_inherited_template,
+        template_status_label=template_status_label,
     )
 
 

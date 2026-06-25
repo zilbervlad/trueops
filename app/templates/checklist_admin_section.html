@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}{{ section_name }} | Checklist Admin{% endblock %}
+{% block header %}Checklist Admin{% endblock %}
+
+{% block content %}
+<style>
+    .section-admin-page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .section-command {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px;
+    }
+
+    .section-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .section-chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    .section-admin-panel {
+        padding: 12px;
+    }
+
+    .section-admin-muted {
+        color: #64748b;
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .section-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .section-task-card {
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .section-task-card.is-saving {
+        opacity: 0.82;
+    }
+
+    .section-task-card.is-saved {
+        border-color: rgba(22, 163, 74, 0.36);
+        background: rgba(240, 253, 244, 0.95);
+    }
+
+    .section-task-card.is-dirty {
+        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(255, 251, 235, 0.95);
+    }
+
+    .section-task-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 130px 100px auto auto;
+        gap: 8px;
+        align-items: end;
+    }
+
+    .section-task-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .section-task-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+        min-width: 0;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 7px 9px;
+        min-height: 34px;
+        font-size: 0.84rem;
+    }
+
+    .checkbox-inline {
+        font-size: 0.82rem;
+        color: #334155;
+        font-weight: 700;
+    }
+
+    .save-status {
+        min-height: 16px;
+        font-size: 0.74rem;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .section-empty-state {
+        padding: 16px;
+        border-radius: 14px;
+        text-align: center;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
+    }
+
+    @media (max-width: 980px) {
+        .section-command,
+        .section-task-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .section-chip-row {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<div class="admin-page section-admin-page">
+    <div class="command-bar panel section-command">
+        <div>
+            <div class="command-eyebrow">ADMIN · {{ session.get('current_company_name', 'Selected Company') }}</div>
+            <h2 class="command-title">{{ section_name }}</h2>
+            <p class="command-subtitle">
+                {{ template_status_label }}. Edit only this checklist section without loading the full template editor.
+            </p>
+        </div>
+
+        <div class="section-chip-row">
+            <span class="section-chip">{{ items|length }} Items</span>
+            <span class="section-chip">{{ template_status_label }}</span>
+            <a href="{{ url_for('checklist.admin') }}" class="btn-secondary" style="padding: 6px 10px; font-size: 0.78rem;">Back to Checklist Admin</a>
+        </div>
+    </div>
+
+    {% if using_inherited_template %}
+    <section class="panel premium-panel section-admin-panel" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 251, 235, 0.95);">
+        <h3 style="margin: 0 0 4px 0;">Using TrueOps Master Checklist</h3>
+        <div class="section-admin-muted">
+            This company does not have its own checklist template yet. Saving a task will create a private checklist copy for this company.
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="panel premium-panel section-admin-panel">
+        <div class="panel-head">
+            <div>
+                <h3>{{ section_name }} Tasks</h3>
+                <div class="section-admin-muted">
+                    Auto-save is on. Text fields save when you leave them. Checkboxes save instantly.
+                </div>
+            </div>
+            <span class="summary-pill">{{ items|length }} Items</span>
+        </div>
+
+        <div class="section-task-list">
+            {% for item in items %}
+            <div
+                class="section-task-card ajax-task-card"
+                id="task-card-{{ item.id }}"
+                data-item-id="{{ item.id }}"
+                data-section="{{ item.section_name }}"
+                data-task-text="{{ item.task_text|lower }}"
+                data-last-saved-section="{{ item.section_name }}"
+                data-last-saved-task-text="{{ item.task_text }}"
+                data-last-saved-expected-minutes="{{ item.expected_minutes }}"
+                data-last-saved-sort-order="{{ item.sort_order }}"
+                data-last-saved-is-required="{{ 1 if item.is_required else 0 }}"
+                data-last-saved-is-active="{{ 1 if item.is_active else 0 }}"
+            >
+                <div class="section-task-grid">
+                    <div class="form-group">
+                        <label>Task Text</label>
+                        <input type="text" class="task-text-input" value="{{ item.task_text }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Expected Min</label>
+                        <input type="number" class="task-expected-input" value="{{ item.expected_minutes }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sort</label>
+                        <input type="number" class="task-sort-input" value="{{ item.sort_order }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Required</label>
+                        <label class="checkbox-inline">
+                            <input type="checkbox" class="task-required-input" {% if item.is_required %}checked{% endif %}>
+                            Yes
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Active</label>
+                        <label class="checkbox-inline">
+                            <input type="checkbox" class="task-active-input" {% if item.is_active %}checked{% endif %}>
+                            Yes
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-task-footer">
+                    <div class="section-task-meta">
+                        <span class="table-badge badge-neutral task-id-badge">ID {{ item.id }}</span>
+
+                        {% if item.is_active %}
+                        <span class="table-badge badge-success task-active-badge">Active</span>
+                        {% else %}
+                        <span class="table-badge badge-neutral task-active-badge">Inactive</span>
+                        {% endif %}
+
+                        {% if item.is_required %}
+                        <span class="table-badge badge-danger task-required-badge">Required</span>
+                        {% else %}
+                        <span class="table-badge badge-neutral task-required-badge">Optional</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="save-status" aria-live="polite"></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="section-empty-state">
+                No checklist template items found for this section.
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const taskCards = document.querySelectorAll(".ajax-task-card[data-section]");
+
+    function getCardState(card) {
+        return {
+            section_name: card.dataset.section || "{{ section_name }}",
+            task_text: card.querySelector(".task-text-input")?.value || "",
+            expected_minutes: card.querySelector(".task-expected-input")?.value || "0",
+            sort_order: card.querySelector(".task-sort-input")?.value || "999",
+            is_required: card.querySelector(".task-required-input")?.checked ? "1" : "0",
+            is_active: card.querySelector(".task-active-input")?.checked ? "1" : "0"
+        };
+    }
+
+    function getSavedState(card) {
+        return {
+            section_name: card.dataset.lastSavedSection || "{{ section_name }}",
+            task_text: card.dataset.lastSavedTaskText || "",
+            expected_minutes: card.dataset.lastSavedExpectedMinutes || "0",
+            sort_order: card.dataset.lastSavedSortOrder || "999",
+            is_required: card.dataset.lastSavedIsRequired || "0",
+            is_active: card.dataset.lastSavedIsActive || "0"
+        };
+    }
+
+    function updateSavedState(card, state) {
+        card.dataset.lastSavedSection = state.section_name;
+        card.dataset.lastSavedTaskText = state.task_text;
+        card.dataset.lastSavedExpectedMinutes = state.expected_minutes;
+        card.dataset.lastSavedSortOrder = state.sort_order;
+        card.dataset.lastSavedIsRequired = state.is_required;
+        card.dataset.lastSavedIsActive = state.is_active;
+    }
+
+    function cardHasChanges(card) {
+        const current = getCardState(card);
+        const saved = getSavedState(card);
+
+        return (
+            current.section_name !== saved.section_name ||
+            current.task_text !== saved.task_text ||
+            current.expected_minutes !== saved.expected_minutes ||
+            current.sort_order !== saved.sort_order ||
+            current.is_required !== saved.is_required ||
+            current.is_active !== saved.is_active
+        );
+    }
+
+    function updateBadges(card) {
+        const state = getCardState(card);
+        const requiredBadge = card.querySelector(".task-required-badge");
+        const activeBadge = card.querySelector(".task-active-badge");
+
+        if (requiredBadge) {
+            if (state.is_required === "1") {
+                requiredBadge.textContent = "Required";
+                requiredBadge.className = "table-badge badge-danger task-required-badge";
+            } else {
+                requiredBadge.textContent = "Optional";
+                requiredBadge.className = "table-badge badge-neutral task-required-badge";
+            }
+        }
+
+        if (activeBadge) {
+            if (state.is_active === "1") {
+                activeBadge.textContent = "Active";
+                activeBadge.className = "table-badge badge-success task-active-badge";
+            } else {
+                activeBadge.textContent = "Inactive";
+                activeBadge.className = "table-badge badge-neutral task-active-badge";
+            }
+        }
+
+        if (cardHasChanges(card)) {
+            card.classList.add("is-dirty");
+        } else {
+            card.classList.remove("is-dirty");
+        }
+    }
+
+    async function saveCard(card) {
+        if (card.dataset.saving === "1") {
+            return;
+        }
+
+        if (!cardHasChanges(card)) {
+            const saveStatus = card.querySelector(".save-status");
+            if (saveStatus) {
+                saveStatus.textContent = "";
+            }
+            return;
+        }
+
+        const saveStatus = card.querySelector(".save-status");
+        const itemId = card.getAttribute("data-item-id");
+        const state = getCardState(card);
+
+        const formData = new FormData();
+        formData.append("action", "update");
+        formData.append("item_id", itemId);
+        formData.append("section_name", state.section_name);
+        formData.append("task_text", state.task_text);
+        formData.append("expected_minutes", state.expected_minutes);
+        formData.append("sort_order", state.sort_order);
+
+        if (state.is_required === "1") {
+            formData.append("is_required", "on");
+        }
+
+        if (state.is_active === "1") {
+            formData.append("is_active", "on");
+        }
+
+        card.dataset.saving = "1";
+        card.classList.remove("is-saved");
+        card.classList.add("is-saving");
+
+        if (saveStatus) {
+            saveStatus.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch("{{ url_for('checklist.admin') }}", {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
+            const result = await response.json().catch(function () {
+                return {};
+            });
+
+            if (result.item_id) {
+                card.setAttribute("data-item-id", result.item_id);
+                card.id = "task-card-" + result.item_id;
+
+                const idBadge = card.querySelector(".task-id-badge");
+                if (idBadge) {
+                    idBadge.textContent = "ID " + result.item_id;
+                }
+            }
+
+            updateSavedState(card, state);
+            updateBadges(card);
+
+            card.classList.remove("is-saving");
+            card.classList.add("is-saved");
+
+            if (saveStatus) {
+                saveStatus.textContent = "Saved";
+            }
+
+            window.setTimeout(function () {
+                card.classList.remove("is-saved");
+                if (saveStatus && saveStatus.textContent === "Saved") {
+                    saveStatus.textContent = "";
+                }
+            }, 1000);
+        } catch (error) {
+            console.error(error);
+            card.classList.remove("is-saving");
+
+            if (saveStatus) {
+                saveStatus.textContent = "Save failed. Refresh and try again.";
+            }
+        } finally {
+            card.dataset.saving = "0";
+        }
+    }
+
+    taskCards.forEach(function (card) {
+        const inputs = card.querySelectorAll("input");
+
+        inputs.forEach(function (input) {
+            input.addEventListener("input", function () {
+                updateBadges(card);
+            });
+
+            input.addEventListener("change", function () {
+                updateBadges(card);
+                saveCard(card);
+            });
+
+            input.addEventListener("blur", function () {
+                saveCard(card);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
