@@ -119,6 +119,11 @@ def create_app():
         seed_checklist_template()
         seed_svr_template()
 
+    @app.route("/healthz")
+    def healthz():
+        return {"status": "ok"}, 200
+
+
     return app
 
 
