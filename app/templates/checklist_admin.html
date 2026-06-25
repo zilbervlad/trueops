@@ -161,7 +161,45 @@
     .checklist-admin-list {
         display: flex;
         flex-direction: column;
+        gap: 10px;
+    }
+
+    .checklist-section-group {
+        display: flex;
+        flex-direction: column;
         gap: 6px;
+    }
+
+    .checklist-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+
+    .checklist-section-header-title {
+        font-size: 0.92rem;
+        font-weight: 950;
+        color: #0f172a;
+    }
+
+    .checklist-section-header-sub {
+        margin-top: 2px;
+        font-size: 0.74rem;
+        color: #64748b;
+        font-weight: 650;
+    }
+
+    .checklist-section-header-stats {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .checklist-task-card {
@@ -586,15 +624,18 @@
 
         <div class="command-bar panel checklist-admin-command">
             <div>
-                <div class="command-eyebrow">ADMIN</div>
+                <div class="command-eyebrow">ADMIN · {{ session.get('current_company_name', 'Selected Company') }}</div>
                 <h2 class="command-title">Checklist Template Manager</h2>
                 <p class="command-subtitle">
-                    Add new tasks, clean up old ones, and keep the checklist structured so managers can move through it faster.
+                    {{ template_status_label }}. Add tasks, clean up old ones, and keep each company checklist simple for store execution.
                 </p>
             </div>
 
             <div class="checklist-admin-chip-row">
-                <div class="checklist-admin-chip">{{ items|length }} Tasks</div>
+                <div class="checklist-admin-chip">{{ template_status_label }}</div>
+                <div class="checklist-admin-chip">{{ active_task_count }} Active</div>
+                <div class="checklist-admin-chip">{{ inactive_task_count }} Inactive</div>
+                <div class="checklist-admin-chip">{{ required_task_count }} Required</div>
                 <div class="checklist-admin-chip">{{ section_options|length }} Sections</div>
             </div>
         </div>
@@ -701,7 +742,23 @@
             </div>
 
             <div class="checklist-admin-list" id="admin-task-list">
-                {% for item in items %}
+                {% if section_groups %}
+                {% for group in section_groups %}
+                <div class="checklist-section-group" data-section-group="{{ group["name"] }}">
+                    <div class="checklist-section-header">
+                        <div>
+                            <div class="checklist-section-header-title">{{ group["name"] }}</div>
+                            <div class="checklist-section-header-sub">
+                                {{ group["total_count"] }} tasks in this section
+                            </div>
+                        </div>
+                        <div class="checklist-section-header-stats">
+                            <span class="checklist-admin-stat">{{ group["active_count"] }} Active</span>
+                            <span class="checklist-admin-stat">{{ group["required_count"] }} Required</span>
+                        </div>
+                    </div>
+
+                    {% for item in group["items"] %}
                 <div
                     class="checklist-task-card ajax-task-card"
                     id="task-card-{{ item.id }}"
@@ -783,11 +840,14 @@
                         <div class="save-status" aria-live="polite"></div>
                     </div>
                 </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
                 {% else %}
                 <div class="checklist-empty-state">
                     No checklist template items found.
                 </div>
-                {% endfor %}
+                {% endif %}
             </div>
         </section>
     </div>
