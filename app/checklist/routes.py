@@ -1202,10 +1202,25 @@ def index():
 def admin():
     settings = get_integrity_settings(create=True)
     company_id = current_company_id()
-    ensure_company_checklist_template_for_edit(company_id)
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
+        inherited_source_item = None
+
+        if action == "update":
+            item_id = request.form.get("item_id", "").strip()
+
+            company_item_count = 0
+            if company_id:
+                company_item_count = ChecklistTemplateItem.query.filter_by(company_id=company_id).count()
+
+            if company_id and company_item_count == 0 and item_id:
+                try:
+                    inherited_source_item = ChecklistTemplateItem.query.get(int(item_id))
+                except (TypeError, ValueError):
+                    inherited_source_item = None
+
+        ensure_company_checklist_template_for_edit(company_id)
 
         if action == "update_integrity":
             if not session.get("is_platform_admin"):
@@ -1300,8 +1315,17 @@ def admin():
             item_id = request.form.get("item_id", "").strip()
             item = checklist_template_query(include_inactive=True).filter_by(id=item_id).first()
 
+            if not item and inherited_source_item and company_id:
+                item = ChecklistTemplateItem.query.filter_by(
+                    company_id=company_id,
+                    section_name=inherited_source_item.section_name,
+                    task_text=inherited_source_item.task_text,
+                    expected_minutes=inherited_source_item.expected_minutes,
+                    sort_order=inherited_source_item.sort_order,
+                ).first()
+
             if not item:
-                flash("Task not found.", "error")
+                flash("Task not found. Refresh the page and try again.", "error")
                 return redirect(url_for("checklist.admin"))
 
             item.section_name = request.form.get("section_name", "").strip()
@@ -1327,6 +1351,12 @@ def admin():
         ChecklistTemplateItem.id.asc()
     ).all()
 
+    using_inherited_template = False
+
+    if not items:
+        items = get_active_checklist_template_items_for_company(company_id)
+        using_inherited_template = True
+
     section_options = [
         "Before Open / Before 10:30",
         "During Dayshift",
@@ -1339,6 +1369,7 @@ def admin():
         items=items,
         section_options=section_options,
         integrity_settings=settings,
+        using_inherited_template=using_inherited_template,
     )
 
 
