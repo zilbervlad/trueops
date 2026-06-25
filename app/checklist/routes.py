@@ -1202,6 +1202,7 @@ def index():
 def admin():
     settings = get_integrity_settings(create=True)
     company_id = current_company_id()
+    show_inactive = request.args.get("show_inactive") == "1"
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
@@ -1361,7 +1362,7 @@ def admin():
             flash("Checklist task updated.", "success")
             return redirect(url_for("checklist.admin"))
 
-    items = checklist_template_query(include_inactive=True).order_by(
+    items = checklist_template_query(include_inactive=show_inactive).order_by(
         ChecklistTemplateItem.section_name.asc(),
         ChecklistTemplateItem.sort_order.asc(),
         ChecklistTemplateItem.id.asc()
@@ -1414,6 +1415,7 @@ def admin():
         required_task_count=required_task_count,
         template_status_label=template_status_label,
         section_summaries=section_summaries,
+        show_inactive=show_inactive,
     )
 
 
@@ -1423,6 +1425,7 @@ def admin():
 @role_required("admin")
 def admin_section(section_key):
     company_id = current_company_id()
+    show_inactive = request.args.get("show_inactive") == "1"
 
     section_map = {
         "before-open": "Before Open / Before 10:30",
@@ -1436,7 +1439,7 @@ def admin_section(section_key):
         flash("Checklist section not found.", "error")
         return redirect(url_for("checklist.admin"))
 
-    items = checklist_template_query(include_inactive=True).filter(
+    items = checklist_template_query(include_inactive=show_inactive).filter(
         ChecklistTemplateItem.section_name == section_name
     ).order_by(
         ChecklistTemplateItem.sort_order.asc(),
@@ -1467,6 +1470,7 @@ def admin_section(section_key):
         section_options=section_options,
         using_inherited_template=using_inherited_template,
         template_status_label=template_status_label,
+        show_inactive=show_inactive,
     )
 
 

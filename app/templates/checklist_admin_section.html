@@ -162,8 +162,15 @@
         </div>
 
         <div class="section-chip-row">
-            <span class="section-chip">{{ items|length }} Items</span>
+            <span class="section-chip">{{ items|length }} Active Items{% if show_inactive %} + Inactive{% endif %}</span>
             <span class="section-chip">{{ template_status_label }}</span>
+
+            {% if show_inactive %}
+            <a href="{{ url_for('checklist.admin_section', section_key=section_key) }}" class="btn-secondary" style="padding: 6px 10px; font-size: 0.78rem;">Hide Inactive</a>
+            {% else %}
+            <a href="{{ url_for('checklist.admin_section', section_key=section_key, show_inactive=1) }}" class="btn-secondary" style="padding: 6px 10px; font-size: 0.78rem;">Show Inactive</a>
+            {% endif %}
+
             <a href="{{ url_for('checklist.admin') }}" class="btn-secondary" style="padding: 6px 10px; font-size: 0.78rem;">Back to Checklist Admin</a>
         </div>
     </div>
