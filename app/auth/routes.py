@@ -141,10 +141,16 @@ def manage_users():
             notification_email = request.form.get("notification_email", "").strip() or None
             email_enabled = request.form.get("email_enabled") == "on"
 
-            valid_roles = {"admin", "supervisor", "manager", "maintenance", "platform_admin"}
+            valid_roles = {"admin", "supervisor", "manager", "maintenance"}
+            if is_platform_admin:
+                valid_roles.add("platform_admin")
 
             if not name or not username or not password or role not in valid_roles:
                 flash("Please complete all required fields correctly.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if role == "platform_admin" and not is_platform_admin:
+                flash("Only platform admins can create platform admins.", "error")
                 return redirect(url_for("auth.manage_users"))
 
             existing_user = User.query.filter_by(username=username).first()
@@ -236,7 +242,13 @@ def manage_users():
             email_enabled = request.form.get("email_enabled") == "on"
             new_password = request.form.get("password", "").strip()
 
-            valid_roles = {"admin", "supervisor", "manager", "maintenance", "platform_admin"}
+            valid_roles = {"admin", "supervisor", "manager", "maintenance"}
+            if is_platform_admin:
+                valid_roles.add("platform_admin")
+
+            if role == "platform_admin" and not is_platform_admin:
+                flash("Only platform admins can assign platform admin access.", "error")
+                return redirect(url_for("auth.manage_users"))
 
             if user.role in {"admin", "platform_admin"}:
                 user.email = email
