@@ -102,3 +102,24 @@ export async function logout() {
     await clearToken();
   }
 }
+
+export async function loadThreads() {
+  return request("/api/mobile/messages/threads");
+}
+
+export async function loadThread(threadId) {
+  return request(`/api/mobile/messages/threads/${threadId}`);
+}
+
+export async function sendThreadMessage(threadId, body) {
+  return request(`/api/mobile/messages/threads/${threadId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function markThreadRead(threadId) {
+  return request(`/api/mobile/messages/threads/${threadId}/read`, {
+    method: "POST",
+  });
+}
