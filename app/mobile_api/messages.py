@@ -310,13 +310,22 @@ def list_threads():
 
             unread_count = unread_query.count()
 
+        last_message = latest_messages.get(thread.id)
+
         serialized.append(serialize_thread_light(
             thread,
             current_user=user,
-            last_message=latest_messages.get(thread.id),
+            last_message=last_message,
             unread_count=unread_count,
             member_count=member_counts.get(thread.id, 0),
         ))
+
+    serialized.sort(
+        key=lambda item: (
+            item["last_message"]["created_at"] if item.get("last_message") else item.get("created_at") or ""
+        ),
+        reverse=True,
+    )
 
     return jsonify({
         "success": True,
