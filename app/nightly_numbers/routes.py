@@ -815,6 +815,54 @@ def admin():
     )
 
 
+@nightly_numbers_bp.route("/reports", methods=["GET"])
+@login_required
+@role_required("admin", "supervisor")
+def reports():
+    fields = get_field_config()
+    fields = [field for field in fields if field.is_enabled]
+
+    visible_stores = get_visible_stores()
+    visible_store_numbers = {store.store_number for store in visible_stores}
+
+    selected_store = request.args.get("store", "").strip()
+    selected_date = request.args.get("date", "").strip()
+
+    query = NightlyNumbersReport.query
+
+    company_id = current_company_id()
+    if company_id and hasattr(NightlyNumbersReport, "company_id"):
+        query = query.filter(NightlyNumbersReport.company_id == company_id)
+
+    if selected_store:
+        query = query.filter_by(store_number=selected_store)
+
+    if selected_date:
+        try:
+            parsed_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+            query = query.filter_by(report_date=parsed_date)
+        except ValueError:
+            flash("Invalid date filter ignored.", "error")
+
+    reports = query.order_by(
+        NightlyNumbersReport.report_date.desc(),
+        NightlyNumbersReport.store_number.asc()
+    ).all()
+
+    reports = [report for report in reports if report.store_number in visible_store_numbers]
+    report_field_values = build_report_field_values(reports, fields)
+
+    return render_template(
+        "nightly_numbers_reports.html",
+        reports=reports,
+        stores=visible_stores,
+        selected_store=selected_store,
+        selected_date=selected_date,
+        fields=fields,
+        report_field_values=report_field_values,
+    )
+
+
 @nightly_numbers_bp.route("/admin/<int:report_id>", methods=["GET", "POST"])
 @login_required
 @role_required("admin")

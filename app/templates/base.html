@@ -91,6 +91,11 @@
                         Reports
                     </a>
 
+                    <a href="{{ url_for('nightly_numbers.reports') }}"
+                       class="{% if request.endpoint == 'nightly_numbers.reports' or request.endpoint == 'nightly_numbers.edit_report' %}active{% endif %}">
+                        Nightly Reports
+                    </a>
+
                     <a href="{{ url_for('svr.index') }}"
                        class="{% if request.endpoint and request.endpoint.startswith('svr') and request.endpoint != 'svr.admin' %}active{% endif %}">
                         SVR

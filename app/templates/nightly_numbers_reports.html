@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Nightly Reports | TrueOps{% endblock %}
+{% block header %}Nightly Reports{% endblock %}
+
+{% block content %}
+<style>
+    .nightly-reports-page {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .nightly-reports-grid {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+    }
+
+    .nightly-report-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .nightly-report-card {
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.96);
+    }
+
+    .nightly-report-top {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .nightly-report-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .nightly-value-card {
+        padding: 9px;
+        border-radius: 12px;
+        background: rgba(248, 250, 252, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .nightly-value-label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #64748b;
+        margin-bottom: 3px;
+    }
+
+    .nightly-value-text {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .nightly-empty {
+        padding: 18px;
+        border-radius: 16px;
+        text-align: center;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px dashed rgba(15, 23, 42, 0.1);
+    }
+
+    @media (max-width: 980px) {
+        .nightly-reports-grid,
+        .nightly-report-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="nightly-reports-page">
+    <div class="command-bar panel">
+        <div>
+            <div class="command-eyebrow">NIGHTLY NUMBERS</div>
+            <h2 class="command-title">Submitted Reports</h2>
+            <p class="command-subtitle">Review submitted nightly numbers by store and date.</p>
+        </div>
+        <div class="command-actions">
+            <a href="{{ url_for('nightly_numbers.admin') }}" class="btn-secondary">Nightly Settings</a>
+        </div>
+    </div>
+
+    <div class="nightly-reports-grid">
+        <section class="panel premium-panel">
+            <h3>Filter Reports</h3>
+
+            <form method="GET" class="login-form">
+                <div class="form-group">
+                    <label for="store">Store</label>
+                    <select id="store" name="store">
+                        <option value="">All Visible Stores</option>
+                        {% for store in stores %}
+                        <option value="{{ store.store_number }}" {% if selected_store == store.store_number %}selected{% endif %}>
+                            {{ store.store_number }}{% if store.store_name %} - {{ store.store_name }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Report Date</label>
+                    <input type="date" id="date" name="date" value="{{ selected_date }}">
+                </div>
+
+                <button type="submit" class="btn-primary">Apply Filters</button>
+            </form>
+        </section>
+
+        <section class="panel premium-panel">
+            <h3>Submitted Reports</h3>
+
+            <div class="nightly-report-list">
+                {% for report in reports %}
+                <div class="nightly-report-card">
+                    <div class="nightly-report-top">
+                        <span class="summary-pill">Store {{ report.store_number }}</span>
+                        <span class="summary-pill">{{ report.report_date.strftime('%b %d, %Y') }}</span>
+
+                        {% if report.variable_labor is not none and report.labor_goal is not none %}
+                            {% if report.variable_labor > report.labor_goal %}
+                            <span class="table-badge badge-danger">Labor High</span>
+                            {% else %}
+                            <span class="table-badge badge-success">Labor OK</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="table-badge badge-neutral">Labor N/A</span>
+                        {% endif %}
+
+                        {% if report.adt is not none %}
+                            {% if report.adt > 25 %}
+                            <span class="table-badge badge-danger">ADT High</span>
+                            {% else %}
+                            <span class="table-badge badge-success">ADT OK</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="table-badge badge-neutral">ADT N/A</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="nightly-report-grid">
+                        {% for field in fields %}
+                        <div class="nightly-value-card">
+                            <div class="nightly-value-label">{{ field.field_label }}</div>
+                            <div class="nightly-value-text">
+                                {% set value = report_field_values.get(report.id, {}).get(field.field_key) %}
+                                {{ value if value not in [none, ""] else "Not provided" }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if session.get("user_role") == "admin" %}
+                    <div class="admin-check-row compact-actions" style="margin-top: 10px;">
+                        <a href="{{ url_for('nightly_numbers.edit_report', report_id=report.id) }}" class="btn-primary">
+                            Edit Report
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="nightly-empty">
+                    No nightly numbers reports found for the selected filters.
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
