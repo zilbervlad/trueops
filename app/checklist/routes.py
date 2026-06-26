@@ -3,7 +3,6 @@ from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
-from flask_login import current_user
 from app.auth.routes import login_required, role_required
 from app.extensions import db
 from app.services.tenant import scoped_get_or_404, scoped_store_by_number, scoped_user_query
@@ -1204,11 +1203,15 @@ def admin():
     settings = get_integrity_settings(create=True)
     company_id = current_company_id()
     show_inactive = request.args.get("show_inactive") == "1"
+    current_user_record = User.query.get(session.get("user_id")) if session.get("user_id") else None
     can_view_integrity_settings = (
-        getattr(current_user, "username", "") == "admin"
-        or (getattr(current_user, "email", "") or "").lower() in {
-            "vladislavzilber@gmail.com",
-        }
+        current_user_record
+        and (
+            current_user_record.username == "admin"
+            or (current_user_record.email or "").lower() in {
+                "vladislavzilber@gmail.com",
+            }
+        )
     )
 
     if request.method == "POST":
