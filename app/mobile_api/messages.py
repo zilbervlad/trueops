@@ -478,6 +478,39 @@ def find_or_create_direct_thread():
     })
 
 
+@mobile_messages_bp.post("/threads/<int:thread_id>/hide")
+@mobile_login_required
+def hide_thread(thread_id):
+    user = g.mobile_user
+
+    thread = TrueOpsThread.query.filter_by(
+        id=thread_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not thread or not user_can_access_thread(user, thread):
+        return mobile_error("Thread not found.", 404)
+
+    if thread.thread_type != "direct":
+        return mobile_error("Only direct messages can be hidden.", 400)
+
+    membership = TrueOpsThreadMember.query.filter_by(
+        thread_id=thread.id,
+        user_id=user.id,
+    ).first()
+
+    if not membership:
+        return mobile_error("Thread not found.", 404)
+
+    membership.hidden_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+    })
+
+
 @mobile_messages_bp.post("/threads/<int:thread_id>/read")
 @mobile_login_required
 def mark_thread_read(thread_id):

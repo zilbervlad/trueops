@@ -15,6 +15,7 @@ import {
 import {
   createDirectThread,
   ensureDefaultMessageThreads,
+  hideThread,
   loadMessagePeople,
   loadThread,
   loadThreads,
@@ -123,6 +124,24 @@ export default function MessagesScreen() {
       setError(err.message || "Could not start message.");
     } finally {
       setPeopleLoading(false);
+    }
+  }
+
+  async function handleHideThread(thread) {
+    if (!thread || thread.thread_type !== "direct") return;
+
+    setError("");
+
+    try {
+      await hideThread(thread.id);
+
+      if (selectedThread?.id === thread.id) {
+        setSelectedThread(null);
+      }
+
+      await refreshThreads();
+    } catch (err) {
+      setError(err.message || "Could not hide thread.");
     }
   }
 
@@ -341,6 +360,15 @@ export default function MessagesScreen() {
               {selectedThread ? `${threadTypeLabel(selectedThread.thread_type)} Chat · ${(selectedThread.members || []).length} member${(selectedThread.members || []).length === 1 ? "" : "s"}` : "thread"}
             </Text>
           </View>
+
+          {selectedThread?.thread_type === "direct" ? (
+            <Pressable
+              onPress={() => handleHideThread(selectedThread)}
+              style={styles.headerHideButton}
+            >
+              <Text style={styles.headerHideText}>Hide</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {threadLoading ? (
@@ -513,6 +541,15 @@ export default function MessagesScreen() {
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{item.unread_count}</Text>
                     </View>
+                  ) : null}
+
+                  {item.thread_type === "direct" ? (
+                    <Pressable
+                      onPress={() => handleHideThread(item)}
+                      style={styles.hideChip}
+                    >
+                      <Text style={styles.hideChipText}>Hide</Text>
+                    </Pressable>
                   ) : null}
                 </View>
 

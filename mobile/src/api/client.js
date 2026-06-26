@@ -140,3 +140,9 @@ export async function ensureDefaultMessageThreads() {
     method: "POST",
   });
 }
+
+export async function hideThread(threadId) {
+  return request(`/api/mobile/messages/threads/${threadId}/hide`, {
+    method: "POST",
+  });
+}
