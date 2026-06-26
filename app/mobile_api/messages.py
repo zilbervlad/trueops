@@ -165,6 +165,48 @@ def direct_group_key(company_id, user_a_id, user_b_id):
     return f"company:{company_id}:direct:{ordered[0]}:{ordered[1]}"
 
 
+@mobile_messages_bp.get("/people")
+@mobile_login_required
+def list_message_people():
+    user = g.mobile_user
+
+    if not user.company_id:
+        return jsonify({
+            "success": True,
+            "people": [],
+        })
+
+    candidates = (
+        User.query
+        .filter(User.company_id == user.company_id)
+        .filter(User.is_active.is_(True))
+        .filter(User.id != user.id)
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    people = []
+
+    for candidate in candidates:
+        if not user_can_message_user(user, candidate):
+            continue
+
+        people.append({
+            "id": candidate.id,
+            "name": candidate.name,
+            "username": candidate.username,
+            "role": candidate.role,
+            "store_number": candidate.store_number,
+            "area_name": candidate.area_name,
+            "email": candidate.email,
+        })
+
+    return jsonify({
+        "success": True,
+        "people": people,
+    })
+
+
 @mobile_messages_bp.get("/threads")
 @mobile_login_required
 def list_threads():
