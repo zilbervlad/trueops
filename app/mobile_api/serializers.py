@@ -115,3 +115,70 @@ def serialize_mobile_context(user):
             },
         ],
     }
+
+
+def serialize_thread_message(message, current_user=None):
+    sender = message.sender
+
+    return {
+        "id": message.id,
+        "thread_id": message.thread_id,
+        "sender_user_id": message.sender_user_id,
+        "sender_name": sender.name if sender else "Unknown",
+        "sender_role": sender.role if sender else None,
+        "body": "This message was deleted" if message.is_deleted else message.body,
+        "requires_ack": bool(message.requires_ack),
+        "is_deleted": bool(message.is_deleted),
+        "is_mine": bool(current_user and message.sender_user_id == current_user.id),
+        "created_at": message.created_at.isoformat() if message.created_at else None,
+        "ack_count": len(message.acks or []),
+    }
+
+
+def serialize_thread_light(thread, current_user=None, last_message=None, unread_count=0, member_count=0):
+    return {
+        "id": thread.id,
+        "company_id": thread.company_id,
+        "thread_type": thread.thread_type,
+        "name": thread.name,
+        "group_key": thread.group_key,
+        "store_number": thread.store_number,
+        "area_name": thread.area_name,
+        "role_key": thread.role_key,
+        "is_active": bool(thread.is_active),
+        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+        "member_count": member_count,
+        "unread_count": unread_count,
+        "last_message": serialize_thread_message(last_message, current_user) if last_message else None,
+    }
+
+
+def serialize_thread_detail(thread, current_user=None, messages=None):
+    return {
+        "id": thread.id,
+        "company_id": thread.company_id,
+        "thread_type": thread.thread_type,
+        "name": thread.name,
+        "group_key": thread.group_key,
+        "store_number": thread.store_number,
+        "area_name": thread.area_name,
+        "role_key": thread.role_key,
+        "is_active": bool(thread.is_active),
+        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+        "members": [
+            {
+                "id": member.user.id,
+                "name": member.user.name,
+                "role": member.user.role,
+                "member_role": member.member_role,
+                "muted": bool(member.muted),
+                "hidden": bool(member.hidden_at),
+            }
+            for member in (thread.members or [])
+            if member.user and not member.hidden_at
+        ],
+        "messages": [
+            serialize_thread_message(message, current_user)
+            for message in (messages or [])
+        ],
+    }

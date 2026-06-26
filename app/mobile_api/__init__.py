@@ -1,6 +1,7 @@
 from flask import request
 
 from app.mobile_api.auth import mobile_auth_bp
+from app.mobile_api.messages import mobile_messages_bp
 
 
 ALLOWED_MOBILE_ORIGINS = {
@@ -11,6 +12,7 @@ ALLOWED_MOBILE_ORIGINS = {
 
 def register_mobile_api(app):
     app.register_blueprint(mobile_auth_bp)
+    app.register_blueprint(mobile_messages_bp)
 
     @app.after_request
     def add_mobile_api_cors_headers(response):
