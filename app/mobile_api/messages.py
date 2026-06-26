@@ -12,6 +12,7 @@ from app.models import (
     User,
 )
 from app.mobile_api.permissions import mobile_error, mobile_login_required
+from app.mobile_api.push_service import send_message_pushes
 from app.mobile_api.thread_helpers import ensure_default_threads_for_company
 from app.mobile_api.serializers import (
     serialize_thread_detail,
@@ -417,6 +418,8 @@ def create_thread_message(thread_id):
 
     db.session.add(message)
     db.session.commit()
+
+    send_message_pushes(thread, message)
 
     return jsonify({
         "success": True,

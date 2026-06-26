@@ -14,6 +14,7 @@ import MoreScreen from "./src/screens/MoreScreen";
 import OpsScreen from "./src/screens/OpsScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
 import { colors } from "./src/styles/theme";
+import { registerForPushNotifications } from "./src/services/push";
 
 const Tab = createBottomTabNavigator();
 
@@ -26,6 +27,12 @@ export default function App() {
       try {
         const data = await loadMe();
         setContext(data.context);
+
+        try {
+          await registerForPushNotifications();
+        } catch {
+          // Push is helpful, not required for app startup.
+        }
       } catch {
         setContext(null);
       } finally {
@@ -53,7 +60,17 @@ export default function App() {
     return (
       <>
         <StatusBar style="dark" />
-        <LoginScreen onLogin={setContext} />
+        <LoginScreen
+          onLogin={async (nextContext) => {
+            setContext(nextContext);
+
+            try {
+              await registerForPushNotifications();
+            } catch {
+              // Push is helpful, not required for login.
+            }
+          }}
+        />
       </>
     );
   }

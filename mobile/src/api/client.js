@@ -151,3 +151,14 @@ export async function hideThread(threadId) {
     method: "POST",
   });
 }
+
+export async function registerPushToken(pushToken, platform, deviceName) {
+  return request("/api/mobile/push-token", {
+    method: "POST",
+    body: JSON.stringify({
+      token: pushToken,
+      platform,
+      device_name: deviceName,
+    }),
+  });
+}

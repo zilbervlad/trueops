@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "trueops",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.trueops.mobile",
@@ -15,8 +14,7 @@
       }
     },
     "android": {
-      "package": "com.trueops.mobile",
-      "edgeToEdgeEnabled": true
+      "package": "com.trueops.mobile"
     },
     "web": {
       "bundler": "metro"
