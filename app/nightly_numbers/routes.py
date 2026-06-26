@@ -636,7 +636,11 @@ def index():
 @login_required
 @role_required("admin", "supervisor")
 def admin():
+    show_inactive = request.args.get("show_inactive") == "1"
+
     fields = get_field_config()
+    if not show_inactive:
+        fields = [field for field in fields if field.is_enabled]
 
     if request.method == "POST":
         is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
@@ -806,6 +810,7 @@ def admin():
         selected_store=selected_store,
         selected_date=selected_date,
         fields=fields,
+        show_inactive=show_inactive,
         report_field_values=report_field_values,
     )
 
