@@ -162,3 +162,27 @@ export async function registerPushToken(pushToken, platform, deviceName) {
     }),
   });
 }
+
+
+export async function fetchChecklistStores() {
+  return request("/api/mobile/checklist/stores");
+}
+
+export async function fetchTodayChecklist(storeNumber) {
+  const query = storeNumber ? `?store_number=${encodeURIComponent(storeNumber)}` : "";
+  return request(`/api/mobile/checklist/today${query}`);
+}
+
+export async function toggleChecklistItem(itemId, payload) {
+  return request(`/api/mobile/checklist/items/${itemId}/toggle`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function saveChecklistManager(payload) {
+  return request("/api/mobile/checklist/manager", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
