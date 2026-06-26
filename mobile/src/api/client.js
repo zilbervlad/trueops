@@ -186,3 +186,24 @@ export async function saveChecklistManager(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+
+export async function fetchSvrStores() {
+  return request("/api/mobile/svr/stores");
+}
+
+export async function fetchSvrTemplate(storeNumber) {
+  const query = storeNumber ? `?store_number=${encodeURIComponent(storeNumber)}` : "";
+  return request(`/api/mobile/svr/template${query}`);
+}
+
+export async function createSvrReport(payload) {
+  return request("/api/mobile/svr/reports", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchRecentSvrReports() {
+  return request("/api/mobile/svr/reports/recent");
+}
