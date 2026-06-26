@@ -11,6 +11,7 @@ from app.models import (
     User,
 )
 from app.mobile_api.permissions import mobile_error, mobile_login_required
+from app.mobile_api.thread_helpers import ensure_default_threads_for_company
 from app.mobile_api.serializers import (
     serialize_thread_detail,
     serialize_thread_light,
@@ -424,4 +425,31 @@ def mark_thread_read(thread_id):
 
     return jsonify({
         "success": True,
+    })
+
+
+@mobile_messages_bp.post("/threads/ensure-defaults")
+@mobile_login_required
+def ensure_default_threads():
+    user = g.mobile_user
+    role = normalize_role(user)
+
+    if role not in COMPANY_MESSAGING_ROLES:
+        return mobile_error("You do not have permission to create default threads.", 403)
+
+    if not user.company:
+        return mobile_error("No company found for this user.", 400)
+
+    threads = ensure_default_threads_for_company(
+        user.company,
+        created_by_user_id=user.id,
+    )
+
+    return jsonify({
+        "success": True,
+        "thread_count": len(threads),
+        "threads": [
+            serialize_thread_light(thread, current_user=user)
+            for thread in threads
+        ],
     })
