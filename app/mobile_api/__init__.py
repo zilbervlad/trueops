@@ -5,6 +5,7 @@ from app.mobile_api.messages import mobile_messages_bp
 from app.mobile_api.push import mobile_push_bp
 from app.mobile_api.checklist import mobile_checklist_bp
 from app.mobile_api.svr import mobile_svr_bp
+from app.mobile_api.maintenance import mobile_maintenance_bp
 
 
 ALLOWED_MOBILE_ORIGINS = {
@@ -19,6 +20,7 @@ def register_mobile_api(app):
     app.register_blueprint(mobile_push_bp)
     app.register_blueprint(mobile_checklist_bp)
     app.register_blueprint(mobile_svr_bp)
+    app.register_blueprint(mobile_maintenance_bp)
 
     @app.after_request
     def add_mobile_api_cors_headers(response):
