@@ -74,6 +74,7 @@ export default function MessagesScreen() {
   const [showPeople, setShowPeople] = useState(false);
   const [people, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
 
   async function refreshThreads() {
     setError("");
@@ -171,6 +172,20 @@ export default function MessagesScreen() {
 
     return () => clearInterval(interval);
   }, [selectedThread, showPeople]);
+
+  const filters = [
+    { key: "all", label: "All" },
+    { key: "company", label: "Company" },
+    { key: "store", label: "Stores" },
+    { key: "area", label: "Areas" },
+    { key: "role", label: "Roles" },
+    { key: "direct", label: "Direct" },
+  ];
+
+  const filteredThreads = threads.filter((thread) => {
+    if (activeFilter === "all") return true;
+    return thread.thread_type === activeFilter;
+  });
 
   useEffect(() => {
     if (!selectedThread?.id) return;
@@ -368,13 +383,39 @@ export default function MessagesScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterBar}
+      >
+        {filters.map((filter) => (
+          <Pressable
+            key={filter.key}
+            onPress={() => setActiveFilter(filter.key)}
+            style={[
+              styles.filterChip,
+              activeFilter === filter.key && styles.filterChipActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                activeFilter === filter.key && styles.filterTextActive,
+              ]}
+            >
+              {filter.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={threads}
+          data={filteredThreads}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
