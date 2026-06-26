@@ -852,9 +852,25 @@ def reports():
     reports = [report for report in reports if report.store_number in visible_store_numbers]
     report_field_values = build_report_field_values(reports, fields)
 
+    report_metrics = {
+        "report_count": len(reports),
+        "store_count": len({report.store_number for report in reports}),
+        "labor_high_count": sum(
+            1 for report in reports
+            if report.variable_labor is not None
+            and report.labor_goal is not None
+            and report.variable_labor > report.labor_goal
+        ),
+        "adt_high_count": sum(
+            1 for report in reports
+            if report.adt is not None and report.adt > 25
+        ),
+    }
+
     return render_template(
         "nightly_numbers_reports.html",
         reports=reports,
+        report_metrics=report_metrics,
         stores=visible_stores,
         selected_store=selected_store,
         selected_date=selected_date,
