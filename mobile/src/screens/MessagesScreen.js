@@ -106,7 +106,7 @@ export default function MessagesScreen() {
       const data = await loadThread(thread.id);
       setSelectedThread(data.thread);
       await markThreadRead(thread.id);
-      refreshThreads();
+      await refreshThreads();
     } catch (err) {
       setError(err.message || "Could not open thread.");
     } finally {
@@ -126,7 +126,7 @@ export default function MessagesScreen() {
       await sendThreadMessage(selectedThread.id, body);
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
-      refreshThreads();
+      await refreshThreads();
     } catch (err) {
       setError(err.message || "Could not send message.");
       setDraft(body);
@@ -137,7 +137,31 @@ export default function MessagesScreen() {
 
   useEffect(() => {
     refreshThreads();
-  }, []);
+
+    const interval = setInterval(() => {
+      if (!selectedThread && !showPeople) {
+        refreshThreads();
+      }
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [selectedThread, showPeople]);
+
+  useEffect(() => {
+    if (!selectedThread?.id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await loadThread(selectedThread.id);
+        setSelectedThread(data.thread);
+        refreshThreads();
+      } catch {
+        // Keep the current thread visible if one refresh fails.
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [selectedThread?.id]);
 
   if (showPeople) {
     return (
