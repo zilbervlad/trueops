@@ -360,9 +360,19 @@ def manage_users():
         users = User.query.filter_by(company_id=selected_company_id).order_by(User.name.asc()).all()
         companies = Company.query.filter_by(id=selected_company_id).all()
 
+    user_metrics = {
+        "total": len(users),
+        "active": sum(1 for user in users if user.is_active),
+        "inactive": sum(1 for user in users if not user.is_active),
+        "admins": sum(1 for user in users if user.role in {"admin", "platform_admin"}),
+        "supervisors": sum(1 for user in users if user.role == "supervisor"),
+        "managers": sum(1 for user in users if user.role == "manager"),
+    }
+
     return render_template(
         "users.html",
         users=users,
+        user_metrics=user_metrics,
         companies=companies,
         selected_company_id=selected_company_id,
         is_platform_admin=is_platform_admin,
