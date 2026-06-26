@@ -1203,6 +1203,12 @@ def admin():
     settings = get_integrity_settings(create=True)
     company_id = current_company_id()
     show_inactive = request.args.get("show_inactive") == "1"
+    can_view_integrity_settings = (
+        getattr(current_user, "username", "") == "admin"
+        or (getattr(current_user, "email", "") or "").lower() in {
+            "vladislavzilber@gmail.com",
+        }
+    )
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
@@ -1416,6 +1422,7 @@ def admin():
         template_status_label=template_status_label,
         section_summaries=section_summaries,
         show_inactive=show_inactive,
+        can_view_integrity_settings=can_view_integrity_settings,
     )
 
 
