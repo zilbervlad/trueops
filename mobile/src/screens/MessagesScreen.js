@@ -388,9 +388,19 @@ export default function MessagesScreen() {
               <TextInput
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Message..."
+                placeholder="Message... Shift+Enter for new line"
                 style={styles.composerInput}
                 multiline
+                blurOnSubmit={false}
+                onKeyPress={({ nativeEvent }) => {
+                  if (
+                    Platform.OS === "web" &&
+                    nativeEvent.key === "Enter" &&
+                    !nativeEvent.shiftKey
+                  ) {
+                    handleSend();
+                  }
+                }}
               />
 
               <Pressable
@@ -401,7 +411,7 @@ export default function MessagesScreen() {
                   (!draft.trim() || sending) && styles.sendButtonDisabled,
                 ]}
               >
-                <Text style={styles.sendText}>{sending ? "..." : "Send"}</Text>
+                <Text style={styles.sendText}>{sending ? "Sending" : "Send"}</Text>
               </Pressable>
             </View>
           </>
