@@ -21,50 +21,64 @@ import {
 import { colors, radius, spacing } from "../styles/theme";
 
 function SectionPill({ section, active, onPress }) {
+  const pct = section.total ? Math.round((section.completed / section.total) * 100) : 0;
+
   return (
     <TouchableOpacity
       style={[styles.sectionPill, active && styles.sectionPillActive]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <Text style={[styles.sectionPillText, active && styles.sectionPillTextActive]}>
+      <Text style={[styles.sectionPillText, active && styles.sectionPillTextActive]} numberOfLines={1}>
         {section.section_name}
       </Text>
       <Text style={[styles.sectionPillMeta, active && styles.sectionPillMetaActive]}>
-        {section.completed}/{section.total}
+        {section.completed}/{section.total} · {pct}%
       </Text>
     </TouchableOpacity>
   );
 }
 
-function ChecklistItem({ item, readOnly, onToggle }) {
+function ChecklistItem({ item, readOnly, saving, onToggle }) {
   return (
     <TouchableOpacity
-      style={[styles.itemCard, item.is_completed && styles.itemCardDone]}
-      onPress={() => !readOnly && onToggle(item)}
+      style={[styles.itemRow, item.is_completed && styles.itemRowDone]}
+      onPress={() => !readOnly && !saving && onToggle(item)}
       activeOpacity={readOnly ? 1 : 0.82}
     >
       <View style={[styles.checkCircle, item.is_completed && styles.checkCircleDone]}>
-        <Text style={[styles.checkText, item.is_completed && styles.checkTextDone]}>
-          {item.is_completed ? "✓" : ""}
-        </Text>
+        {saving ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <Text style={[styles.checkText, item.is_completed && styles.checkTextDone]}>
+            {item.is_completed ? "✓" : ""}
+          </Text>
+        )}
       </View>
 
       <View style={styles.itemBody}>
         <Text style={[styles.itemText, item.is_completed && styles.itemTextDone]}>
           {item.task_text}
         </Text>
-        <Text style={styles.itemMeta}>
-          {item.expected_minutes ? `${item.expected_minutes} min` : "No time set"}
-          {item.is_required ? " · Required" : ""}
-        </Text>
+
+        <View style={styles.itemMetaRow}>
+          <Text style={styles.itemMeta}>
+            {item.expected_minutes ? `${item.expected_minutes} min` : "No time"}
+          </Text>
+          {item.is_required && (
+            <View style={styles.requiredPill}>
+              <Text style={styles.requiredText}>Required</Text>
+            </View>
+          )}
+        </View>
+
         {!!item.notes && <Text style={styles.itemNote}>{item.notes}</Text>}
       </View>
     </TouchableOpacity>
   );
 }
 
-export default function ChecklistScreen() {
+export default function ChecklistScreen({ onBack }) {
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [storePickerOpen, setStorePickerOpen] = useState(false);
@@ -76,6 +90,7 @@ export default function ChecklistScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [savingItemId, setSavingItemId] = useState(null);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
 
   const checklist = payload?.checklist;
   const store = payload?.store;
@@ -84,6 +99,11 @@ export default function ChecklistScreen() {
     const sections = checklist?.sections || [];
     return sections.find((section) => section.section_name === activeSectionName) || sections[0];
   }, [checklist, activeSectionName]);
+
+  const visibleItems = useMemo(() => {
+    const items = activeSection?.items || [];
+    return items.filter((item) => !showIncompleteOnly || !item.is_completed);
+  }, [activeSection, showIncompleteOnly]);
 
   const load = useCallback(
     async ({ quiet = false, storeNumber = selectedStore } = {}) => {
@@ -140,6 +160,7 @@ export default function ChecklistScreen() {
         is_completed: !item.is_completed,
         notes: item.notes || "",
       });
+
       setPayload((current) => ({
         ...current,
         checklist: response.checklist,
@@ -167,7 +188,7 @@ export default function ChecklistScreen() {
         checklist: response.checklist,
       }));
 
-      Alert.alert("Saved", "Manager names updated.");
+      setManagerOpen(false);
     } catch (error) {
       Alert.alert("Checklist", error.message || "Could not save managers.");
     }
@@ -177,7 +198,7 @@ export default function ChecklistScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primary} />
           <Text style={styles.loadingText}>Loading today’s checklist…</Text>
         </View>
       </SafeAreaView>
@@ -185,7 +206,9 @@ export default function ChecklistScreen() {
   }
 
   const sections = checklist?.sections || [];
-  const complete = checklist?.percent_complete || 0;
+  const complete = Math.round(checklist?.percent_complete || 0);
+  const integrity = Math.round(checklist?.integrity_score || 0);
+  const walk = Math.round(checklist?.manager_walk_integrity || 0);
   const readOnly = !!checklist?.read_only;
 
   return (
@@ -204,36 +227,56 @@ export default function ChecklistScreen() {
         }
       >
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.kicker}>DAILY RHYTHM</Text>
             <Text style={styles.title}>Checklist</Text>
             <Text style={styles.subtitle}>
-              {store?.name || "Store"} · {checklist?.checklist_date || "Today"}
+              {store?.store_number || selectedStore} · {store?.name || "Store"} · {checklist?.checklist_date || "Today"}
             </Text>
           </View>
 
-          <View style={styles.scoreBadge}>
-            <Text style={styles.score}>{Math.round(complete)}%</Text>
-            <Text style={styles.scoreLabel}>Done</Text>
+          {onBack ? (
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backButtonText}>Ops</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.scoreCard}>
+          <View>
+            <Text style={styles.scoreKicker}>Today</Text>
+            <Text style={styles.scoreMain}>{complete}%</Text>
+            <Text style={styles.scoreSub}>overall complete</Text>
+          </View>
+
+          <View style={styles.scoreStats}>
+            <View style={styles.scoreStat}>
+              <Text style={styles.scoreStatValue}>{integrity}</Text>
+              <Text style={styles.scoreStatLabel}>Integrity</Text>
+            </View>
+            <View style={styles.scoreStat}>
+              <Text style={styles.scoreStatValue}>{walk}</Text>
+              <Text style={styles.scoreStatLabel}>Walk</Text>
+            </View>
           </View>
         </View>
 
         {readOnly && (
-          <View style={styles.readOnlyCard}>
-            <Text style={styles.readOnlyTitle}>Read only</Text>
-            <Text style={styles.readOnlyText}>Past ops days cannot be edited from mobile.</Text>
+          <View style={styles.warningCard}>
+            <Text style={styles.warningTitle}>Read only</Text>
+            <Text style={styles.warningText}>Past ops days cannot be edited from mobile.</Text>
           </View>
         )}
 
-        <View style={styles.card}>
+        <View style={styles.controlCard}>
           <TouchableOpacity
             style={styles.storeButton}
             activeOpacity={0.85}
             onPress={() => setStorePickerOpen((value) => !value)}
           >
-            <View>
+            <View style={styles.storeButtonTextWrap}>
               <Text style={styles.label}>Store</Text>
-              <Text style={styles.storeText}>
+              <Text style={styles.storeText} numberOfLines={1}>
                 {store?.store_number || selectedStore} · {store?.name || "Select store"}
               </Text>
             </View>
@@ -244,65 +287,62 @@ export default function ChecklistScreen() {
             <View style={styles.storeList}>
               {stores.map((item) => (
                 <TouchableOpacity
-                  key={item.store_number}
+                  key={`${item.company_id || "x"}-${item.store_number}`}
                   style={[
                     styles.storeRow,
                     item.store_number === selectedStore && styles.storeRowActive,
                   ]}
                   onPress={() => handleStoreSelect(item.store_number)}
                 >
-                  <Text style={styles.storeRowText}>
-                    {item.store_number} · {item.name}
-                  </Text>
-                  <Text style={styles.storeRowArea}>{item.area_name || ""}</Text>
+                  <Text style={styles.storeRowText}>{item.store_number} · {item.name}</Text>
+                  <Text style={styles.storeRowArea}>{item.area_name || "No area"}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
-        </View>
 
-        <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{Math.round(complete)}%</Text>
-            <Text style={styles.metricLabel}>Overall</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{Math.round(checklist?.integrity_score || 0)}</Text>
-            <Text style={styles.metricLabel}>Integrity</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{Math.round(checklist?.manager_walk_integrity || 0)}</Text>
-            <Text style={styles.metricLabel}>Walk</Text>
-          </View>
-        </View>
+          <TouchableOpacity
+            style={styles.managerToggle}
+            onPress={() => setManagerOpen((value) => !value)}
+            activeOpacity={0.85}
+          >
+            <View>
+              <Text style={styles.label}>Managers</Text>
+              <Text style={styles.managerSummary} numberOfLines={1}>
+                Open: {openingManager || "—"} · Close: {closingManager || "—"}
+              </Text>
+            </View>
+            <Text style={styles.chevron}>{managerOpen ? "⌃" : "⌄"}</Text>
+          </TouchableOpacity>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Managers</Text>
+          {managerOpen && (
+            <View style={styles.managerPanel}>
+              <Text style={styles.label}>Opening manager</Text>
+              <TextInput
+                value={openingManager}
+                onChangeText={setOpeningManager}
+                editable={!readOnly}
+                placeholder="Enter name"
+                placeholderTextColor={colors.faint}
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Opening manager</Text>
-          <TextInput
-            value={openingManager}
-            onChangeText={setOpeningManager}
-            editable={!readOnly}
-            placeholder="Enter name"
-            placeholderTextColor={colors.faint}
-            style={styles.input}
-          />
+              <Text style={styles.label}>Closing manager</Text>
+              <TextInput
+                value={closingManager}
+                onChangeText={setClosingManager}
+                editable={!readOnly}
+                placeholder="Enter name"
+                placeholderTextColor={colors.faint}
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Closing manager</Text>
-          <TextInput
-            value={closingManager}
-            onChangeText={setClosingManager}
-            editable={!readOnly}
-            placeholder="Enter name"
-            placeholderTextColor={colors.faint}
-            style={styles.input}
-          />
-
-          {!readOnly && (
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveManagers}>
-              <Text style={styles.saveButtonText}>Save managers</Text>
-            </TouchableOpacity>
+              {!readOnly && (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveManagers}>
+                  <Text style={styles.saveButtonText}>Save managers</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
@@ -328,37 +368,34 @@ export default function ChecklistScreen() {
               {activeSection?.completed || 0} of {activeSection?.total || 0} complete
             </Text>
           </View>
-          {savingItemId && <ActivityIndicator />}
+
+          <TouchableOpacity
+            style={[styles.filterButton, showIncompleteOnly && styles.filterButtonActive]}
+            onPress={() => setShowIncompleteOnly((value) => !value)}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.filterButtonText, showIncompleteOnly && styles.filterButtonTextActive]}>
+              {showIncompleteOnly ? "Incomplete" : "All"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.filterButton, showIncompleteOnly && styles.filterButtonActive]}
-          onPress={() => setShowIncompleteOnly((value) => !value)}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.filterButtonText, showIncompleteOnly && styles.filterButtonTextActive]}>
-            {showIncompleteOnly ? "Showing incomplete only" : "Show incomplete only"}
-          </Text>
-        </TouchableOpacity>
+        {visibleItems.map((item) => (
+          <ChecklistItem
+            key={item.id}
+            item={item}
+            readOnly={readOnly}
+            saving={savingItemId === item.id}
+            onToggle={handleToggle}
+          />
+        ))}
 
-        {(activeSection?.items || [])
-          .filter((item) => !showIncompleteOnly || !item.is_completed)
-          .map((item) => (
-            <ChecklistItem
-              key={item.id}
-              item={item}
-              readOnly={readOnly}
-              onToggle={handleToggle}
-            />
-          ))}
-
-        {showIncompleteOnly &&
-          (activeSection?.items || []).filter((item) => !item.is_completed).length === 0 && (
-            <View style={styles.emptyDoneCard}>
-              <Text style={styles.emptyDoneTitle}>Section complete</Text>
-              <Text style={styles.emptyDoneText}>Everything in this section is checked off.</Text>
-            </View>
-          )}
+        {visibleItems.length === 0 && (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Section complete</Text>
+            <Text style={styles.emptyText}>Everything in this section is checked off.</Text>
+          </View>
+        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -382,115 +419,176 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: spacing.sm,
   },
   loadingText: {
     color: colors.muted,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  headerText: {
+    flex: 1,
   },
   kicker: {
     color: colors.primary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
-    letterSpacing: 1,
+    letterSpacing: 1.1,
   },
   title: {
     color: colors.text,
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "900",
     letterSpacing: -1,
+    marginTop: 2,
   },
   subtitle: {
     color: colors.muted,
     marginTop: 4,
     fontWeight: "700",
+    lineHeight: 19,
   },
-  scoreBadge: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: "center",
-    minWidth: 78,
+  backButton: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.lg,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
   },
-  score: {
-    color: "#ffffff",
-    fontSize: 22,
+  backButtonText: {
+    color: colors.text,
     fontWeight: "900",
   },
-  scoreLabel: {
-    color: "#e0f2fe",
+  scoreCard: {
+    backgroundColor: colors.navy,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  scoreKicker: {
+    color: colors.navySoft,
     fontSize: 11,
     fontWeight: "900",
     textTransform: "uppercase",
+    letterSpacing: 1,
   },
-  readOnlyCard: {
-    backgroundColor: "#fff7ed",
+  scoreMain: {
+    color: "#ffffff",
+    fontSize: 44,
+    fontWeight: "900",
+    letterSpacing: -1.2,
+    marginTop: 2,
+  },
+  scoreSub: {
+    color: colors.navySoft,
+    fontWeight: "800",
+    marginTop: -2,
+  },
+  scoreStats: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  scoreStat: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 74,
+    alignItems: "center",
+  },
+  scoreStatValue: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  scoreStatLabel: {
+    color: colors.navySoft,
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginTop: 1,
+  },
+  warningCard: {
+    backgroundColor: colors.warningSoft,
     borderColor: "#fed7aa",
     borderWidth: 1,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  readOnlyTitle: {
+  warningTitle: {
     color: "#9a3412",
     fontWeight: "900",
   },
-  readOnlyText: {
+  warningText: {
     color: "#9a3412",
     marginTop: 2,
     fontWeight: "700",
   },
-  card: {
+  controlCard: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     marginBottom: spacing.md,
   },
   storeButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  storeButtonTextWrap: {
+    flex: 1,
   },
   label: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
     textTransform: "uppercase",
-    marginBottom: 7,
+    letterSpacing: 0.7,
+    marginBottom: 6,
   },
   storeText: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "900",
   },
   chevron: {
-    color: colors.muted,
-    fontSize: 24,
+    color: colors.faint,
+    fontSize: 22,
     fontWeight: "900",
   },
   storeList: {
     marginTop: spacing.md,
-    gap: 8,
+    gap: spacing.sm,
   },
   storeRow: {
-    padding: 12,
+    padding: 11,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
   },
   storeRowActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.primaryTint,
   },
   storeRowText: {
     color: colors.text,
@@ -501,51 +599,38 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "700",
   },
-  metricsRow: {
+  managerToggle: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    paddingTop: spacing.md,
+    marginTop: spacing.md,
     flexDirection: "row",
-    gap: 10,
-    marginBottom: spacing.md,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
   },
-  metricCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+  managerSummary: {
+    color: colors.textSoft,
+    fontWeight: "800",
   },
-  metricValue: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  metricLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900",
-    marginTop: 2,
-    textTransform: "uppercase",
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: spacing.md,
+  managerPanel: {
+    paddingTop: spacing.md,
   },
   input: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     color: colors.text,
     fontWeight: "800",
     marginBottom: spacing.md,
+    minHeight: 44,
   },
   saveButton: {
     backgroundColor: colors.text,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: 13,
     alignItems: "center",
   },
@@ -554,17 +639,17 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   sectionScroller: {
-    gap: 10,
     paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   sectionPill: {
     backgroundColor: colors.card,
-    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: radius.xl,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    minWidth: 155,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.lg,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    minWidth: 138,
   },
   sectionPillActive: {
     backgroundColor: colors.text,
@@ -573,109 +658,91 @@ const styles = StyleSheet.create({
   sectionPillText: {
     color: colors.text,
     fontWeight: "900",
-    fontSize: 13,
+    maxWidth: 150,
   },
   sectionPillTextActive: {
     color: "#ffffff",
   },
   sectionPillMeta: {
     color: colors.muted,
+    fontSize: 11,
     fontWeight: "800",
-    marginTop: 4,
+    marginTop: 3,
   },
   sectionPillMetaActive: {
-    color: "#dbeafe",
+    color: colors.navySoft,
   },
   sectionHeader: {
-    marginTop: 4,
-    marginBottom: spacing.sm,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.sm,
+    gap: spacing.md,
   },
   sectionHeaderText: {
     flex: 1,
-    paddingRight: 12,
-  },
-  filterButton: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.text,
-    borderColor: colors.text,
-  },
-  filterButtonText: {
-    color: colors.text,
-    fontWeight: "900",
-  },
-  filterButtonTextActive: {
-    color: "#ffffff",
-  },
-  emptyDoneCard: {
-    backgroundColor: "#f0fdf4",
-    borderColor: "#bbf7d0",
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: "center",
-  },
-  emptyDoneTitle: {
-    color: "#166534",
-    fontWeight: "900",
-    fontSize: 17,
-  },
-  emptyDoneText: {
-    color: "#166534",
-    fontWeight: "700",
-    marginTop: 4,
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "900",
     letterSpacing: -0.4,
   },
   sectionSubtitle: {
     color: colors.muted,
     fontWeight: "800",
-    marginTop: 3,
+    marginTop: 2,
   },
-  itemCard: {
+  filterButton: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: 10,
-    flexDirection: "row",
-    gap: 12,
+    borderRadius: radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
-  itemCardDone: {
-    backgroundColor: "#f0fdf4",
-    borderColor: "#bbf7d0",
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterButtonText: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  filterButtonTextActive: {
+    color: "#ffffff",
+  },
+  itemRow: {
+    backgroundColor: colors.card,
+    borderColor: colors.borderSoft,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  itemRowDone: {
+    backgroundColor: colors.surface,
   },
   checkCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 2,
+    marginTop: 1,
+    backgroundColor: colors.card,
   },
   checkCircleDone: {
-    backgroundColor: "#16a34a",
-    borderColor: "#16a34a",
+    backgroundColor: colors.success,
+    borderColor: colors.success,
   },
   checkText: {
-    color: colors.card,
+    color: colors.faint,
     fontWeight: "900",
   },
   checkTextDone: {
@@ -687,22 +754,59 @@ const styles = StyleSheet.create({
   itemText: {
     color: colors.text,
     fontSize: 15,
-    lineHeight: 21,
     fontWeight: "850",
+    lineHeight: 20,
   },
   itemTextDone: {
-    color: "#166534",
+    color: colors.muted,
+    textDecorationLine: "line-through",
+  },
+  itemMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: 6,
   },
   itemMeta: {
-    color: colors.muted,
+    color: colors.faint,
     fontSize: 12,
     fontWeight: "800",
-    marginTop: 5,
+  },
+  requiredPill: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  requiredText: {
+    color: "#92400e",
+    fontSize: 10,
+    fontWeight: "900",
   },
   itemNote: {
     color: colors.muted,
     marginTop: 6,
     fontWeight: "700",
+    lineHeight: 18,
+  },
+  emptyCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.borderSoft,
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 18,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center",
   },
   bottomSpacer: {
     height: 30,
