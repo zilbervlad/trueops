@@ -134,3 +134,9 @@ export async function createDirectThread(recipientUserId) {
     body: JSON.stringify({ recipient_user_id: recipientUserId }),
   });
 }
+
+export async function ensureDefaultMessageThreads() {
+  return request("/api/mobile/messages/threads/ensure-defaults", {
+    method: "POST",
+  });
+}

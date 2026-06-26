@@ -14,6 +14,7 @@ import {
 
 import {
   createDirectThread,
+  ensureDefaultMessageThreads,
   loadMessagePeople,
   loadThread,
   loadThreads,
@@ -165,7 +166,17 @@ export default function MessagesScreen() {
   }
 
   useEffect(() => {
-    refreshThreads();
+    async function bootMessages() {
+      try {
+        await ensureDefaultMessageThreads();
+      } catch {
+        // Non-admin users may not be allowed to create default threads. That's fine.
+      }
+
+      await refreshThreads();
+    }
+
+    bootMessages();
 
     const interval = setInterval(() => {
       if (!selectedThread && !showPeople) {
