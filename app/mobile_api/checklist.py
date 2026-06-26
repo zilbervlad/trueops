@@ -42,12 +42,15 @@ def visible_store_query(user):
     company_id = user.company_id
     role = normalize_role(user)
 
+    if role == "platform_admin":
+        return Store.query.filter_by(is_active=True)
+
     query = Store.query.filter_by(
         company_id=company_id,
         is_active=True,
     )
 
-    if role in {"admin", "platform_admin", "hr", "coach", "maintenance"}:
+    if role in {"admin", "hr", "coach", "maintenance"}:
         return query
 
     if role == "supervisor":
@@ -204,17 +207,23 @@ def load_checklist_response(store_number="", selected_date=None):
     if str(store_number) not in visible_store_numbers(user):
         return mobile_error("Unauthorized store.", 403)
 
-    store = Store.query.filter_by(
-        company_id=company_id,
+    store_query = Store.query.filter_by(
         store_number=str(store_number),
         is_active=True,
-    ).first()
+    )
+
+    if normalize_role(user) != "platform_admin":
+        store_query = store_query.filter_by(company_id=company_id)
+
+    store = store_query.first()
 
     if not store:
         return mobile_error("Store not found.", 404)
 
+    checklist_company_id = store.company_id
+
     daily = get_or_create_mobile_daily_checklist(
-        company_id=company_id,
+        company_id=checklist_company_id,
         store_number=str(store_number),
         checklist_date=selected_date,
     )
@@ -293,7 +302,10 @@ def toggle_checklist_item(item_id):
 
     daily = item.daily_checklist
 
-    if not daily or daily.company_id != company_id:
+    if not daily:
+        return mobile_error("Unauthorized checklist.", 403)
+
+    if normalize_role(user) != "platform_admin" and daily.company_id != company_id:
         return mobile_error("Unauthorized checklist.", 403)
 
     if str(daily.store_number) not in visible_store_numbers(user):
@@ -340,8 +352,21 @@ def save_checklist_manager():
     if is_past_ops_day(selected_date):
         return mobile_error("Past checklists are read-only.", 400)
 
+    store_query = Store.query.filter_by(
+        store_number=str(store_number),
+        is_active=True,
+    )
+
+    if normalize_role(user) != "platform_admin":
+        store_query = store_query.filter_by(company_id=company_id)
+
+    store = store_query.first()
+
+    if not store:
+        return mobile_error("Store not found.", 404)
+
     daily = get_or_create_mobile_daily_checklist(
-        company_id=company_id,
+        company_id=store.company_id,
         store_number=str(store_number),
         checklist_date=selected_date,
     )
