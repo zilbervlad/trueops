@@ -117,6 +117,25 @@ def serialize_mobile_context(user):
     }
 
 
+def display_thread_name(thread, current_user=None):
+    if not thread:
+        return ""
+
+    if thread.thread_type != "direct" or not current_user:
+        return thread.name
+
+    other_members = [
+        member.user
+        for member in (thread.members or [])
+        if member.user and member.user.id != current_user.id
+    ]
+
+    if other_members:
+        return other_members[0].name or other_members[0].username or thread.name
+
+    return thread.name
+
+
 def serialize_thread_message(message, current_user=None):
     sender = message.sender
 
@@ -140,7 +159,7 @@ def serialize_thread_light(thread, current_user=None, last_message=None, unread_
         "id": thread.id,
         "company_id": thread.company_id,
         "thread_type": thread.thread_type,
-        "name": thread.name,
+        "name": display_thread_name(thread, current_user),
         "group_key": thread.group_key,
         "store_number": thread.store_number,
         "area_name": thread.area_name,
@@ -158,7 +177,7 @@ def serialize_thread_detail(thread, current_user=None, messages=None):
         "id": thread.id,
         "company_id": thread.company_id,
         "thread_type": thread.thread_type,
-        "name": thread.name,
+        "name": display_thread_name(thread, current_user),
         "group_key": thread.group_key,
         "store_number": thread.store_number,
         "area_name": thread.area_name,
