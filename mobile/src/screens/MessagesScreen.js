@@ -75,6 +75,7 @@ export default function MessagesScreen() {
   const [people, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [peopleSearch, setPeopleSearch] = useState("");
 
   async function refreshThreads() {
     setError("");
@@ -90,6 +91,7 @@ export default function MessagesScreen() {
   }
 
   async function openPeople() {
+    setPeopleSearch("");
     setShowPeople(true);
     setPeopleLoading(true);
     setError("");
@@ -187,6 +189,26 @@ export default function MessagesScreen() {
     return thread.thread_type === activeFilter;
   });
 
+  const filteredPeople = people.filter((person) => {
+    const search = peopleSearch.trim().toLowerCase();
+
+    if (!search) return true;
+
+    const haystack = [
+      person.name,
+      person.username,
+      person.role,
+      person.store_number,
+      person.area_name,
+      person.email,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(search);
+  });
+
   useEffect(() => {
     if (!selectedThread?.id) return;
 
@@ -207,7 +229,10 @@ export default function MessagesScreen() {
     return (
       <View style={styles.page}>
         <View style={styles.threadHeader}>
-          <Pressable onPress={() => setShowPeople(false)} style={styles.backButton}>
+          <Pressable onPress={() => {
+            setPeopleSearch("");
+            setShowPeople(false);
+          }} style={styles.backButton}>
             <Text style={styles.backText}>‹ Back</Text>
           </Pressable>
 
@@ -219,20 +244,35 @@ export default function MessagesScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
+        <View style={styles.searchWrap}>
+          <TextInput
+            value={peopleSearch}
+            onChangeText={setPeopleSearch}
+            placeholder="Search name, role, store, area..."
+            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
         {peopleLoading ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : (
           <FlatList
-            data={people}
+            data={filteredPeople}
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>No people available</Text>
+                <Text style={styles.emptyTitle}>
+                  {peopleSearch.trim() ? "No matching people" : "No people available"}
+                </Text>
                 <Text style={styles.emptyText}>
-                  People will show here once there are active users in this company that you can message.
+                  {peopleSearch.trim()
+                    ? "Try a different name, role, store, or area."
+                    : "People will show here once there are active users in this company that you can message."}
                 </Text>
               </View>
             }
