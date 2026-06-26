@@ -131,6 +131,20 @@ def manage_users():
             flash("No company is selected for this action.", "error")
             return redirect(url_for("auth.manage_users"))
 
+        def get_user_for_action(raw_user_id):
+            try:
+                lookup_id = int(raw_user_id)
+            except (TypeError, ValueError):
+                return None
+
+            if is_platform_admin:
+                return User.query.get(lookup_id)
+
+            return User.query.filter_by(
+                id=lookup_id,
+                company_id=selected_company_id,
+            ).first()
+
         if action == "create":
             name = request.form.get("name", "").strip()
             username = request.form.get("username", "").strip()
@@ -199,7 +213,7 @@ def manage_users():
 
         if action == "reset_password":
             user_id = request.form.get("user_id", "").strip()
-            user = scoped_get_or_404(User, user_id)
+            user = get_user_for_action(user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -223,7 +237,7 @@ def manage_users():
 
         if action == "update":
             user_id = request.form.get("user_id", "").strip()
-            user = scoped_get_or_404(User, user_id)
+            user = get_user_for_action(user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -316,7 +330,7 @@ def manage_users():
 
         if action == "deactivate":
             user_id = request.form.get("user_id", "").strip()
-            user = scoped_get_or_404(User, user_id)
+            user = get_user_for_action(user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -338,7 +352,7 @@ def manage_users():
 
         if action == "activate":
             user_id = request.form.get("user_id", "").strip()
-            user = scoped_get_or_404(User, user_id)
+            user = get_user_for_action(user_id)
 
             if not user:
                 flash("User not found.", "error")
@@ -357,7 +371,7 @@ def manage_users():
 
         if action == "delete":
             user_id = request.form.get("user_id", "").strip()
-            user = scoped_get_or_404(User, user_id)
+            user = get_user_for_action(user_id)
 
             if not user:
                 flash("User not found.", "error")
