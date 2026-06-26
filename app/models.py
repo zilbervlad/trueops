@@ -520,3 +520,35 @@ class VerificationReportValue(db.Model):
 
     template_field = db.relationship("VerificationTemplateField")
    
+class MobileAuthToken(db.Model):
+    __tablename__ = "mobile_auth_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(160), unique=True, nullable=False, index=True)
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    company_id = db.Column(
+        db.Integer,
+        db.ForeignKey("companies.id"),
+        nullable=True,
+        index=True,
+    )
+
+    platform = db.Column(db.String(40), nullable=True)
+    device_name = db.Column(db.String(160), nullable=True)
+
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", backref=db.backref("mobile_auth_tokens", lazy=True))
+    company = db.relationship("Company")

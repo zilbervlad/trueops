@@ -42,6 +42,7 @@ def create_app():
     from app.cash_review.routes import cash_review_bp
     from app.verification.routes import verification_bp
     from app.store_dashboard import store_dashboard_bp
+    from app.mobile_api import register_mobile_api
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -56,6 +57,7 @@ def create_app():
     app.register_blueprint(cash_review_bp)
     app.register_blueprint(verification_bp)
     app.register_blueprint(store_dashboard_bp)
+    register_mobile_api(app)
 
     # -------------------------
     # GLOBAL TEMPLATE CONTEXT
