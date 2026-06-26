@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
@@ -80,27 +80,48 @@ export default function App() {
       <StatusBar style="dark" />
       <NavigationContainer>
         <Tab.Navigator
-          screenOptions={{
+          screenOptions={({ route }) => ({
             headerShown: false,
             tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: colors.muted,
+            tabBarInactiveTintColor: colors.faint,
             tabBarStyle: {
-              height: 72,
-              paddingTop: 6,
-              paddingBottom: 12,
-              borderTopColor: colors.border,
+              height: 76,
+              paddingTop: 7,
+              paddingBottom: 13,
+              borderTopColor: colors.borderSoft,
               borderTopWidth: 1,
               backgroundColor: colors.card,
+              shadowColor: colors.shadow,
+              shadowOpacity: 0.08,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: -6 },
+              elevation: 10,
             },
             tabBarItemStyle: {
-              paddingVertical: 4,
+              paddingVertical: 3,
             },
             tabBarLabelStyle: {
               fontSize: 11,
               fontWeight: "900",
               letterSpacing: 0.1,
+              marginTop: 2,
             },
-          }}
+            tabBarIcon: ({ color, focused }) => {
+              const icons = {
+                Home: "⌂",
+                Messages: "✉",
+                Ops: "✓",
+                Reports: "▦",
+                More: "•••",
+              };
+
+              return (
+                <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
+                  <Text style={[styles.tabIconText, { color }]}>{icons[route.name] || "•"}</Text>
+                </View>
+              );
+            },
+          })}
         >
           <Tab.Screen name="Home">
             {() => <HomeScreen context={context} />}
@@ -125,5 +146,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     alignItems: "center",
     justifyContent: "center",
+  },
+  tabIcon: {
+    minWidth: 28,
+    height: 24,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIconActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  tabIconText: {
+    fontSize: 15,
+    fontWeight: "900",
   },
 });
