@@ -4,22 +4,36 @@
 {% block header %}Store Admin{% endblock %}
 
 {% block content %}
-<div class="command-bar panel" style="margin-bottom: 24px;">
+<div class="command-bar panel store-command-bar">
     <div class="command-bar-left">
         <div class="command-eyebrow">STORE ADMIN</div>
         <h2 class="command-title">Store Management</h2>
         <p class="command-subtitle">
-            Add new stores, organize area assignments, and keep active locations clean and up to date.
+            Manage store numbers, names, active status, and area assignments.
         </p>
     </div>
-    <div class="command-bar-right">
-        <div class="command-chip">{{ stores|length }} Stores</div>
-        <div class="command-chip">{{ existing_areas|length }} Areas</div>
+
+    <div class="store-metric-grid">
+        <div class="store-metric-card">
+            <span>Total</span>
+            <strong>{{ store_metrics.total }}</strong>
+        </div>
+        <div class="store-metric-card">
+            <span>Active</span>
+            <strong>{{ store_metrics.active }}</strong>
+        </div>
+        <div class="store-metric-card">
+            <span>Inactive</span>
+            <strong>{{ store_metrics.inactive }}</strong>
+        </div>
+        <div class="store-metric-card">
+            <span>Areas</span>
+            <strong>{{ store_metrics.areas }}</strong>
+        </div>
     </div>
 </div>
 
-<div class="content-grid" style="margin-bottom: 24px;">
-    <section class="panel premium-panel">
+<section class="panel premium-panel store-create-panel">
         <button
             type="button"
             id="create-store-toggle"
@@ -63,10 +77,83 @@
                 <button type="submit" class="btn-primary">Add Store</button>
             </form>
         </div>
-    </section>
-</div>
+</section>
 
 <style>
+    .store-command-bar {
+        margin-bottom: 14px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .store-metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(90px, 1fr));
+        gap: 8px;
+        min-width: 430px;
+    }
+
+    .store-metric-card {
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .store-metric-card span {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+    }
+
+    .store-metric-card strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 1.25rem;
+        line-height: 1;
+        color: #0f172a;
+    }
+
+    .store-create-panel {
+        margin-bottom: 14px;
+    }
+
+    .store-toolbar {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) 180px 150px auto auto;
+        gap: 8px;
+        align-items: end;
+        margin-top: 12px;
+    }
+
+    .store-toolbar-label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .store-toolbar-input,
+    .store-toolbar-select {
+        width: 100%;
+        min-height: 38px;
+        padding: 8px 11px;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        background: rgba(255, 255, 255, 0.98);
+        color: #0f172a;
+        font-weight: 700;
+    }
+
     .store-airtable-wrap {
         margin-top: 16px;
         border: 1px solid rgba(15, 23, 42, 0.08);
@@ -79,7 +166,7 @@
     .store-airtable-head,
     .store-airtable-row {
         display: grid;
-        grid-template-columns: 80px 140px minmax(220px, 1fr) 200px 120px 120px;
+        grid-template-columns: 80px 140px minmax(260px, 1fr) 220px 120px 120px;
         gap: 0;
         align-items: stretch;
     }
@@ -115,6 +202,15 @@
 
     .store-airtable-row:hover {
         background: rgba(248, 250, 252, 0.88);
+    }
+
+    .store-airtable-row.is-inactive {
+        opacity: 0.62;
+        background: rgba(248, 250, 252, 0.84);
+    }
+
+    .store-airtable-row.is-hidden-by-filter {
+        display: none;
     }
 
     .store-airtable-row.is-dirty {
@@ -206,6 +302,16 @@
     }
 
     @media (max-width: 1100px) {
+        .store-command-bar,
+        .store-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .store-metric-grid {
+            min-width: 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .store-airtable-wrap {
             overflow-x: auto;
         }
@@ -223,7 +329,47 @@
             <h3>All Stores</h3>
             <div class="area-subtitle">Inline editing with auto-save</div>
         </div>
-        <span class="summary-pill">{{ stores|length }} total</span>
+        <span class="summary-pill" id="visible-store-count">{{ stores|length }} shown</span>
+    </div>
+
+    <div class="store-toolbar">
+        <div>
+            <label class="store-toolbar-label" for="store-search-input">Search</label>
+            <input id="store-search-input" class="store-toolbar-input" type="search" placeholder="Search store number, name, or area...">
+        </div>
+
+        <div>
+            <label class="store-toolbar-label" for="store-area-filter">Area</label>
+            <select id="store-area-filter" class="store-toolbar-select">
+                <option value="">All Areas</option>
+                {% for area in existing_areas %}
+                <option value="{{ area }}">{{ area }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="store-toolbar-label" for="store-status-filter">Status</label>
+            <select id="store-status-filter" class="store-toolbar-select">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="store-toolbar-label">&nbsp;</label>
+            {% if show_inactive %}
+            <a href="{{ url_for('store_admin.index') }}" class="btn-secondary" style="display:block; text-align:center;">Hide Inactive</a>
+            {% else %}
+            <a href="{{ url_for('store_admin.index', show_inactive=1) }}" class="btn-secondary" style="display:block; text-align:center;">Show Inactive</a>
+            {% endif %}
+        </div>
+
+        <div>
+            <label class="store-toolbar-label">&nbsp;</label>
+            <button type="button" id="store-filter-clear" class="btn-secondary" style="width:100%;">Clear</button>
+        </div>
     </div>
 
     <datalist id="area-options-inline">
@@ -238,15 +384,15 @@
             <div class="store-airtable-head-cell">Store Number</div>
             <div class="store-airtable-head-cell">Store Name</div>
             <div class="store-airtable-head-cell">Area</div>
-            <div class="store-airtable-head-cell">Supervisor</div>
             <div class="store-airtable-head-cell">Active</div>
             <div class="store-airtable-head-cell">Status</div>
         </div>
 
         {% for store in stores %}
         <div
-            class="store-airtable-row ajax-store-row"
+            class="store-airtable-row ajax-store-row {% if not store.is_active %}is-inactive{% endif %}"
             data-store-id="{{ store.id }}"
+            data-store-active="{{ 1 if store.is_active else 0 }}"
             data-last-saved-store-number="{{ store.store_number }}"
             data-last-saved-store-name="{{ store.store_name or '' }}"
             data-last-saved-area-name="{{ store.area_name }}"
@@ -279,15 +425,6 @@
                     class="store-inline-input store-area-input"
                     value="{{ store.area_name }}"
                     list="area-options-inline"
-                >
-            </div>
-
-            <div class="store-airtable-cell">
-                <input
-                    type="text"
-                    class="store-inline-input store-supervisor-input"
-                    value="{{ store.supervisor_name or '' }}"
-                    placeholder="Supervisor"
                 >
             </div>
 
@@ -334,13 +471,57 @@ document.addEventListener("DOMContentLoaded", function () {
     bindToggle("create-store-toggle", "create-store-body", "create-store-chevron");
 
     const rows = document.querySelectorAll(".ajax-store-row");
+    const searchInput = document.getElementById("store-search-input");
+    const areaFilter = document.getElementById("store-area-filter");
+    const statusFilter = document.getElementById("store-status-filter");
+    const clearFilters = document.getElementById("store-filter-clear");
+    const visibleCount = document.getElementById("visible-store-count");
+
+    function applyStoreFilters() {
+        const search = (searchInput?.value || "").trim().toLowerCase();
+        const area = areaFilter?.value || "";
+        const status = statusFilter?.value || "";
+        let visible = 0;
+
+        rows.forEach(row => {
+            const rowArea = row.querySelector(".store-area-input")?.value || "";
+            const rowStatus = row.dataset.storeActive === "1" ? "active" : "inactive";
+            const text = row.textContent.toLowerCase();
+
+            const matchesSearch = !search || text.includes(search);
+            const matchesArea = !area || rowArea === area;
+            const matchesStatus = !status || rowStatus === status;
+            const shouldShow = matchesSearch && matchesArea && matchesStatus;
+
+            row.classList.toggle("is-hidden-by-filter", !shouldShow);
+            if (shouldShow) visible += 1;
+        });
+
+        if (visibleCount) visibleCount.textContent = `${visible} shown`;
+    }
+
+    [searchInput, areaFilter, statusFilter].forEach(el => {
+        if (el) el.addEventListener("input", applyStoreFilters);
+        if (el) el.addEventListener("change", applyStoreFilters);
+    });
+
+    if (clearFilters) {
+        clearFilters.addEventListener("click", function () {
+            if (searchInput) searchInput.value = "";
+            if (areaFilter) areaFilter.value = "";
+            if (statusFilter) statusFilter.value = "";
+            applyStoreFilters();
+        });
+    }
+
+    applyStoreFilters();
 
     function getRowState(row) {
         return {
             store_number: row.querySelector(".store-number-input")?.value || "",
             store_name: row.querySelector(".store-name-input")?.value || "",
             area_name: row.querySelector(".store-area-input")?.value || "",
-            supervisor_name: row.querySelector(".store-supervisor-input")?.value || "",
+            supervisor_name: row.dataset.lastSavedSupervisorName || "",
             is_active: row.querySelector(".store-active-input")?.checked ? "1" : "0"
         };
     }
@@ -433,7 +614,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             updateSavedState(row, state);
+            row.dataset.storeActive = state.is_active;
+            row.classList.toggle("is-inactive", state.is_active !== "1");
             updateRowVisuals(row);
+            applyStoreFilters();
 
             row.classList.remove("is-saving");
             row.classList.add("is-saved");
@@ -476,10 +660,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const numberInput = row.querySelector(".store-number-input");
         const nameInput = row.querySelector(".store-name-input");
         const areaInput = row.querySelector(".store-area-input");
-        const supervisorInput = row.querySelector(".store-supervisor-input");
         const activeInput = row.querySelector(".store-active-input");
 
-        [numberInput, nameInput, areaInput, supervisorInput].forEach(function (input) {
+        [numberInput, nameInput, areaInput].forEach(function (input) {
             if (!input) return;
 
             input.addEventListener("input", function () {

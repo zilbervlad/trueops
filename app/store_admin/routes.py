@@ -17,6 +17,7 @@ def current_company_id():
 def index():
     selected_company_id = current_company_id()
     is_platform_admin = session.get("is_platform_admin", False)
+    show_inactive = request.args.get("show_inactive") == "1"
 
     if request.method == "POST":
         action = request.form.get("action", "").strip()
@@ -71,12 +72,13 @@ def index():
             new_store_number = request.form.get("store_number", "").strip()
             new_store_name = request.form.get("store_name", "").strip()
             new_area_name = request.form.get("area_name", "").strip()
-            new_supervisor_name = request.form.get("supervisor_name", "").strip()
+            new_supervisor_name = request.form.get("supervisor_name", store.supervisor_name or "").strip()
 
             if not new_store_number or not new_area_name:
                 return {"success": False, "error": "Store number and area are required."}, 400
 
             duplicate = Store.query.filter(
+                Store.company_id == target_company_id,
                 Store.store_number == new_store_number,
                 Store.id != store.id
             ).first()
@@ -120,13 +122,14 @@ def index():
             new_store_number = request.form.get("store_number", "").strip()
             new_store_name = request.form.get("store_name", "").strip()
             new_area_name = request.form.get("area_name", "").strip()
-            new_supervisor_name = request.form.get("supervisor_name", "").strip()
+            new_supervisor_name = request.form.get("supervisor_name", store.supervisor_name or "").strip()
 
             if not new_store_number or not new_area_name:
                 flash("Store number and area are required.", "error")
                 return redirect(url_for("store_admin.index"))
 
             duplicate = Store.query.filter(
+                Store.company_id == target_company_id,
                 Store.store_number == new_store_number,
                 Store.id != store.id
             ).first()
@@ -150,17 +153,27 @@ def index():
     if not is_platform_admin:
         query = query.filter_by(company_id=selected_company_id)
 
-    stores = query.order_by(Store.area_name.asc(), Store.store_number.asc()).all()
+    all_scoped_stores = query.order_by(Store.area_name.asc(), Store.store_number.asc()).all()
+    stores = all_scoped_stores if show_inactive else [store for store in all_scoped_stores if store.is_active]
 
     existing_areas = sorted(
-        {store.area_name for store in stores if store.area_name}
+        {store.area_name for store in all_scoped_stores if store.area_name}
     )
+
+    store_metrics = {
+        "total": len(all_scoped_stores),
+        "active": sum(1 for store in all_scoped_stores if store.is_active),
+        "inactive": sum(1 for store in all_scoped_stores if not store.is_active),
+        "areas": len(existing_areas),
+    }
 
     companies = Company.query.filter_by(is_active=True).order_by(Company.name.asc()).all() if is_platform_admin else []
 
     return render_template(
         "store_admin.html",
         stores=stores,
+        store_metrics=store_metrics,
+        show_inactive=show_inactive,
         existing_areas=existing_areas,
         companies=companies,
         selected_company_id=selected_company_id,
