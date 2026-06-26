@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import ChecklistScreen from "./ChecklistScreen";
 import SvrScreen from "./SvrScreen";
+import MaintenanceScreen from "./MaintenanceScreen";
 import { colors, radius, spacing } from "../styles/theme";
 
 function ModuleCard({ title, eyebrow, description, onPress }) {
@@ -33,6 +34,10 @@ export default function OpsScreen() {
 
   if (activeModule === "svr") {
     return <SvrScreen onBack={() => setActiveModule("menu")} />;
+  }
+
+  if (activeModule === "maintenance") {
+    return <MaintenanceScreen onBack={() => setActiveModule("menu")} />;
   }
 
   return (
@@ -65,19 +70,12 @@ export default function OpsScreen() {
 
         <ModuleCard
           title="Maintenance"
-          eyebrow="Coming next"
-          description="View and update store maintenance tickets."
+          eyebrow="Store support"
+          description="View, create, and update store maintenance tickets."
           onPress={() => setActiveModule("maintenance")}
         />
 
-        {activeModule === "maintenance" && (
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>Maintenance is next</Text>
-            <Text style={styles.noticeText}>
-              We’ll wire this after SVR is saving cleanly from the phone.
-            </Text>
-          </View>
-        )}
+
       </ScrollView>
     </SafeAreaView>
   );

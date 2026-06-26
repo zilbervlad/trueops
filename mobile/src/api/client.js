@@ -207,3 +207,39 @@ export async function createSvrReport(payload) {
 export async function fetchRecentSvrReports() {
   return request("/api/mobile/svr/reports/recent");
 }
+
+
+export async function fetchMaintenanceStores() {
+  return request("/api/mobile/maintenance/stores");
+}
+
+export async function fetchMaintenanceTickets(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.status) query.set("status", params.status);
+  if (params.store_number) query.set("store_number", params.store_number);
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request(`/api/mobile/maintenance/tickets${suffix}`);
+}
+
+export async function createMaintenanceTicket(payload) {
+  return request("/api/mobile/maintenance/tickets", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateMaintenanceTicketStatus(ticketId, status) {
+  return request(`/api/mobile/maintenance/tickets/${ticketId}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function updateMaintenanceTicket(ticketId, payload) {
+  return request(`/api/mobile/maintenance/tickets/${ticketId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
