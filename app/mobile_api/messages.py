@@ -5,6 +5,7 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import (
+    Store,
     TrueOpsThread,
     TrueOpsThreadMember,
     TrueOpsThreadMessage,
@@ -70,11 +71,27 @@ def user_can_message_user(sender, recipient):
     if sender_role == "supervisor":
         if recipient.company_id != sender.company_id:
             return False
-        if recipient.area_name and sender.area_name and recipient.area_name == sender.area_name:
+
+        if recipient_role in {"admin", "platform_admin", "hr", "coach", "maintenance"}:
             return True
-        if recipient.store_number and sender.area_name:
+
+        sender_area = (sender.area_name or "").strip().lower()
+        recipient_area = (recipient.area_name or "").strip().lower()
+
+        if sender_area and recipient_area and sender_area == recipient_area:
             return True
-        return recipient_role in {"manager", "general_manager", "tm", "maintenance"}
+
+        if sender_area and recipient.store_number:
+            recipient_store = Store.query.filter_by(
+                company_id=sender.company_id,
+                store_number=recipient.store_number,
+                is_active=True,
+            ).first()
+
+            if recipient_store and (recipient_store.area_name or "").strip().lower() == sender_area:
+                return True
+
+        return False
 
     if sender_role in {"general_manager", "manager"}:
         return bool(sender.store_number and recipient.store_number == sender.store_number)
