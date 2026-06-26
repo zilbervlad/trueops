@@ -75,6 +75,7 @@ export default function ChecklistScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingItemId, setSavingItemId] = useState(null);
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
 
   const checklist = payload?.checklist;
   const store = payload?.store;
@@ -321,7 +322,7 @@ export default function ChecklistScreen() {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <View>
+          <View style={styles.sectionHeaderText}>
             <Text style={styles.sectionTitle}>{activeSection?.section_name || "Checklist"}</Text>
             <Text style={styles.sectionSubtitle}>
               {activeSection?.completed || 0} of {activeSection?.total || 0} complete
@@ -330,14 +331,34 @@ export default function ChecklistScreen() {
           {savingItemId && <ActivityIndicator />}
         </View>
 
-        {(activeSection?.items || []).map((item) => (
-          <ChecklistItem
-            key={item.id}
-            item={item}
-            readOnly={readOnly}
-            onToggle={handleToggle}
-          />
-        ))}
+        <TouchableOpacity
+          style={[styles.filterButton, showIncompleteOnly && styles.filterButtonActive]}
+          onPress={() => setShowIncompleteOnly((value) => !value)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.filterButtonText, showIncompleteOnly && styles.filterButtonTextActive]}>
+            {showIncompleteOnly ? "Showing incomplete only" : "Show incomplete only"}
+          </Text>
+        </TouchableOpacity>
+
+        {(activeSection?.items || [])
+          .filter((item) => !showIncompleteOnly || !item.is_completed)
+          .map((item) => (
+            <ChecklistItem
+              key={item.id}
+              item={item}
+              readOnly={readOnly}
+              onToggle={handleToggle}
+            />
+          ))}
+
+        {showIncompleteOnly &&
+          (activeSection?.items || []).filter((item) => !item.is_completed).length === 0 && (
+            <View style={styles.emptyDoneCard}>
+              <Text style={styles.emptyDoneTitle}>Section complete</Text>
+              <Text style={styles.emptyDoneText}>Everything in this section is checked off.</Text>
+            </View>
+          )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -571,6 +592,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  sectionHeaderText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  filterButton: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  filterButtonText: {
+    color: colors.text,
+    fontWeight: "900",
+  },
+  filterButtonTextActive: {
+    color: "#ffffff",
+  },
+  emptyDoneCard: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#bbf7d0",
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: "center",
+  },
+  emptyDoneTitle: {
+    color: "#166534",
+    fontWeight: "900",
+    fontSize: 17,
+  },
+  emptyDoneText: {
+    color: "#166534",
+    fontWeight: "700",
+    marginTop: 4,
   },
   sectionTitle: {
     color: colors.text,
