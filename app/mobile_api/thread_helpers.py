@@ -175,11 +175,17 @@ def ensure_default_threads_for_company(company, created_by_user_id=None):
 
         for user in users:
             role = (user.role or "").strip().lower()
-            if (
+
+            can_join_store_thread = (
                 role in {"admin", "platform_admin", "hr", "coach", "maintenance"}
                 or user_belongs_to_store(user, store.store_number)
-                or user_belongs_to_area(user, store.area_name)
-            ):
+                or (
+                    role == "supervisor"
+                    and user_belongs_to_area(user, store.area_name)
+                )
+            )
+
+            if can_join_store_thread:
                 ensure_thread_member(store_thread, user)
 
     role_labels = {
