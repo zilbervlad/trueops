@@ -123,3 +123,14 @@ export async function markThreadRead(threadId) {
     method: "POST",
   });
 }
+
+export async function loadMessagePeople() {
+  return request("/api/mobile/messages/people");
+}
+
+export async function createDirectThread(recipientUserId) {
+  return request("/api/mobile/messages/direct", {
+    method: "POST",
+    body: JSON.stringify({ recipient_user_id: recipientUserId }),
+  });
+}

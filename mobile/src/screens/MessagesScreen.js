@@ -13,6 +13,8 @@ import {
 } from "react-native";
 
 import {
+  createDirectThread,
+  loadMessagePeople,
   loadThread,
   loadThreads,
   markThreadRead,
@@ -44,6 +46,9 @@ export default function MessagesScreen() {
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [showPeople, setShowPeople] = useState(false);
+  const [people, setPeople] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
 
   async function refreshThreads() {
     setError("");
@@ -55,6 +60,40 @@ export default function MessagesScreen() {
       setError(err.message || "Could not load messages.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function openPeople() {
+    setShowPeople(true);
+    setPeopleLoading(true);
+    setError("");
+
+    try {
+      const data = await loadMessagePeople();
+      setPeople(data.people || []);
+    } catch (err) {
+      setError(err.message || "Could not load people.");
+    } finally {
+      setPeopleLoading(false);
+    }
+  }
+
+  async function startDirectMessage(person) {
+    setPeopleLoading(true);
+    setError("");
+
+    try {
+      const data = await createDirectThread(person.id);
+      setShowPeople(false);
+      await refreshThreads();
+
+      if (data.thread?.id) {
+        await openThread(data.thread);
+      }
+    } catch (err) {
+      setError(err.message || "Could not start message.");
+    } finally {
+      setPeopleLoading(false);
     }
   }
 
@@ -99,6 +138,72 @@ export default function MessagesScreen() {
   useEffect(() => {
     refreshThreads();
   }, []);
+
+  if (showPeople) {
+    return (
+      <View style={styles.page}>
+        <View style={styles.threadHeader}>
+          <Pressable onPress={() => setShowPeople(false)} style={styles.backButton}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </Pressable>
+
+          <View style={styles.threadTitleWrap}>
+            <Text style={styles.threadTitle}>New Message</Text>
+            <Text style={styles.threadSubtitle}>Start a direct chat</Text>
+          </View>
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {peopleLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : (
+          <FlatList
+            data={people}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>No people available</Text>
+                <Text style={styles.emptyText}>
+                  People will show here once there are active users in this company that you can message.
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.threadCard,
+                  pressed && styles.threadCardPressed,
+                ]}
+                onPress={() => startDirectMessage(item)}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(item.name || item.username || "P").slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.threadInfo}>
+                  <Text style={styles.threadName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+
+                  <Text style={styles.lastMessage} numberOfLines={1}>
+                    {item.role || "user"}
+                    {item.store_number ? ` · Store ${item.store_number}` : ""}
+                    {item.area_name ? ` · ${item.area_name}` : ""}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          />
+        )}
+      </View>
+    );
+  }
 
   if (selectedThread || threadLoading) {
     return (
@@ -198,8 +303,8 @@ export default function MessagesScreen() {
           <Text style={styles.subtitle}>TrueOps company, store, and direct chats.</Text>
         </View>
 
-        <Pressable onPress={refreshThreads} style={styles.refreshButton}>
-          <Text style={styles.refreshText}>Refresh</Text>
+        <Pressable onPress={openPeople} style={styles.refreshButton}>
+          <Text style={styles.refreshText}>New</Text>
         </Pressable>
       </View>
 
