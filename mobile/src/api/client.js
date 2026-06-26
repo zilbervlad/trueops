@@ -3,9 +3,14 @@ import * as SecureStore from "expo-secure-store";
 
 const TOKEN_KEY = "trueops_mobile_token";
 
-// iOS simulator / local web default.
-// For physical phone testing later, change this to http://YOUR_MAC_IP:5000
-export const API_BASE_URL = "http://127.0.0.1:5000";
+const LOCAL_API_BASE_URL = "http://127.0.0.1:5000";
+const PROD_API_BASE_URL = "https://trueops.onrender.com";
+
+// Local web uses Flask on your Mac.
+// Native preview/production builds use Render.
+export const API_BASE_URL = Platform.OS === "web"
+  ? LOCAL_API_BASE_URL
+  : PROD_API_BASE_URL;
 
 function isWeb() {
   return Platform.OS === "web";
