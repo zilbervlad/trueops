@@ -295,6 +295,10 @@ def list_threads():
 
     for thread in threads:
         membership = memberships.get(thread.id)
+
+        if not membership and user_can_access_thread(user, thread):
+            membership = ensure_thread_member(thread.id, user.id)
+
         unread_count = 0
 
         if membership:
@@ -326,6 +330,8 @@ def list_threads():
         ),
         reverse=True,
     )
+
+    db.session.commit()
 
     return jsonify({
         "success": True,

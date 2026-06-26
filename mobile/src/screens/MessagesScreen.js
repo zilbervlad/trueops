@@ -152,6 +152,7 @@ export default function MessagesScreen() {
 
     try {
       await sendThreadMessage(selectedThread.id, body);
+      await markThreadRead(selectedThread.id);
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
       await refreshThreads();
@@ -216,7 +217,8 @@ export default function MessagesScreen() {
       try {
         const data = await loadThread(selectedThread.id);
         setSelectedThread(data.thread);
-        refreshThreads();
+        await markThreadRead(selectedThread.id);
+        await refreshThreads();
       } catch {
         // Keep the current thread visible if one refresh fails.
       }
