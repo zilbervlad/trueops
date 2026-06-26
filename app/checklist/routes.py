@@ -3,6 +3,7 @@ from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_login import current_user
 from app.auth.routes import login_required, role_required
 from app.extensions import db
 from app.services.tenant import scoped_get_or_404, scoped_store_by_number, scoped_user_query
