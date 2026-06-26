@@ -502,11 +502,33 @@ def ensure_default_threads():
         created_by_user_id=user.id,
     )
 
+    thread_ids = [thread.id for thread in threads]
+
+    member_counts = {}
+
+    if thread_ids:
+        member_counts = {
+            row.thread_id: row.member_count
+            for row in (
+                db.session.query(
+                    TrueOpsThreadMember.thread_id.label("thread_id"),
+                    func.count(TrueOpsThreadMember.id).label("member_count"),
+                )
+                .filter(TrueOpsThreadMember.thread_id.in_(thread_ids))
+                .group_by(TrueOpsThreadMember.thread_id)
+                .all()
+            )
+        }
+
     return jsonify({
         "success": True,
         "thread_count": len(threads),
         "threads": [
-            serialize_thread_light(thread, current_user=user)
+            serialize_thread_light(
+                thread,
+                current_user=user,
+                member_count=member_counts.get(thread.id, 0),
+            )
             for thread in threads
         ],
     })
