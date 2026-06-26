@@ -38,6 +38,31 @@ function formatTime(value) {
   }
 }
 
+function threadTypeLabel(type) {
+  const labels = {
+    company: "Company",
+    store: "Store",
+    area: "Area",
+    role: "Role",
+    direct: "Direct",
+  };
+
+  return labels[type] || "Thread";
+}
+
+function initials(name) {
+  const parts = String(name || "T")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  return String(name || "T").slice(0, 1).toUpperCase();
+}
+
 export default function MessagesScreen() {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
@@ -245,7 +270,7 @@ export default function MessagesScreen() {
               {selectedThread?.name || "Loading..."}
             </Text>
             <Text style={styles.threadSubtitle}>
-              {selectedThread?.thread_type || "thread"}
+              {selectedThread ? `${threadTypeLabel(selectedThread.thread_type)} Chat · ${(selectedThread.members || []).length} member${(selectedThread.members || []).length === 1 ? "" : "s"}` : "thread"}
             </Text>
           </View>
         </View>
@@ -260,37 +285,46 @@ export default function MessagesScreen() {
               style={styles.messages}
               contentContainerStyle={styles.messagesContent}
             >
-              {(selectedThread?.messages || []).map((message) => (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.bubbleWrap,
-                    message.is_mine ? styles.bubbleWrapMine : styles.bubbleWrapOther,
-                  ]}
-                >
-                  {!message.is_mine ? (
-                    <Text style={styles.senderName}>{message.sender_name}</Text>
-                  ) : null}
-
+              {(selectedThread?.messages || []).length === 0 ? (
+                <View style={styles.threadEmptyCard}>
+                  <Text style={styles.emptyTitle}>Start the conversation</Text>
+                  <Text style={styles.emptyText}>
+                    Send the first message to get this chat moving.
+                  </Text>
+                </View>
+              ) : (
+                (selectedThread?.messages || []).map((message) => (
                   <View
+                    key={message.id}
                     style={[
-                      styles.bubble,
-                      message.is_mine ? styles.bubbleMine : styles.bubbleOther,
+                      styles.bubbleWrap,
+                      message.is_mine ? styles.bubbleWrapMine : styles.bubbleWrapOther,
                     ]}
                   >
-                    <Text
+                    {!message.is_mine ? (
+                      <Text style={styles.senderName}>{message.sender_name}</Text>
+                    ) : null}
+
+                    <View
                       style={[
-                        styles.bubbleText,
-                        message.is_mine ? styles.bubbleTextMine : styles.bubbleTextOther,
+                        styles.bubble,
+                        message.is_mine ? styles.bubbleMine : styles.bubbleOther,
                       ]}
                     >
-                      {message.body}
-                    </Text>
-                  </View>
+                      <Text
+                        style={[
+                          styles.bubbleText,
+                          message.is_mine ? styles.bubbleTextMine : styles.bubbleTextOther,
+                        ]}
+                      >
+                        {message.body}
+                      </Text>
+                    </View>
 
-                  <Text style={styles.messageTime}>{formatTime(message.created_at)}</Text>
-                </View>
-              ))}
+                    <Text style={styles.messageTime}>{formatTime(message.created_at)}</Text>
+                  </View>
+                ))
+              )}
             </ScrollView>
 
             <View style={styles.composer}>
@@ -361,7 +395,7 @@ export default function MessagesScreen() {
             >
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
-                  {(item.name || "T").slice(0, 1).toUpperCase()}
+                  {initials(item.name)}
                 </Text>
               </View>
 
@@ -380,12 +414,12 @@ export default function MessagesScreen() {
 
                 <Text style={styles.lastMessage} numberOfLines={1}>
                   {item.last_message
-                    ? `${item.last_message.sender_name}: ${item.last_message.body}`
+                    ? `${item.last_message.is_mine ? "You" : item.last_message.sender_name}: ${item.last_message.body}`
                     : "No messages yet"}
                 </Text>
 
                 <Text style={styles.meta}>
-                  {item.thread_type} · {item.member_count} member{item.member_count === 1 ? "" : "s"}
+                  {threadTypeLabel(item.thread_type)} · {item.member_count} member{item.member_count === 1 ? "" : "s"}
                 </Text>
               </View>
             </Pressable>
@@ -449,23 +483,30 @@ const styles = StyleSheet.create({
   threadCard: {
     flexDirection: "row",
     backgroundColor: colors.card,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   threadCardPressed: {
     opacity: 0.72,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 19,
     backgroundColor: "#ccfbf1",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#99f6e4",
   },
   avatarText: {
     color: colors.primary,
@@ -595,12 +636,22 @@ const styles = StyleSheet.create({
   bubbleMine: {
     backgroundColor: colors.primary,
     borderBottomRightRadius: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   bubbleOther: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderBottomLeftRadius: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   bubbleText: {
     fontSize: 15,
