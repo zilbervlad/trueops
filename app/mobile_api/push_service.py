@@ -1,4 +1,5 @@
-import requests
+import json
+from urllib import request as urlrequest
 
 from app.models import TrueOpsPushToken, TrueOpsThreadMember
 
@@ -11,12 +12,19 @@ def send_expo_pushes(messages):
         return
 
     try:
-        response = requests.post(
+        payload = json.dumps(messages).encode("utf-8")
+        req = urlrequest.Request(
             EXPO_PUSH_URL,
-            json=messages,
-            timeout=8,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
         )
-        response.raise_for_status()
+
+        with urlrequest.urlopen(req, timeout=8) as response:
+            response.read()
     except Exception:
         # Push should never break sending a message.
         return
