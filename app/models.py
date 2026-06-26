@@ -552,3 +552,165 @@ class MobileAuthToken(db.Model):
 
     user = db.relationship("User", backref=db.backref("mobile_auth_tokens", lazy=True))
     company = db.relationship("Company")
+
+
+class TrueOpsThread(db.Model):
+    __tablename__ = "trueops_threads"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_id = db.Column(
+        db.Integer,
+        db.ForeignKey("companies.id"),
+        nullable=False,
+        index=True,
+    )
+
+    thread_type = db.Column(db.String(40), nullable=False, index=True)
+    name = db.Column(db.String(160), nullable=False)
+    group_key = db.Column(db.String(220), nullable=False, index=True)
+
+    store_number = db.Column(db.String(10), nullable=True, index=True)
+    area_name = db.Column(db.String(120), nullable=True, index=True)
+    role_key = db.Column(db.String(50), nullable=True, index=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    company = db.relationship("Company", backref=db.backref("trueops_threads", lazy=True))
+    created_by = db.relationship("User")
+
+
+class TrueOpsThreadMember(db.Model):
+    __tablename__ = "trueops_thread_members"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    thread_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_threads.id"),
+        nullable=False,
+        index=True,
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    member_role = db.Column(db.String(40), nullable=False, default="member")
+    muted = db.Column(db.Boolean, nullable=False, default=False)
+    last_read_at = db.Column(db.DateTime, nullable=True)
+    hidden_at = db.Column(db.DateTime, nullable=True)
+
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    thread = db.relationship(
+        "TrueOpsThread",
+        backref=db.backref("members", lazy=True, cascade="all, delete-orphan"),
+    )
+    user = db.relationship("User", backref=db.backref("trueops_thread_memberships", lazy=True))
+
+
+class TrueOpsThreadMessage(db.Model):
+    __tablename__ = "trueops_thread_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_id = db.Column(
+        db.Integer,
+        db.ForeignKey("companies.id"),
+        nullable=False,
+        index=True,
+    )
+
+    thread_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_threads.id"),
+        nullable=False,
+        index=True,
+    )
+
+    sender_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    body = db.Column(db.Text, nullable=False)
+    requires_ack = db.Column(db.Boolean, nullable=False, default=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    company = db.relationship("Company")
+    thread = db.relationship(
+        "TrueOpsThread",
+        backref=db.backref("messages", lazy=True, cascade="all, delete-orphan"),
+    )
+    sender = db.relationship("User")
+
+
+class TrueOpsThreadMessageAck(db.Model):
+    __tablename__ = "trueops_thread_message_acks"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    message_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_thread_messages.id"),
+        nullable=False,
+        index=True,
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    acknowledged_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    message = db.relationship(
+        "TrueOpsThreadMessage",
+        backref=db.backref("acks", lazy=True, cascade="all, delete-orphan"),
+    )
+    user = db.relationship("User")
+
+
+class TrueOpsPushToken(db.Model):
+    __tablename__ = "trueops_push_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_id = db.Column(
+        db.Integer,
+        db.ForeignKey("companies.id"),
+        nullable=False,
+        index=True,
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    token = db.Column(db.Text, nullable=False, unique=True)
+    platform = db.Column(db.String(40), nullable=True)
+    device_name = db.Column(db.String(160), nullable=True)
+
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    company = db.relationship("Company")
+    user = db.relationship("User", backref=db.backref("trueops_push_tokens", lazy=True))
