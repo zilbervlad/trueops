@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   createDirectThread,
@@ -22,7 +23,7 @@ import {
   markThreadRead,
   sendThreadMessage,
 } from "../api/client";
-import { colors } from "../styles/theme";
+import { colors, radius } from "../styles/theme";
 
 function formatTime(value) {
   if (!value) return "";
@@ -259,7 +260,7 @@ export default function MessagesScreen() {
 
   if (showPeople) {
     return (
-      <View style={styles.page}>
+      <SafeAreaView style={styles.page} edges={["top"]}>
         <View style={styles.threadHeader}>
           <Pressable onPress={() => {
             setPeopleSearch("");
@@ -337,16 +338,17 @@ export default function MessagesScreen() {
             )}
           />
         )}
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (selectedThread || threadLoading) {
     return (
-      <KeyboardAvoidingView
-        style={styles.page}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <SafeAreaView style={styles.page} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={styles.threadPage}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <View style={styles.threadHeader}>
           <Pressable onPress={() => setSelectedThread(null)} style={styles.backButton}>
             <Text style={styles.backText}>‹ Back</Text>
@@ -427,7 +429,7 @@ export default function MessagesScreen() {
               <TextInput
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Message... Shift+Enter for new line"
+                placeholder="Message"
                 style={styles.composerInput}
                 multiline
                 blurOnSubmit={false}
@@ -455,16 +457,17 @@ export default function MessagesScreen() {
             </View>
           </>
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={["top"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Messages</Text>
-          <Text style={styles.subtitle}>TrueOps company, store, and direct chats.</Text>
+          <Text style={styles.subtitle}>Company, store, role, and direct chats.</Text>
         </View>
 
         <Pressable onPress={openPeople} style={styles.refreshButton}>
@@ -567,7 +570,7 @@ export default function MessagesScreen() {
           )}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -576,114 +579,153 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  threadPage: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   header: {
-    padding: 18,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    gap: 12,
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "900",
     color: colors.text,
+    letterSpacing: -0.4,
   },
   subtitle: {
     color: colors.muted,
-    marginTop: 4,
-    fontWeight: "600",
+    marginTop: 2,
+    fontWeight: "700",
+    fontSize: 13,
   },
   refreshButton: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 15,
     paddingVertical: 9,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   refreshText: {
-    color: colors.primary,
+    color: "#fff",
     fontWeight: "900",
+    fontSize: 13,
   },
   error: {
-    marginHorizontal: 18,
-    marginTop: 8,
+    marginHorizontal: 16,
+    marginTop: 6,
     color: colors.danger,
     fontWeight: "800",
+    fontSize: 13,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  filterBar: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  filterTextActive: {
+    color: "#fff",
+  },
   listContent: {
-    padding: 18,
-    paddingTop: 8,
-    paddingBottom: 32,
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 18,
   },
   threadCard: {
     flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 14,
+    borderRadius: radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
+    marginBottom: 9,
   },
   threadCardPressed: {
     opacity: 0.72,
+    transform: [{ scale: 0.995 }],
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 19,
-    backgroundColor: "#ccfbf1",
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: "#99f6e4",
+    borderColor: "#b7ebe2",
   },
   avatarText: {
     color: colors.primary,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "900",
   },
   threadInfo: {
     flex: 1,
+    minWidth: 0,
   },
   threadRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   threadName: {
     flex: 1,
     color: colors.text,
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "900",
   },
   lastMessage: {
     color: colors.muted,
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: "600",
   },
   meta: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 6,
-    fontWeight: "700",
+    color: colors.faint,
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: "800",
     textTransform: "capitalize",
   },
   badge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     paddingHorizontal: 6,
     backgroundColor: colors.primary,
     alignItems: "center",
@@ -692,66 +734,105 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#fff",
     fontWeight: "900",
-    fontSize: 12,
+    fontSize: 11,
+  },
+  hideChip: {
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  hideChipText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "900",
   },
   emptyCard: {
     backgroundColor: colors.card,
-    borderRadius: 22,
-    padding: 18,
+    borderRadius: radius.lg,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "900",
     color: colors.text,
-    marginBottom: 6,
+    marginBottom: 5,
   },
   emptyText: {
     color: colors.muted,
-    lineHeight: 21,
+    lineHeight: 20,
+    fontSize: 13,
+    fontWeight: "600",
   },
   threadHeader: {
-    padding: 14,
-    paddingTop: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   backButton: {
-    paddingRight: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
   },
   backText: {
     color: colors.primary,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
   },
   threadTitleWrap: {
     flex: 1,
+    minWidth: 0,
   },
   threadTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
   },
   threadSubtitle: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "800",
     textTransform: "capitalize",
+    marginTop: 1,
+  },
+  headerHideButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  headerHideText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900",
   },
   messages: {
     flex: 1,
   },
   messagesContent: {
-    padding: 14,
-    paddingBottom: 20,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+  },
+  threadEmptyCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   bubbleWrap: {
-    marginBottom: 12,
+    marginBottom: 9,
     maxWidth: "84%",
   },
   bubbleWrapMine: {
@@ -763,40 +844,31 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   senderName: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 4,
-    marginLeft: 4,
+    color: colors.faint,
+    fontSize: 11,
+    fontWeight: "900",
+    marginBottom: 3,
+    marginLeft: 7,
   },
   bubble: {
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 19,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
   },
   bubbleMine: {
     backgroundColor: colors.primary,
     borderBottomRightRadius: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
   },
   bubbleOther: {
     backgroundColor: colors.card,
+    borderBottomLeftRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    borderBottomLeftRadius: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   bubbleText: {
     fontSize: 15,
     lineHeight: 20,
+    fontWeight: "600",
   },
   bubbleTextMine: {
     color: "#fff",
@@ -805,43 +877,68 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   messageTime: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 4,
-    marginHorizontal: 5,
+    color: colors.faint,
+    fontSize: 10,
+    fontWeight: "800",
+    marginTop: 3,
+    marginHorizontal: 7,
   },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 10,
-    padding: 12,
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingTop: 9,
+    paddingBottom: Platform.OS === "ios" ? 10 : 8,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   composerInput: {
     flex: 1,
-    minHeight: 42,
-    maxHeight: 110,
-    borderRadius: 18,
-    backgroundColor: "#f8fafc",
+    minHeight: 40,
+    maxHeight: 105,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    color: colors.text,
     fontSize: 15,
+    fontWeight: "600",
   },
   sendButton: {
+    minHeight: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
-    borderRadius: 16,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButtonDisabled: {
-    opacity: 0.45,
+    opacity: 0.35,
   },
   sendText: {
     color: "#fff",
     fontWeight: "900",
+    fontSize: 13,
+  },
+  searchWrap: {
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  searchInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: "600",
   },
 });

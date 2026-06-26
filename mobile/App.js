@@ -85,14 +85,20 @@ export default function App() {
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: colors.muted,
             tabBarStyle: {
-              height: 86,
-              paddingTop: 8,
-              paddingBottom: 24,
+              height: 72,
+              paddingTop: 6,
+              paddingBottom: 12,
               borderTopColor: colors.border,
+              borderTopWidth: 1,
+              backgroundColor: colors.card,
+            },
+            tabBarItemStyle: {
+              paddingVertical: 4,
             },
             tabBarLabelStyle: {
-              fontSize: 12,
-              fontWeight: "800",
+              fontSize: 11,
+              fontWeight: "900",
+              letterSpacing: 0.1,
             },
           }}
         >

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 
 import { login } from "../api/client";
-import { colors } from "../styles/theme";
+import { colors, radius } from "../styles/theme";
 
 export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("admin");
@@ -40,9 +40,9 @@ export default function LoginScreen({ onLogin }) {
     >
       <View style={styles.card}>
         <Text style={styles.logo}>TrueOps</Text>
-        <Text style={styles.title}>Operations in your pocket.</Text>
+        <Text style={styles.title}>Operations in your pocket</Text>
         <Text style={styles.subtitle}>
-          Sign in to view your stores, messages, checklists, and reports.
+          Sign in to TrueOps mobile.
         </Text>
 
         <Text style={styles.label}>Username</Text>
@@ -91,12 +91,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     justifyContent: "center",
-    padding: 22,
+    paddingHorizontal: 18,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: radius.xl,
+    padding: 22,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: "#000",
@@ -106,13 +106,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   logo: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "900",
     color: colors.primary,
     marginBottom: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
     color: colors.text,
   },
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.muted,
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 20,
     lineHeight: 21,
   },
   label: {
@@ -133,11 +133,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: "#f8fafc",
-    borderRadius: 16,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   error: {
     color: colors.danger,
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 18,
-    paddingVertical: 15,
+    borderRadius: radius.md,
+    paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
   },
