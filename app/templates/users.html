@@ -726,6 +726,20 @@
                     <button type="submit" class="btn-primary">Send Test Email</button>
                 </form>
 
+                <form method="POST" style="display:inline;"
+                      onsubmit="return confirm('Permanently delete {{ user.name }}? This cannot be undone.');">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <input type="hidden" name="action" value="delete">
+
+                    {% if user.id == session.get("user_id") %}
+                    <button type="button" class="btn-danger" disabled>Cannot Delete Self</button>
+                    {% elif user.role in ['admin', 'platform_admin'] and not is_platform_admin %}
+                    <button type="button" class="btn-danger" disabled>Protected</button>
+                    {% else %}
+                    <button type="submit" class="btn-danger">Delete User</button>
+                    {% endif %}
+                </form>
+
                 <form method="POST" class="inline-password-form" data-password-user-id="{{ user.id }}" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input type="hidden" name="user_id" value="{{ user.id }}">
                     <input type="hidden" name="action" value="reset_password">

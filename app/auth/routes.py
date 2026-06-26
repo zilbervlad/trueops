@@ -6,6 +6,7 @@ from app.services.tenant import scoped_get_or_404
 from app.models import User, Company
 from app.extensions import db
 from app.services.email_service import send_email
+from sqlalchemy.exc import IntegrityError
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -351,6 +352,43 @@ def manage_users():
             db.session.commit()
 
             flash("User activated.", "success")
+            return redirect(url_for("auth.manage_users"))
+
+
+        if action == "delete":
+            user_id = request.form.get("user_id", "").strip()
+            user = scoped_get_or_404(User, user_id)
+
+            if not user:
+                flash("User not found.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if not is_platform_admin and user.company_id != selected_company_id:
+                flash("You do not have permission to delete that user.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if user.id == session.get("user_id"):
+                flash("You cannot delete your own account while logged in.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            if user.role in {"admin", "platform_admin"} and not is_platform_admin:
+                flash("Only platform admins can delete admin users.", "error")
+                return redirect(url_for("auth.manage_users"))
+
+            user_name = user.name
+
+            try:
+                db.session.delete(user)
+                db.session.commit()
+                flash(f"{user_name} was permanently deleted.", "success")
+            except IntegrityError:
+                db.session.rollback()
+                flash(
+                    f"{user_name} could not be deleted because they are connected to existing records. "
+                    "Deactivate the user instead, or clean up linked records first.",
+                    "error",
+                )
+
             return redirect(url_for("auth.manage_users"))
 
     if is_platform_admin:
