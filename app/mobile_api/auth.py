@@ -12,6 +12,13 @@ from app.mobile_api.serializers import serialize_mobile_context
 mobile_auth_bp = Blueprint("mobile_auth", __name__, url_prefix="/api/mobile")
 
 
+
+@mobile_auth_bp.route("/<path:any_path>", methods=["OPTIONS"])
+@mobile_auth_bp.route("/", methods=["OPTIONS"])
+def mobile_options(any_path=None):
+    return "", 204
+
+
 @mobile_auth_bp.post("/login")
 def mobile_login():
     data = request.get_json(silent=True) or {}
