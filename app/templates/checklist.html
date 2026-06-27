@@ -1118,6 +1118,131 @@
     }
 }
 
+
+/* Checklist manager name popup */
+.checklist-name-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(8px);
+}
+
+.checklist-name-modal-backdrop.is-open {
+    display: flex;
+}
+
+.checklist-name-modal {
+    width: min(440px, 100%);
+    border-radius: 28px;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 38%),
+        #ffffff;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.checklist-name-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.checklist-name-modal h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.35rem;
+    line-height: 1.15;
+}
+
+.checklist-name-modal p {
+    margin: 10px 0 18px;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.checklist-name-input {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+    padding: 14px 15px;
+    font-size: 1rem;
+    outline: none;
+    background: #f8fafc;
+}
+
+.checklist-name-input:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.checklist-name-error {
+    min-height: 18px;
+    margin-top: 8px;
+    color: #dc2626;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.checklist-name-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.checklist-name-secondary {
+    border: 0;
+    border-radius: 14px;
+    padding: 12px 15px;
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.checklist-name-primary {
+    border: 0;
+    border-radius: 14px;
+    padding: 12px 17px;
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+}
+
+@media (max-width: 640px) {
+    .checklist-name-modal {
+        border-radius: 24px;
+        padding: 22px;
+    }
+
+    .checklist-name-actions {
+        flex-direction: column-reverse;
+    }
+
+    .checklist-name-actions button {
+        width: 100%;
+    }
+}
+
 </style>
 
 
@@ -1402,6 +1527,32 @@
     </div>
 </div>
 
+
+{% if not is_read_only and not (daily.opening_manager or daily.manager_on_duty) %}
+<div id="checklistNameModalBackdrop" class="checklist-name-modal-backdrop is-open" aria-hidden="false">
+    <div class="checklist-name-modal" role="dialog" aria-modal="true" aria-labelledby="checklistNameModalTitle">
+        <div class="checklist-name-kicker">Daily Checklist</div>
+        <h3 id="checklistNameModalTitle">Who is completing this checklist?</h3>
+        <p>Enter the manager name before starting. This saves as the opening manager for today’s checklist.</p>
+
+        <input
+            type="text"
+            id="checklistNameModalInput"
+            class="checklist-name-input"
+            placeholder="Manager name"
+            autocomplete="name"
+        >
+
+        <div id="checklistNameModalError" class="checklist-name-error"></div>
+
+        <div class="checklist-name-actions">
+            <button type="button" id="checklistNameModalLater" class="checklist-name-secondary">I’ll add it manually</button>
+            <button type="button" id="checklistNameModalSave" class="checklist-name-primary">Start Checklist</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const checkboxes = Array.from(document.querySelectorAll(".live-checklist-box"));
@@ -1414,6 +1565,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const autosaveStatusEl = document.getElementById("autosave-status");
     const openingManagerInput = document.getElementById("opening_manager");
     const closingManagerInput = document.getElementById("closing_manager");
+
+    const checklistNameModalBackdrop = document.getElementById("checklistNameModalBackdrop");
+    const checklistNameModalInput = document.getElementById("checklistNameModalInput");
+    const checklistNameModalError = document.getElementById("checklistNameModalError");
+    const checklistNameModalSave = document.getElementById("checklistNameModalSave");
+    const checklistNameModalLater = document.getElementById("checklistNameModalLater");
 
     const storeNumber = "{{ store_number }}";
     const selectedDate = "{{ selected_date }}";
@@ -1571,6 +1728,54 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Checklist autosave manager error", error);
             setAutosaveStatus("Save failed");
         }
+    }
+
+
+    function closeChecklistNameModal() {
+        if (!checklistNameModalBackdrop) return;
+        checklistNameModalBackdrop.classList.remove("is-open");
+        checklistNameModalBackdrop.setAttribute("aria-hidden", "true");
+    }
+
+    async function saveChecklistNameFromModal() {
+        if (!checklistNameModalInput || !openingManagerInput) return;
+
+        const managerName = checklistNameModalInput.value.trim();
+
+        if (!managerName) {
+            if (checklistNameModalError) {
+                checklistNameModalError.textContent = "Manager name is required to start.";
+            }
+            checklistNameModalInput.focus();
+            return;
+        }
+
+        if (checklistNameModalError) {
+            checklistNameModalError.textContent = "";
+        }
+
+        openingManagerInput.value = managerName;
+        await autosaveManagers();
+        closeChecklistNameModal();
+    }
+
+    if (checklistNameModalInput) {
+        setTimeout(() => checklistNameModalInput.focus(), 150);
+
+        checklistNameModalInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                saveChecklistNameFromModal();
+            }
+        });
+    }
+
+    if (checklistNameModalSave) {
+        checklistNameModalSave.addEventListener("click", saveChecklistNameFromModal);
+    }
+
+    if (checklistNameModalLater) {
+        checklistNameModalLater.addEventListener("click", closeChecklistNameModal);
     }
 
     noteToggleButtons.forEach(button => {
