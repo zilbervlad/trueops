@@ -243,3 +243,21 @@ export async function updateMaintenanceTicket(ticketId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export async function fetchMobileAdminUsers() {
+  return request("/api/mobile/admin/users");
+}
+
+export async function updateMobileAdminUser(userId, payload) {
+  return request(`/api/mobile/admin/users/${userId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function ensureMobileAdminDefaultThreads() {
+  return request("/api/mobile/admin/messages/ensure-defaults", {
+    method: "POST",
+  });
+}
+

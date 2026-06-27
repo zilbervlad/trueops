@@ -43,6 +43,7 @@ def create_app():
     from app.verification.routes import verification_bp
     from app.store_dashboard import store_dashboard_bp
     from app.mobile_api import register_mobile_api
+    from app.public_site import public_site_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -57,6 +58,7 @@ def create_app():
     app.register_blueprint(cash_review_bp)
     app.register_blueprint(verification_bp)
     app.register_blueprint(store_dashboard_bp)
+    app.register_blueprint(public_site_bp)
     register_mobile_api(app)
 
     # -------------------------

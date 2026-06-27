@@ -1,0 +1,54 @@
+{% extends "public_site/_base.html" %}
+
+{% block title %}TrueOps | Operations in your pocket{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <div class="eyebrow">Restaurant operations platform</div>
+    <h1>Run the day from anywhere.</h1>
+    <p class="lead">
+      TrueOps helps restaurant teams manage daily checklists, store visit reports, maintenance follow-up,
+      messaging, and operations visibility from one mobile-friendly system.
+    </p>
+    <div class="actions">
+      <a class="button" href="/login">TrueOps Login</a>
+      <a class="button secondary" href="/support">Get Support</a>
+    </div>
+  </div>
+
+  <div class="phone-card">
+    <div class="eyebrow">Mobile tools</div>
+    <h2>Built for the floor.</h2>
+    <p>Fast, simple tools for managers, supervisors, admins, and support teams.</p>
+
+    <div class="app-row">
+      <strong>Daily Checklist</strong>
+      <p>Keep the store rhythm visible and accountable.</p>
+    </div>
+    <div class="app-row">
+      <strong>SVR</strong>
+      <p>Capture store visits and follow-up while it is fresh.</p>
+    </div>
+    <div class="app-row">
+      <strong>Messages</strong>
+      <p>Company, store, role, and direct communication.</p>
+    </div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card">
+    <h3>Daily execution</h3>
+    <p>Checklist tools designed around real store routines and follow-up.</p>
+  </div>
+  <div class="card">
+    <h3>Multi-store visibility</h3>
+    <p>Admins and supervisors can see the stores and users assigned to their company.</p>
+  </div>
+  <div class="card">
+    <h3>Mobile-first</h3>
+    <p>TrueOps is designed to work from the floor, not just from a desktop.</p>
+  </div>
+</section>
+{% endblock %}
