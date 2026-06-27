@@ -14,8 +14,8 @@ import { login } from "../api/client";
 import { colors, radius } from "../styles/theme";
 
 export default function LoginScreen({ onLogin }) {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,9 +40,9 @@ export default function LoginScreen({ onLogin }) {
     >
       <View style={styles.card}>
         <Text style={styles.logo}>TrueOps</Text>
-        <Text style={styles.title}>Operations in your pocket</Text>
+        <Text style={styles.title}>TrueOps Login</Text>
         <Text style={styles.subtitle}>
-          Sign in to TrueOps mobile.
+          Use your TrueOps username and password. Same account, same role, same store access.
         </Text>
 
         <Text style={styles.label}>Username</Text>
@@ -78,7 +78,7 @@ export default function LoginScreen({ onLogin }) {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
+            <Text style={styles.buttonText}>Sign in to TrueOps</Text>
           )}
         </Pressable>
       </View>
