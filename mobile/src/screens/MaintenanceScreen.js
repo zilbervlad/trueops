@@ -41,17 +41,28 @@ function pretty(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function getStatusStyle(status) {
+  if (status === "complete") return styles.statusComplete;
+  if (status === "in_progress") return styles.statusProgress;
+  if (status === "assigned") return styles.statusAssigned;
+  return styles.statusOpen;
+}
+
 function TicketCard({ ticket, onCycleStatus }) {
   return (
     <View style={styles.ticketCard}>
       <View style={styles.ticketTop}>
         <View style={styles.ticketBody}>
-          <Text style={styles.ticketStore}>Store {ticket.store_number}</Text>
+          <View style={styles.ticketMetaTop}>
+            <Text style={styles.ticketStore}>Store {ticket.store_number}</Text>
+            <Text style={styles.ticketSource}>{ticket.source_type === "svr" ? "SVR" : "Manual"}</Text>
+          </View>
+
           <Text style={styles.ticketTitle}>{ticket.title}</Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.statusPill, styles[`status_${ticket.status}`] || styles.status_open]}
+          style={[styles.statusPill, getStatusStyle(ticket.status)]}
           onPress={() => onCycleStatus(ticket)}
           activeOpacity={0.85}
         >
@@ -61,11 +72,48 @@ function TicketCard({ ticket, onCycleStatus }) {
 
       {!!ticket.details && <Text style={styles.ticketDetails}>{ticket.details}</Text>}
 
-      <View style={styles.metaRow}>
-        <Text style={styles.metaText}>Priority: {pretty(ticket.priority || "normal")}</Text>
-        <Text style={styles.metaDot}>•</Text>
-        <Text style={styles.metaText}>{ticket.source_type === "svr" ? "From SVR" : "Manual"}</Text>
+      <View style={styles.ticketFooter}>
+        <View style={styles.priorityPill}>
+          <Text style={styles.priorityText}>{pretty(ticket.priority || "normal")}</Text>
+        </View>
+
+        <Text style={styles.nextText}>Tap status to advance</Text>
       </View>
+    </View>
+  );
+}
+
+function StoreSelect({ stores, storeNumber, open, onToggle, onSelect }) {
+  const selected = stores.find((store) => store.store_number === storeNumber);
+
+  return (
+    <View>
+      <Text style={styles.label}>Store</Text>
+      <TouchableOpacity style={styles.selectButton} onPress={onToggle} activeOpacity={0.85}>
+        <Text style={styles.selectText} numberOfLines={1}>
+          {selected ? `${selected.store_number} · ${selected.name}` : "Select store"}
+        </Text>
+        <Text style={styles.chevron}>{open ? "⌃" : "⌄"}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={styles.storeList}>
+          {stores.map((store) => (
+            <TouchableOpacity
+              key={`${store.company_id}-${store.store_number}`}
+              style={[
+                styles.storeRow,
+                store.store_number === storeNumber && styles.storeRowActive,
+              ]}
+              onPress={() => onSelect(store.store_number)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.storeRowText}>{store.store_number} · {store.name}</Text>
+              <Text style={styles.storeRowArea}>{store.area_name || "No area"}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -81,6 +129,7 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
   useEffect(() => {
     if (visible) {
       setStoreNumber(defaultStore || stores[0]?.store_number || "");
+      setStoreOpen(false);
     }
   }, [visible, defaultStore, stores]);
 
@@ -116,8 +165,6 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
     }
   }
 
-  const selectedStore = stores.find((store) => store.store_number === storeNumber);
-
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={styles.safe}>
@@ -135,34 +182,16 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
           </View>
 
           <View style={styles.formCard}>
-            <Text style={styles.label}>Store</Text>
-            <TouchableOpacity style={styles.selectButton} onPress={() => setStoreOpen((v) => !v)}>
-              <Text style={styles.selectText}>
-                {selectedStore ? `${selectedStore.store_number} · ${selectedStore.name}` : "Select store"}
-              </Text>
-              <Text style={styles.chevron}>{storeOpen ? "⌃" : "⌄"}</Text>
-            </TouchableOpacity>
-
-            {storeOpen && (
-              <View style={styles.storeList}>
-                {stores.map((store) => (
-                  <TouchableOpacity
-                    key={`${store.company_id}-${store.store_number}`}
-                    style={[
-                      styles.storeRow,
-                      store.store_number === storeNumber && styles.storeRowActive,
-                    ]}
-                    onPress={() => {
-                      setStoreNumber(store.store_number);
-                      setStoreOpen(false);
-                    }}
-                  >
-                    <Text style={styles.storeRowText}>{store.store_number} · {store.name}</Text>
-                    <Text style={styles.storeRowArea}>{store.area_name || "No area"}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <StoreSelect
+              stores={stores}
+              storeNumber={storeNumber}
+              open={storeOpen}
+              onToggle={() => setStoreOpen((value) => !value)}
+              onSelect={(nextStore) => {
+                setStoreNumber(nextStore);
+                setStoreOpen(false);
+              }}
+            />
 
             <Text style={styles.label}>Task title</Text>
             <TextInput
@@ -177,7 +206,7 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
             <TextInput
               value={details}
               onChangeText={setDetails}
-              placeholder="Add details..."
+              placeholder="Add useful details..."
               placeholderTextColor={colors.faint}
               multiline
               style={[styles.input, styles.textArea]}
@@ -190,6 +219,7 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
                   key={option}
                   style={[styles.priorityButton, priority === option && styles.priorityButtonActive]}
                   onPress={() => setPriority(option)}
+                  activeOpacity={0.85}
                 >
                   <Text
                     style={[
@@ -208,6 +238,7 @@ function CreateTicketModal({ visible, stores, defaultStore, onClose, onCreate })
             style={[styles.submitButton, saving && styles.submitButtonDisabled]}
             onPress={save}
             disabled={saving}
+            activeOpacity={0.85}
           >
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Create Task</Text>}
           </TouchableOpacity>
@@ -290,64 +321,78 @@ export default function MaintenanceScreen({ onBack }) {
           )}
         </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryNumber}>{activeCount}</Text>
-          <Text style={styles.summaryLabel}>open / active tasks</Text>
-          <TouchableOpacity style={styles.newButton} onPress={() => setCreateOpen(true)}>
-            <Text style={styles.newButtonText}>+ New Task</Text>
+        <View style={styles.heroCard}>
+          <View>
+            <Text style={styles.heroKicker}>Active Work</Text>
+            <Text style={styles.heroNumber}>{activeCount}</Text>
+            <Text style={styles.heroText}>open / active tasks</Text>
+          </View>
+
+          <TouchableOpacity style={styles.newButton} onPress={() => setCreateOpen(true)} activeOpacity={0.85}>
+            <Text style={styles.newButtonText}>+ New</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {STATUSES.map((status) => (
-            <TouchableOpacity
-              key={status.value || "all"}
-              style={[styles.filterPill, statusFilter === status.value && styles.filterPillActive]}
-              onPress={() => setStatusFilter(status.value)}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  statusFilter === status.value && styles.filterPillTextActive,
-                ]}
+        <View style={styles.filterBlock}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
+            {STATUSES.map((status) => (
+              <TouchableOpacity
+                key={status.value || "all"}
+                style={[styles.filterPill, statusFilter === status.value && styles.filterPillActive]}
+                onPress={() => setStatusFilter(status.value)}
+                activeOpacity={0.85}
               >
-                {status.label}
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    statusFilter === status.value && styles.filterPillTextActive,
+                  ]}
+                >
+                  {status.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
+            <TouchableOpacity
+              style={[styles.filterPill, storeFilter === "" && styles.filterPillActive]}
+              onPress={() => setStoreFilter("")}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.filterPillText, storeFilter === "" && styles.filterPillTextActive]}>
+                All Stores
               </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          <TouchableOpacity
-            style={[styles.filterPill, storeFilter === "" && styles.filterPillActive]}
-            onPress={() => setStoreFilter("")}
-          >
-            <Text style={[styles.filterPillText, storeFilter === "" && styles.filterPillTextActive]}>
-              All Stores
-            </Text>
-          </TouchableOpacity>
-
-          {stores.map((store) => (
-            <TouchableOpacity
-              key={`${store.company_id}-${store.store_number}`}
-              style={[styles.filterPill, storeFilter === store.store_number && styles.filterPillActive]}
-              onPress={() => setStoreFilter(store.store_number)}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  storeFilter === store.store_number && styles.filterPillTextActive,
-                ]}
+            {stores.map((store) => (
+              <TouchableOpacity
+                key={`${store.company_id}-${store.store_number}`}
+                style={[styles.filterPill, storeFilter === store.store_number && styles.filterPillActive]}
+                onPress={() => setStoreFilter(store.store_number)}
+                activeOpacity={0.85}
               >
-                {store.store_number}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    storeFilter === store.store_number && styles.filterPillTextActive,
+                  ]}
+                >
+                  {store.store_number}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tickets</Text>
+          <Text style={styles.sectionMeta}>{tickets.length} shown</Text>
+        </View>
 
         {loading ? (
           <View style={styles.stateBox}>
-            <ActivityIndicator />
+            <ActivityIndicator color={colors.primary} />
             <Text style={styles.stateText}>Loading tickets…</Text>
           </View>
         ) : tickets.length === 0 ? (
@@ -374,104 +419,269 @@ export default function MaintenanceScreen({ onBack }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  container: { flex: 1 },
-  content: { padding: spacing.lg, paddingBottom: 110 },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: 110,
+  },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     marginBottom: spacing.md,
+    gap: spacing.md,
   },
-  headerText: { flex: 1, paddingRight: 12 },
-  kicker: { color: colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  title: { color: colors.text, fontSize: 34, fontWeight: "900", letterSpacing: -1 },
-  subtitle: { color: colors.muted, marginTop: 4, fontWeight: "700", lineHeight: 20 },
+  headerText: {
+    flex: 1,
+  },
+  kicker: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: -1,
+    marginTop: 2,
+  },
+  subtitle: {
+    color: colors.muted,
+    marginTop: 4,
+    fontWeight: "700",
+    lineHeight: 19,
+  },
   backButton: {
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderRadius: radius.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
   },
-  backButtonText: { color: colors.text, fontWeight: "900" },
-  summaryCard: {
-    backgroundColor: colors.text,
+  backButtonText: {
+    color: colors.text,
+    fontWeight: "900",
+  },
+  heroCard: {
+    backgroundColor: colors.navy,
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  summaryNumber: { color: "#ffffff", fontSize: 42, fontWeight: "900" },
-  summaryLabel: { color: "#dbeafe", fontWeight: "800", marginBottom: spacing.md },
+  heroKicker: {
+    color: colors.navySoft,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  heroNumber: {
+    color: "#ffffff",
+    fontSize: 42,
+    fontWeight: "900",
+    letterSpacing: -1.2,
+    marginTop: 2,
+  },
+  heroText: {
+    color: colors.navySoft,
+    fontWeight: "800",
+    marginTop: -2,
+  },
   newButton: {
-    alignSelf: "flex-start",
     backgroundColor: "#ffffff",
     borderRadius: radius.lg,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: 17,
+    paddingVertical: 12,
   },
-  newButtonText: { color: colors.text, fontWeight: "900" },
-  filterScroll: { marginBottom: 10 },
+  newButtonText: {
+    color: colors.text,
+    fontWeight: "900",
+  },
+  filterBlock: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  filterContent: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg,
+  },
   filterPill: {
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.pill,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    marginRight: 8,
   },
-  filterPillActive: { backgroundColor: colors.text, borderColor: colors.text },
-  filterPillText: { color: colors.text, fontWeight: "900" },
-  filterPillTextActive: { color: "#ffffff" },
+  filterPillActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  filterPillText: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  filterPillTextActive: {
+    color: "#ffffff",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 21,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+  },
+  sectionMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900",
+  },
   stateBox: {
     backgroundColor: colors.card,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.xl,
     padding: spacing.xl,
     alignItems: "center",
-    gap: 10,
+    gap: spacing.sm,
   },
-  stateText: { color: colors.muted, fontWeight: "800", textAlign: "center" },
-  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
+  stateText: {
+    color: colors.muted,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
   ticketCard: {
     backgroundColor: colors.card,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.xl,
     padding: spacing.md,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
-  ticketTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  ticketBody: { flex: 1 },
+  ticketTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  ticketBody: {
+    flex: 1,
+  },
+  ticketMetaTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
   ticketStore: {
     color: colors.primary,
     fontSize: 11,
     fontWeight: "900",
-    letterSpacing: 0.5,
-    marginBottom: 3,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
-  ticketTitle: { color: colors.text, fontSize: 17, fontWeight: "900", lineHeight: 22 },
-  ticketDetails: { color: colors.muted, fontWeight: "700", lineHeight: 20, marginTop: 9 },
+  ticketSource: {
+    color: colors.faint,
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  ticketTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 21,
+  },
+  ticketDetails: {
+    color: colors.muted,
+    fontWeight: "700",
+    lineHeight: 20,
+    marginTop: spacing.sm,
+  },
   statusPill: {
-    borderRadius: 999,
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    backgroundColor: colors.surface,
+    minWidth: 74,
+    alignItems: "center",
   },
-  statusText: { color: colors.text, fontSize: 11, fontWeight: "900" },
-  status_open: { backgroundColor: "#fee2e2" },
-  status_assigned: { backgroundColor: "#fef3c7" },
-  status_in_progress: { backgroundColor: "#dbeafe" },
-  status_complete: { backgroundColor: "#dcfce7" },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 6 },
-  metaText: { color: colors.muted, fontSize: 12, fontWeight: "800" },
-  metaDot: { color: colors.faint, fontWeight: "900" },
+  statusText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  statusOpen: {
+    backgroundColor: colors.dangerSoft,
+  },
+  statusAssigned: {
+    backgroundColor: colors.warningSoft,
+  },
+  statusProgress: {
+    backgroundColor: colors.infoSoft,
+  },
+  statusComplete: {
+    backgroundColor: colors.successSoft,
+  },
+  ticketFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    paddingTop: spacing.sm,
+  },
+  priorityPill: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  priorityText: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  nextText: {
+    color: colors.faint,
+    fontSize: 11,
+    fontWeight: "800",
+  },
   formCard: {
     backgroundColor: colors.card,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.xl,
     padding: spacing.md,
@@ -479,66 +689,115 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
     textTransform: "uppercase",
-    marginBottom: 7,
+    letterSpacing: 0.7,
+    marginBottom: 6,
   },
   selectButton: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     marginBottom: spacing.md,
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  selectText: { color: colors.text, fontWeight: "900", flex: 1 },
-  chevron: { color: colors.muted, fontSize: 18, fontWeight: "900" },
-  storeList: { gap: 8, marginBottom: spacing.md },
+  selectText: {
+    color: colors.text,
+    fontWeight: "900",
+    flex: 1,
+  },
+  chevron: {
+    color: colors.faint,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  storeList: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   storeRow: {
-    padding: 12,
+    padding: 11,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
   },
-  storeRowActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  storeRowText: { color: colors.text, fontWeight: "900" },
-  storeRowArea: { color: colors.muted, marginTop: 2, fontWeight: "700" },
+  storeRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryTint,
+  },
+  storeRowText: {
+    color: colors.text,
+    fontWeight: "900",
+  },
+  storeRowArea: {
+    color: colors.muted,
+    marginTop: 2,
+    fontWeight: "700",
+  },
   input: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     color: colors.text,
     fontWeight: "800",
     marginBottom: spacing.md,
-    minHeight: 46,
+    minHeight: 44,
   },
-  textArea: { minHeight: 100, textAlignVertical: "top" },
-  priorityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  textArea: {
+    minHeight: 96,
+    textAlignVertical: "top",
+  },
+  priorityRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   priorityButton: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
     borderRadius: radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  priorityButtonActive: { backgroundColor: colors.text, borderColor: colors.text },
-  priorityButtonText: { color: colors.text, fontWeight: "900" },
-  priorityButtonTextActive: { color: "#ffffff" },
+  priorityButtonActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  priorityButtonText: {
+    color: colors.text,
+    fontWeight: "900",
+  },
+  priorityButtonTextActive: {
+    color: "#ffffff",
+  },
   submitButton: {
     backgroundColor: colors.text,
     borderRadius: radius.lg,
     paddingVertical: 16,
     alignItems: "center",
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 5,
   },
-  submitButtonDisabled: { opacity: 0.7 },
-  submitButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "900" },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
 });
