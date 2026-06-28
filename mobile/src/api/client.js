@@ -4,10 +4,10 @@ import * as SecureStore from "expo-secure-store";
 const TOKEN_KEY = "trueops_mobile_token";
 
 const LOCAL_API_BASE_URL = "http://127.0.0.1:5000";
-const PROD_API_BASE_URL = "https://trueops.onrender.com";
+const PROD_API_BASE_URL = "https://true-ops.net";
 
 // Local web uses Flask on your Mac.
-// Native preview/production builds use Render.
+// Native preview/production builds use the production TrueOps domain.
 export const API_BASE_URL = Platform.OS === "web"
   ? LOCAL_API_BASE_URL
   : PROD_API_BASE_URL;

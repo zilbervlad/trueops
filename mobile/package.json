@@ -19,6 +19,7 @@
     "expo-device": "~56.0.4",
     "expo-notifications": "~56.0.18",
     "expo-secure-store": "~56.0.4",
+    "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -30,6 +31,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~56.0.4",
     "typescript": "~6.0.3"
   }
 }

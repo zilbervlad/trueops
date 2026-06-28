@@ -10,22 +10,39 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.trueops.mobile",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationsUsageDescription": "TrueOps sends operations alerts, checklist updates, maintenance updates, and important store messages."
+      },
+      "buildNumber": "1"
     },
     "android": {
-      "package": "com.trueops.mobile"
+      "package": "com.trueops.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      }
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "79c63e1a-94e6-4de2-8087-9536582f5f8d"
       }
-    }
+    },
+    "icon": "./assets/images/icon.png"
   }
 }
