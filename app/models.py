@@ -41,6 +41,7 @@ class User(db.Model):
     store_number = db.Column(db.String(10), nullable=True)
 
     email = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(40), nullable=True)
     notification_email = db.Column(db.String(255), nullable=True)
     email_enabled = db.Column(db.Boolean, nullable=False, default=True)
 

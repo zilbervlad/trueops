@@ -153,6 +153,7 @@ def manage_users():
             area_name = request.form.get("area_name", "").strip() or None
             store_number = request.form.get("store_number", "").strip() or None
             email = request.form.get("email", "").strip() or None
+            phone = request.form.get("phone", "").strip() or None
             notification_email = request.form.get("notification_email", "").strip() or None
             email_enabled = request.form.get("email_enabled") == "on"
 
@@ -199,6 +200,7 @@ def manage_users():
                 area_name=area_name,
                 store_number=store_number,
                 email=email,
+                phone=phone,
                 notification_email=notification_email,
                 email_enabled=email_enabled,
                 is_active=True,
@@ -253,6 +255,7 @@ def manage_users():
             area_name = request.form.get("area_name", "").strip() or None
             store_number = request.form.get("store_number", "").strip() or None
             email = request.form.get("email", "").strip() or None
+            phone = request.form.get("phone", "").strip() or None
             notification_email = request.form.get("notification_email", "").strip() or None
             email_enabled = request.form.get("email_enabled") == "on"
             new_password = request.form.get("password", "").strip()
@@ -267,6 +270,7 @@ def manage_users():
 
             if user.role in {"admin", "platform_admin"}:
                 user.email = email
+                user.phone = phone
                 user.notification_email = notification_email
                 user.email_enabled = email_enabled
 

@@ -117,6 +117,11 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="create_phone">Phone</label>
+                        <input type="tel" id="create_phone" name="phone" placeholder="Optional phone number">
+                    </div>
+
+                    <div class="form-group">
                         <label for="create_notification_email">Notification Email</label>
                         <input type="email" id="create_notification_email" name="notification_email" placeholder="Optional override for auto emails">
                     </div>
@@ -221,7 +226,7 @@
     .users-inline-head,
     .users-inline-row {
         display: grid;
-        grid-template-columns: minmax(260px, 1.7fr) 150px minmax(170px, 1fr) minmax(210px, 1.2fr) minmax(210px, 1.2fr) 105px 90px 105px;
+        grid-template-columns: minmax(260px, 1.7fr) 150px minmax(170px, 1fr) minmax(190px, 1fr) minmax(210px, 1.2fr) minmax(210px, 1.2fr) 105px 90px 105px;
         gap: 0;
         align-items: stretch;
     }
@@ -474,7 +479,7 @@
 
         .users-inline-head,
         .users-inline-row {
-            min-width: 1300px;
+            min-width: 1480px;
         }
     }
 
@@ -498,7 +503,7 @@
     <div class="user-list-toolbar">
         <div>
             <label class="user-toolbar-label" for="user-search-input">Search</label>
-            <input id="user-search-input" class="user-toolbar-input" type="search" placeholder="Search name, username, email, store, area...">
+            <input id="user-search-input" class="user-toolbar-input" type="search" placeholder="Search name, username, email, phone, store, area...">
         </div>
 
         <div>
@@ -534,6 +539,7 @@
             <div class="users-inline-head-cell">Role</div>
             <div class="users-inline-head-cell">Assignment</div>
             <div class="users-inline-head-cell">Primary Email</div>
+            <div class="users-inline-head-cell">Phone</div>
             <div class="users-inline-head-cell">Notification Email</div>
             <div class="users-inline-head-cell">Emails</div>
             <div class="users-inline-head-cell">Status</div>
@@ -552,6 +558,7 @@
              data-last-saved-area-name="{{ user.area_name or '' }}"
              data-last-saved-store-number="{{ user.store_number or '' }}"
              data-last-saved-email="{{ user.email or '' }}"
+             data-last-saved-phone="{{ user.phone or '' }}"
              data-last-saved-notification-email="{{ user.notification_email or '' }}"
              data-last-saved-email-enabled="{{ 1 if user.email_enabled else 0 }}"
              data-last-saved-verified-by="{{ user.verified_by or '' }}"
@@ -607,6 +614,13 @@
                        class="users-inline-input user-email-input"
                        value="{{ user.email or '' }}"
                        placeholder="name@example.com">
+            </div>
+
+            <div class="users-inline-cell">
+                <input type="tel"
+                       class="users-inline-input user-phone-input"
+                       value="{{ user.phone or '' }}"
+                       placeholder="Phone">
             </div>
 
             <div class="users-inline-cell">
@@ -897,6 +911,7 @@ document.addEventListener("DOMContentLoaded", function () {
             area_name: row.querySelector(".user-area-input")?.value || "",
             store_number: row.querySelector(".user-store-input")?.value || "",
             email: row.querySelector(".user-email-input")?.value || "",
+            phone: row.querySelector(".user-phone-input")?.value || "",
             notification_email: row.querySelector(".user-notification-email-input")?.value || "",
             email_enabled: row.querySelector(".user-email-enabled-input")?.checked ? "1" : "0",
             verified_by: verifiedByInput ? verifiedByInput.value : "",
@@ -913,6 +928,7 @@ document.addEventListener("DOMContentLoaded", function () {
             area_name: row.dataset.lastSavedAreaName || "",
             store_number: row.dataset.lastSavedStoreNumber || "",
             email: row.dataset.lastSavedEmail || "",
+            phone: row.dataset.lastSavedPhone || "",
             notification_email: row.dataset.lastSavedNotificationEmail || "",
             email_enabled: row.dataset.lastSavedEmailEnabled || "0",
             verified_by: row.dataset.lastSavedVerifiedBy || "",
@@ -928,6 +944,7 @@ document.addEventListener("DOMContentLoaded", function () {
         row.dataset.lastSavedAreaName = state.area_name;
         row.dataset.lastSavedStoreNumber = state.store_number;
         row.dataset.lastSavedEmail = state.email;
+        row.dataset.lastSavedPhone = state.phone;
         row.dataset.lastSavedNotificationEmail = state.notification_email;
         row.dataset.lastSavedEmailEnabled = state.email_enabled;
         row.dataset.lastSavedVerifiedBy = state.verified_by;
@@ -963,6 +980,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const area = row.querySelector(".user-area-input")?.value || "";
         const store = row.querySelector(".user-store-input")?.value || "";
         const email = row.querySelector(".user-email-input")?.value || "";
+        const phone = row.querySelector(".user-phone-input")?.value || "";
 
         const nameEl = row.querySelector(".users-inline-name");
         const subEl = row.querySelector(".users-inline-sub");
@@ -1116,6 +1134,7 @@ document.addEventListener("DOMContentLoaded", function () {
             row.querySelector(".user-area-input"),
             row.querySelector(".user-store-input"),
             row.querySelector(".user-email-input"),
+            row.querySelector(".user-phone-input"),
             row.querySelector(".user-notification-email-input"),
             row.querySelector(".user-email-enabled-input"),
             details?.querySelector(".user-company-input"),

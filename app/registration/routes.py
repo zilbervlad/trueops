@@ -482,6 +482,7 @@ def approve_registration_request(registration_id):
         role=final_role,
         store_number=store_number,
         email=registration.email,
+        phone=registration.phone,
         notification_email=registration.email,
         email_enabled=True,
         is_active=True,

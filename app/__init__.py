@@ -95,6 +95,7 @@ def create_app():
         ensure_verification_reports_company_id_column()
         ensure_cash_logs_company_id_column()
         ensure_registration_requests_company_table()
+        ensure_users_phone_column()
         return "Database tables created"
 
     # -------------------------
@@ -113,6 +114,7 @@ def create_app():
         ensure_verification_reports_company_id_column()
         ensure_cash_logs_company_id_column()
         ensure_registration_requests_company_table()
+        ensure_users_phone_column()
 
         ensure_checklist_template_company_column()
         ensure_svr_template_company_column()
@@ -765,4 +767,22 @@ def ensure_registration_requests_company_table():
         db.session.rollback()
 
     db.session.commit()
+
+def ensure_users_phone_column():
+    """
+    Adds phone to users for registration/admin contact info without breaking live deploys.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    columns = {col["name"] for col in inspector.get_columns("users")}
+
+    if "phone" not in columns:
+        try:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(40)"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(40)"))
+
+        db.session.commit()
 
