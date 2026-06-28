@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -97,20 +98,13 @@ function RecentChatCard({ thread }) {
   );
 }
 
-export default function HomeScreen({ context }) {
+export default function HomeScreen({ context, navigation }) {
   const user = context?.user;
   const company = context?.company;
-  const stores = context?.stores || [];
-  const modules = context?.modules || [];
 
   const [threads, setThreads] = useState([]);
   const [threadsLoading, setThreadsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const activeTools = useMemo(
-    () => modules.filter((item) => item.enabled).length,
-    [modules]
-  );
 
   const recentThreads = useMemo(() => threads.slice(0, 3), [threads]);
 
@@ -172,23 +166,6 @@ export default function HomeScreen({ context }) {
           </Text>
         </View>
 
-        <View style={styles.grid}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricNumber}>{stores.length}</Text>
-            <Text style={styles.metricLabel}>Stores</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <Text style={styles.metricNumber}>{activeTools}</Text>
-            <Text style={styles.metricLabel}>Tools</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <Text style={styles.metricNumber}>{threads.length}</Text>
-            <Text style={styles.metricLabel}>Chats</Text>
-          </View>
-        </View>
-
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent chats</Text>
           <Text style={styles.sectionMeta}>Latest 3</Text>
@@ -218,29 +195,53 @@ export default function HomeScreen({ context }) {
         </View>
 
         <View style={styles.quickGrid}>
-          <View style={styles.quickCard}>
+          <Pressable
+            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
+            onPress={() => navigation?.navigate("Ops", { initialTool: "checklist", initialToolNonce: Date.now() })}
+          >
             <Text style={styles.quickIcon}>✓</Text>
             <View style={styles.quickBody}>
               <Text style={styles.quickTitle}>Checklist</Text>
-              <Text style={styles.quickText}>Daily store rhythm</Text>
+              <Text style={styles.quickText}>Open today’s checklist</Text>
             </View>
-          </View>
+            <Text style={styles.quickArrow}>›</Text>
+          </Pressable>
 
-          <View style={styles.quickCard}>
+          <Pressable
+            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
+            onPress={() => navigation?.navigate("Ops", { initialTool: "svr", initialToolNonce: Date.now() })}
+          >
             <Text style={styles.quickIcon}>↗</Text>
             <View style={styles.quickBody}>
               <Text style={styles.quickTitle}>SVR</Text>
-              <Text style={styles.quickText}>Visit report</Text>
+              <Text style={styles.quickText}>Start a visit report</Text>
             </View>
-          </View>
+            <Text style={styles.quickArrow}>›</Text>
+          </Pressable>
 
-          <View style={styles.quickCard}>
+          <Pressable
+            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
+            onPress={() => navigation?.navigate("Ops", { initialTool: "maintenance", initialToolNonce: Date.now() })}
+          >
             <Text style={styles.quickIcon}>⚙</Text>
             <View style={styles.quickBody}>
               <Text style={styles.quickTitle}>Maintenance</Text>
-              <Text style={styles.quickText}>Open tasks</Text>
+              <Text style={styles.quickText}>Review open tasks</Text>
             </View>
-          </View>
+            <Text style={styles.quickArrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
+            onPress={() => navigation?.navigate("Messages")}
+          >
+            <Text style={styles.quickIcon}>✉</Text>
+            <View style={styles.quickBody}>
+              <Text style={styles.quickTitle}>Messages</Text>
+              <Text style={styles.quickText}>Open store chats</Text>
+            </View>
+            <Text style={styles.quickArrow}>›</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -332,30 +333,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 20,
     marginTop: 5,
-  },
-  grid: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-  },
-  metricNumber: {
-    color: colors.text,
-    fontSize: 23,
-    fontWeight: "900",
-    marginBottom: 2,
-  },
-  metricLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900",
   },
   sectionHeader: {
     flexDirection: "row",
@@ -472,6 +449,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+  },
+  quickCardPressed: {
+    transform: [{ scale: 0.985 }],
+    backgroundColor: colors.primaryTint,
+    borderColor: colors.primarySoft,
   },
   quickIcon: {
     width: 34,

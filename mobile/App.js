@@ -12,7 +12,6 @@ import LoginScreen from "./src/screens/LoginScreen";
 import MessagesScreen from "./src/screens/MessagesScreen";
 import MoreScreen from "./src/screens/MoreScreen";
 import OpsScreen from "./src/screens/OpsScreen";
-import ReportsScreen from "./src/screens/ReportsScreen";
 import { colors } from "./src/styles/theme";
 import { registerForPushNotifications } from "./src/services/push";
 
@@ -85,17 +84,17 @@ export default function App() {
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: colors.faint,
             tabBarStyle: {
-              height: 76,
-              paddingTop: 7,
-              paddingBottom: 13,
+              height: 78,
+              paddingTop: 8,
+              paddingBottom: 14,
               borderTopColor: colors.borderSoft,
               borderTopWidth: 1,
               backgroundColor: colors.card,
               shadowColor: colors.shadow,
-              shadowOpacity: 0.08,
+              shadowOpacity: 0.07,
               shadowRadius: 18,
-              shadowOffset: { width: 0, height: -6 },
-              elevation: 10,
+              shadowOffset: { width: 0, height: -7 },
+              elevation: 8,
             },
             tabBarItemStyle: {
               paddingVertical: 3,
@@ -108,11 +107,10 @@ export default function App() {
             },
             tabBarIcon: ({ color, focused }) => {
               const icons = {
-                Home: "⌂",
-                Messages: "✉",
-                Ops: "✓",
-                Reports: "▦",
-                More: "•••",
+                Home: "H",
+                Messages: "M",
+                Ops: "O",
+                More: "•",
               };
 
               return (
@@ -124,12 +122,11 @@ export default function App() {
           })}
         >
           <Tab.Screen name="Home">
-            {() => <HomeScreen context={context} />}
+            {({ navigation }) => <HomeScreen context={context} navigation={navigation} />}
           </Tab.Screen>
 
           <Tab.Screen name="Messages" component={MessagesScreen} />
           <Tab.Screen name="Ops" component={OpsScreen} />
-          <Tab.Screen name="Reports" component={ReportsScreen} />
 
           <Tab.Screen name="More">
             {() => <MoreScreen context={context} onLogout={handleLogout} />}
@@ -148,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   tabIcon: {
-    minWidth: 28,
+    minWidth: 30,
     height: 24,
     borderRadius: 999,
     alignItems: "center",
@@ -158,7 +155,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   tabIconText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "900",
   },
 });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   createDirectThread,
+  deleteThreadMessage,
   ensureDefaultMessageThreads,
   hideThread,
   loadMessagePeople,
@@ -49,6 +51,8 @@ function formatTime(value) {
     return "";
   }
 }
+
+const QUICK_EMOJIS = ["👍", "❤️", "😂", "✅", "🙏", "🔥", "👀", "🎉"];
 
 function threadTypeLabel(type) {
   const labels = {
@@ -152,19 +156,36 @@ function PersonCard({ person, onPress }) {
   );
 }
 
-function MessageBubble({ message }) {
+function MessageBubble({ message, onDelete }) {
+  const canDelete = message.is_mine && !message.is_deleted;
+
   return (
     <View style={[styles.bubbleWrap, message.is_mine ? styles.bubbleWrapMine : styles.bubbleWrapOther]}>
       {!message.is_mine ? <Text style={styles.senderName}>{message.sender_name}</Text> : null}
 
-      <View style={[styles.bubble, message.is_mine ? styles.bubbleMine : styles.bubbleOther]}>
-        <Text style={[styles.bubbleText, message.is_mine ? styles.bubbleTextMine : styles.bubbleTextOther]}>
+      <Pressable
+        disabled={!canDelete}
+        onLongPress={() => canDelete && onDelete?.(message)}
+        style={({ pressed }) => [
+          styles.bubble,
+          message.is_mine ? styles.bubbleMine : styles.bubbleOther,
+          message.is_deleted && styles.bubbleDeleted,
+          pressed && canDelete && styles.bubblePressed,
+        ]}
+      >
+        <Text
+          style={[
+            styles.bubbleText,
+            message.is_mine ? styles.bubbleTextMine : styles.bubbleTextOther,
+            message.is_deleted && styles.bubbleTextDeleted,
+          ]}
+        >
           {message.body}
         </Text>
-      </View>
+      </Pressable>
 
       <Text style={[styles.messageTime, message.is_mine && styles.messageTimeMine]}>
-        {formatTime(message.created_at)}
+        {message.is_deleted ? "Deleted" : formatTime(message.created_at)}
       </Text>
     </View>
   );
@@ -235,19 +256,29 @@ export default function MessagesScreen() {
   async function handleHideThread(thread) {
     if (!thread || thread.thread_type !== "direct") return;
 
-    setError("");
-
-    try {
-      await hideThread(thread.id);
-
-      if (selectedThread?.id === thread.id) {
-        setSelectedThread(null);
-      }
-
-      await refreshThreads();
-    } catch (err) {
-      setError(err.message || "Could not hide thread.");
-    }
+    Alert.alert(
+      "Delete chat?",
+      "This removes the direct chat from your inbox.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await hideThread(thread.id);
+              setThreads((current) => current.filter((item) => item.id !== thread.id));
+              if (selectedThread?.id === thread.id) {
+                setSelectedThread(null);
+              }
+              await loadThreads({ quiet: true });
+            } catch (err) {
+              setError(err.message || "Could not delete chat.");
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function openThread(thread) {
@@ -265,6 +296,31 @@ export default function MessagesScreen() {
     } finally {
       setThreadLoading(false);
     }
+  }
+
+  async function handleDeleteMessage(message) {
+    if (!selectedThread || !message || message.is_deleted) return;
+
+    Alert.alert(
+      "Delete message?",
+      "This removes the message from this chat.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const data = await deleteThreadMessage(selectedThread.id, message.id);
+              setSelectedThread(data.thread);
+              await loadThreads({ quiet: true });
+            } catch (err) {
+              setError(err.message || "Could not delete message.");
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function handleSend() {
@@ -455,7 +511,7 @@ export default function MessagesScreen() {
                 onPress={() => handleHideThread(selectedThread)}
                 style={styles.hideButton}
               >
-                <Text style={styles.hideText}>Hide</Text>
+                <Text style={styles.hideText}>Delete</Text>
               </Pressable>
             ) : null}
           </View>
@@ -474,8 +530,31 @@ export default function MessagesScreen() {
                     <Text style={styles.emptyText}>Send the first message to get this chat moving.</Text>
                   </View>
                 ) : (
-                  messages.map((message) => <MessageBubble key={message.id} message={message} />)
+                  messages.map((message) => (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      onDelete={handleDeleteMessage}
+                    />
+                  ))
                 )}
+              </ScrollView>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.emojiRow}
+                keyboardShouldPersistTaps="handled"
+              >
+                {QUICK_EMOJIS.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    style={({ pressed }) => [styles.emojiButton, pressed && styles.emojiButtonPressed]}
+                    onPress={() => setDraft((current) => `${current}${emoji}`)}
+                  >
+                    <Text style={styles.emojiText}>{emoji}</Text>
+                  </Pressable>
+                ))}
               </ScrollView>
 
               <View style={styles.composer}>
@@ -924,6 +1003,10 @@ const styles = StyleSheet.create({
   bubbleTextOther: {
     color: colors.text,
   },
+  bubbleTextDeleted: {
+    fontStyle: "italic",
+    color: colors.faint,
+  },
   messageTime: {
     color: colors.faint,
     fontSize: 10,
@@ -933,6 +1016,30 @@ const styles = StyleSheet.create({
   },
   messageTimeMine: {
     marginRight: 4,
+  },
+  emojiRow: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  emojiButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiButtonPressed: {
+    transform: [{ scale: 0.94 }],
+    backgroundColor: colors.primaryTint,
+    borderColor: colors.primarySoft,
+  },
+  emojiText: {
+    fontSize: 20,
   },
   composer: {
     flexDirection: "row",

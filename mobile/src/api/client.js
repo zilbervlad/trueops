@@ -123,6 +123,12 @@ export async function sendThreadMessage(threadId, body) {
   });
 }
 
+export async function deleteThreadMessage(threadId, messageId) {
+  return request(`/api/mobile/messages/threads/${threadId}/messages/${messageId}/delete`, {
+    method: "POST",
+  });
+}
+
 export async function markThreadRead(threadId) {
   return request(`/api/mobile/messages/threads/${threadId}/read`, {
     method: "POST",

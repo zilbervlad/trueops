@@ -11,7 +11,7 @@ import {
 } from "react-native";
 
 import { login } from "../api/client";
-import { colors, radius } from "../styles/theme";
+import { colors, radius, shadow } from "../styles/theme";
 
 export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -38,11 +38,18 @@ export default function LoginScreen({ onLogin }) {
       style={styles.page}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.card}>
+      <View style={styles.brandBlock}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoMarkText}>T</Text>
+        </View>
         <Text style={styles.logo}>TrueOps</Text>
-        <Text style={styles.title}>TrueOps Login</Text>
+        <Text style={styles.tagline}>Restaurant operations, in one place.</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Sign in</Text>
         <Text style={styles.subtitle}>
-          Use your TrueOps username and password. Same account, same role, same store access.
+          Use your TrueOps account to access checklist, SVR, maintenance, and messages.
         </Text>
 
         <Text style={styles.label}>Username</Text>
@@ -91,30 +98,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
+  },
+  brandBlock: {
+    alignItems: "center",
+    marginBottom: 22,
+  },
+  logoMark: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: colors.navy,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    ...shadow.soft,
+  },
+  logoMarkText: {
+    color: "#fff",
+    fontSize: 30,
+    fontWeight: "900",
+    letterSpacing: -1,
   },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: 22,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
   },
   logo: {
-    fontSize: 32,
+    fontSize: 38,
     fontWeight: "900",
-    color: colors.primary,
-    marginBottom: 10,
+    color: colors.text,
+    letterSpacing: -1.3,
+  },
+  tagline: {
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: "800",
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "900",
     color: colors.text,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 15,
@@ -131,8 +160,8 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "#f8fafc",
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -145,7 +174,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   button: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.navy,
     borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: "center",

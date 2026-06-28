@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -58,8 +58,15 @@ function ModuleCard({ module, onPress }) {
   );
 }
 
-export default function OpsScreen() {
+export default function OpsScreen({ route }) {
   const [activeModule, setActiveModule] = useState("menu");
+
+  useEffect(() => {
+    const requestedTool = route?.params?.initialTool;
+    if (["checklist", "svr", "maintenance"].includes(requestedTool)) {
+      setActiveModule(requestedTool);
+    }
+  }, [route?.params?.initialTool, route?.params?.initialToolNonce]);
 
   if (activeModule === "checklist") {
     return <ChecklistScreen onBack={() => setActiveModule("menu")} />;
@@ -110,12 +117,6 @@ export default function OpsScreen() {
             onPress={() => setActiveModule(module.key)}
           />
         ))}
-
-        <View style={styles.smallNote}>
-          <Text style={styles.smallNoteText}>
-            UI pass 1: cleaner shell. Next pass tightens each module screen.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

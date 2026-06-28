@@ -481,6 +481,53 @@ def find_or_create_direct_thread():
     })
 
 
+@mobile_messages_bp.post("/threads/<int:thread_id>/messages/<int:message_id>/delete")
+def delete_thread_message(thread_id, message_id):
+    user = current_mobile_user()
+    if not user:
+        return mobile_error("Not authenticated.", 401)
+
+    thread = TrueOpsThread.query.filter_by(
+        id=thread_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not thread or not user_can_access_thread(user, thread):
+        return mobile_error("Thread not found.", 404)
+
+    message = TrueOpsThreadMessage.query.filter_by(
+        id=message_id,
+        thread_id=thread.id,
+        company_id=thread.company_id,
+    ).first()
+
+    if not message:
+        return mobile_error("Message not found.", 404)
+
+    role = (user.role or "").strip().lower()
+    can_delete_any = role in {"admin", "platform_admin", "hr"}
+    if message.sender_id != user.id and not can_delete_any:
+        return mobile_error("You can only delete your own messages.", 403)
+
+    message.is_deleted = True
+    message.body = ""
+    db.session.commit()
+
+    messages = (
+        TrueOpsThreadMessage.query
+        .filter_by(thread_id=thread.id, company_id=thread.company_id)
+        .order_by(TrueOpsThreadMessage.created_at.asc())
+        .limit(200)
+        .all()
+    )
+
+    return mobile_success({
+        "thread": serialize_thread_detail(thread, current_user=user, messages=messages),
+        "message": serialize_thread_message(message, current_user=user),
+    })
+
+
 @mobile_messages_bp.post("/threads/<int:thread_id>/hide")
 @mobile_login_required
 def hide_thread(thread_id):
