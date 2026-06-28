@@ -44,6 +44,7 @@ def create_app():
     from app.store_dashboard import store_dashboard_bp
     from app.mobile_api import register_mobile_api
     from app.public_site import public_site_bp
+    from app.registration.routes import registration_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -59,6 +60,7 @@ def create_app():
     app.register_blueprint(verification_bp)
     app.register_blueprint(store_dashboard_bp)
     app.register_blueprint(public_site_bp)
+    app.register_blueprint(registration_bp)
     register_mobile_api(app)
 
     # -------------------------
@@ -92,6 +94,7 @@ def create_app():
         ensure_svr_maintenance_company_id_columns()
         ensure_verification_reports_company_id_column()
         ensure_cash_logs_company_id_column()
+        ensure_registration_requests_company_table()
         return "Database tables created"
 
     # -------------------------
@@ -109,6 +112,7 @@ def create_app():
         ensure_svr_maintenance_company_id_columns()
         ensure_verification_reports_company_id_column()
         ensure_cash_logs_company_id_column()
+        ensure_registration_requests_company_table()
 
         ensure_checklist_template_company_column()
         ensure_svr_template_company_column()
@@ -730,6 +734,35 @@ def seed_svr_template():
                 is_active=True,
             )
         )
+
+    db.session.commit()
+
+def ensure_registration_requests_company_table():
+    """
+    Keeps the registration module safe for live multi-company TrueOps deploys.
+    db.create_all creates the table, this confirms the table exists and has company_id.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    if "pending_registration_requests" not in inspector.get_table_names():
+        db.create_all()
+        inspector = inspect(db.engine)
+
+    columns = {col["name"] for col in inspector.get_columns("pending_registration_requests")}
+
+    if "company_id" not in columns:
+        try:
+            db.session.execute(text("ALTER TABLE pending_registration_requests ADD COLUMN IF NOT EXISTS company_id INTEGER"))
+        except Exception:
+            db.session.rollback()
+            db.session.execute(text("ALTER TABLE pending_registration_requests ADD COLUMN company_id INTEGER"))
+
+    try:
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_pending_registration_requests_company_id ON pending_registration_requests (company_id)"))
+    except Exception:
+        db.session.rollback()
 
     db.session.commit()
 

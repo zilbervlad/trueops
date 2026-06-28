@@ -75,6 +75,39 @@ class User(db.Model):
         return self.notification_email or self.email
 
 
+class PendingRegistrationRequest(db.Model):
+    __tablename__ = "pending_registration_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False, index=True)
+
+    full_name = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(80), nullable=False, index=True)
+    email = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(40), nullable=True)
+
+    requested_position = db.Column(db.String(80), nullable=True)
+    store_number = db.Column(db.String(10), nullable=True)
+
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    status = db.Column(db.String(30), nullable=False, default="pending")
+    review_notes = db.Column(db.Text, nullable=True)
+
+    approved_role = db.Column(db.String(50), nullable=True)
+    created_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    reviewed_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    company = db.relationship("Company", backref=db.backref("pending_registration_requests", lazy=True))
+    created_user = db.relationship("User", foreign_keys=[created_user_id])
+    reviewed_by = db.relationship("User", foreign_keys=[reviewed_by_user_id])
+
+
 class Store(db.Model):
     __tablename__ = "stores"
 

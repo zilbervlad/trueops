@@ -216,6 +216,12 @@
                                class="{% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
                                 Users
                             </a>
+                            <a href="{{ url_for('registration.qr_center') }}" class="nav-link">
+                                QR Center
+                            </a>
+                            <a href="{{ url_for('registration.registration_requests') }}" class="nav-link">
+                                Registration
+                            </a>
                             {% endif %}
                         </div>
                     </details>
