@@ -13,7 +13,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserNotificationsUsageDescription": "TrueOps sends operations alerts, checklist updates, maintenance updates, and important store messages."
       },
-      "buildNumber": "4",
+      "buildNumber": "7",
       "icon": "./assets/images/icon.png"
     },
     "android": {
