@@ -307,13 +307,27 @@ def ensure_field_config_seeded():
     if existing_count > 0:
         return
 
-    source_fields = NightlyNumbersFieldConfig.query.filter(
-        NightlyNumbersFieldConfig.company_id.isnot(None),
-        NightlyNumbersFieldConfig.company_id != company_id,
-    ).order_by(
-        NightlyNumbersFieldConfig.sort_order.asc(),
-        NightlyNumbersFieldConfig.id.asc(),
-    ).all()
+    source_company_row = db.session.execute(
+        db.text("""
+            SELECT company_id
+            FROM nightly_numbers_field_config
+            WHERE company_id IS NOT NULL
+              AND company_id != :company_id
+            GROUP BY company_id
+            ORDER BY MIN(sort_order) ASC, MIN(id) ASC
+            LIMIT 1
+        """),
+        {"company_id": company_id},
+    ).first()
+
+    source_fields = []
+    if source_company_row:
+        source_fields = NightlyNumbersFieldConfig.query.filter(
+            NightlyNumbersFieldConfig.company_id == source_company_row[0]
+        ).order_by(
+            NightlyNumbersFieldConfig.sort_order.asc(),
+            NightlyNumbersFieldConfig.id.asc(),
+        ).all()
 
     if not source_fields:
         source_fields = NightlyNumbersFieldConfig.query.filter(
@@ -324,7 +338,14 @@ def ensure_field_config_seeded():
         ).all()
 
     if source_fields:
+        seen_field_keys = set()
+
         for field in source_fields:
+            if field.field_key in seen_field_keys:
+                continue
+
+            seen_field_keys.add(field.field_key)
+
             db.session.add(
                 NightlyNumbersFieldConfig(
                     company_id=company_id,
