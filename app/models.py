@@ -120,6 +120,7 @@ class Store(db.Model):
     store_number = db.Column(db.String(10), unique=True, nullable=False)
     store_name = db.Column(db.String(120), nullable=True)
     area_name = db.Column(db.String(120), nullable=False)
+    supervisor_name = db.Column(db.String(120), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
 
     company = db.relationship("Company", backref=db.backref("stores", lazy=True))
