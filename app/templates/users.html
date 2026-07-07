@@ -226,7 +226,7 @@
     .users-inline-head,
     .users-inline-row {
         display: grid;
-        grid-template-columns: minmax(260px, 1.7fr) 150px minmax(170px, 1fr) minmax(190px, 1fr) minmax(210px, 1.2fr) minmax(210px, 1.2fr) 105px 90px 105px;
+        grid-template-columns: minmax(260px, 2fr) 140px minmax(170px, 1fr) 110px 110px;
         gap: 0;
         align-items: stretch;
     }
@@ -479,7 +479,7 @@
 
         .users-inline-head,
         .users-inline-row {
-            min-width: 1480px;
+            min-width: 760px;
         }
     }
 
@@ -538,10 +538,6 @@
             <div class="users-inline-head-cell">User</div>
             <div class="users-inline-head-cell">Role</div>
             <div class="users-inline-head-cell">Assignment</div>
-            <div class="users-inline-head-cell">Primary Email</div>
-            <div class="users-inline-head-cell">Phone</div>
-            <div class="users-inline-head-cell">Notification Email</div>
-            <div class="users-inline-head-cell">Emails</div>
             <div class="users-inline-head-cell">Status</div>
             <div class="users-inline-head-cell">Details</div>
         </div>
@@ -609,38 +605,6 @@
                 </div>
             </div>
 
-            <div class="users-inline-cell">
-                <input type="email"
-                       class="users-inline-input user-email-input"
-                       value="{{ user.email or '' }}"
-                       placeholder="name@example.com">
-            </div>
-
-            <div class="users-inline-cell">
-                <input type="tel"
-                       class="users-inline-input user-phone-input"
-                       value="{{ user.phone or '' }}"
-                       placeholder="Phone">
-            </div>
-
-            <div class="users-inline-cell">
-                <input type="email"
-                       class="users-inline-input user-notification-email-input"
-                       value="{{ user.notification_email or '' }}"
-                       placeholder="Optional override">
-            </div>
-
-            <div class="users-inline-cell">
-                <div class="users-inline-checkbox-wrap">
-                    <label class="users-inline-checkbox">
-                        <input type="checkbox"
-                               class="user-email-enabled-input"
-                               {% if user.email_enabled %}checked{% endif %}>
-                        Enabled
-                    </label>
-                </div>
-            </div>
-
             <div class="users-inline-cell users-inline-status" aria-live="polite"></div>
 
             <div class="users-inline-cell">
@@ -687,6 +651,42 @@
                            value="{{ user.username }}"
                            {% if user.role in ['admin', 'platform_admin'] %}disabled{% endif %}>
                 </div>
+            </div>
+
+            <div class="users-inline-section-label">Contact</div>
+            <div class="users-inline-details-grid">
+                <div class="form-group compact-group">
+                    <label>Primary Email</label>
+                    <input type="email"
+                           class="users-inline-input user-email-input"
+                           value="{{ user.email or '' }}"
+                           placeholder="name@example.com">
+                </div>
+
+                <div class="form-group compact-group">
+                    <label>Phone</label>
+                    <input type="tel"
+                           class="users-inline-input user-phone-input"
+                           value="{{ user.phone or '' }}"
+                           placeholder="Phone">
+                </div>
+
+                <div class="form-group compact-group">
+                    <label>Notification Email</label>
+                    <input type="email"
+                           class="users-inline-input user-notification-email-input"
+                           value="{{ user.notification_email or '' }}"
+                           placeholder="Optional override">
+                </div>
+            </div>
+
+            <div class="admin-check-row compact-actions" style="margin-bottom: 12px;">
+                <label class="checkbox-inline">
+                    <input type="checkbox"
+                           class="user-email-enabled-input"
+                           {% if user.email_enabled %}checked{% endif %}>
+                    Enable automated emails for this user
+                </label>
             </div>
 
             <div class="users-inline-section-label">Optional</div>
