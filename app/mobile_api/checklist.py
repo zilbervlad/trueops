@@ -257,6 +257,81 @@ def checklist_stores():
     })
 
 
+
+
+@mobile_checklist_bp.get("/heatmap")
+@mobile_login_required
+def checklist_heatmap():
+    user = g.mobile_user
+    selected_date = parse_date((request.args.get("date") or "").strip())
+
+    if not selected_date:
+        return mobile_error("Invalid date.", 400)
+
+    stores = visible_store_query(user).order_by(Store.store_number.asc()).all()
+    store_numbers = [str(store.store_number) for store in stores]
+
+    checklists = {
+        str(row.store_number): row
+        for row in DailyChecklist.query.filter(
+            DailyChecklist.company_id == user.company_id,
+            DailyChecklist.checklist_date == selected_date,
+            DailyChecklist.store_number.in_(store_numbers),
+        ).all()
+    }
+
+    rows = []
+
+    for store in stores:
+        store_number = str(store.store_number)
+        daily = checklists.get(store_number)
+
+        percent = float(daily.percent_complete or 0) if daily else 0
+        integrity = float(daily.integrity_score or 0) if daily else 0
+        manager_walk = calculate_manager_walk_integrity(daily) if daily else 0
+
+        if percent >= 90 and integrity >= 90:
+            status = "green"
+            status_label = "Strong"
+        elif percent >= 70:
+            status = "yellow"
+            status_label = "Watch"
+        elif daily:
+            status = "red"
+            status_label = "Behind"
+        else:
+            status = "gray"
+            status_label = "Not started"
+
+        rows.append({
+            "store_number": store.store_number,
+            "name": getattr(store, "store_name", "") or f"Store {store.store_number}",
+            "area_name": store.area_name,
+            "percent_complete": round(percent),
+            "integrity_score": round(integrity),
+            "manager_walk_integrity": round(manager_walk),
+            "status": status,
+            "status_label": status_label,
+            "has_checklist": bool(daily),
+        })
+
+    summary = {
+        "total": len(rows),
+        "green": sum(1 for row in rows if row["status"] == "green"),
+        "yellow": sum(1 for row in rows if row["status"] == "yellow"),
+        "red": sum(1 for row in rows if row["status"] == "red"),
+        "gray": sum(1 for row in rows if row["status"] == "gray"),
+        "average_percent": round(sum(row["percent_complete"] for row in rows) / len(rows)) if rows else 0,
+    }
+
+    return jsonify({
+        "success": True,
+        "date": selected_date.isoformat(),
+        "summary": summary,
+        "stores": rows,
+    })
+
+
 @mobile_checklist_bp.get("")
 @mobile_checklist_bp.get("/")
 @mobile_login_required
