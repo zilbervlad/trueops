@@ -34,7 +34,7 @@ def visible_store_query(user):
         is_active=True,
     )
 
-    if role in {"admin", "hr", "coach", "maintenance"}:
+    if role in {"platform_admin", "admin", "hr", "coach", "maintenance"}:
         return query
 
     if role == "supervisor":
