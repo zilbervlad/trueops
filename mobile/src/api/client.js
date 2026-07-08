@@ -116,10 +116,13 @@ export async function loadThread(threadId) {
   return request(`/api/mobile/messages/threads/${threadId}`);
 }
 
-export async function sendThreadMessage(threadId, body) {
+export async function sendThreadMessage(threadId, body, options = {}) {
   return request(`/api/mobile/messages/threads/${threadId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({
+      body,
+      reply_to_message_id: options.replyToMessageId || null,
+    }),
   });
 }
 
@@ -302,4 +305,12 @@ export async function removeThreadMember(threadId, userId) {
 
 export async function fetchMessageReadReceipts(threadId, messageId) {
   return request(`/api/mobile/messages/threads/${threadId}/messages/${messageId}/reads`);
+}
+
+
+export async function toggleMessageReaction(threadId, messageId, emoji) {
+  return request(`/api/mobile/messages/threads/${threadId}/messages/${messageId}/reactions`, {
+    method: "POST",
+    body: JSON.stringify({ emoji }),
+  });
 }

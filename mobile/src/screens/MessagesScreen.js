@@ -28,6 +28,7 @@ import {
   markThreadRead,
   removeThreadMember,
   sendThreadMessage,
+  toggleMessageReaction,
 } from "../api/client";
 import { colors, radius, spacing } from "../styles/theme";
 
@@ -224,7 +225,7 @@ function CandidateRow({ person, onAdd, disabled }) {
   );
 }
 
-function MessageBubble({ message, onDelete, onReadReceipts }) {
+function MessageBubble({ message, onDelete, onReadReceipts, onMessageActions }) {
   const canDelete = message.is_mine && !message.is_deleted;
 
   return (
@@ -234,7 +235,7 @@ function MessageBubble({ message, onDelete, onReadReceipts }) {
       <Pressable
         disabled={message.is_deleted}
         onPress={() => onReadReceipts?.(message)}
-        onLongPress={() => canDelete && onDelete?.(message)}
+        onLongPress={() => onMessageActions?.(message)}
         style={({ pressed }) => [
           styles.bubble,
           message.is_mine ? styles.bubbleMine : styles.bubbleOther,
@@ -242,6 +243,17 @@ function MessageBubble({ message, onDelete, onReadReceipts }) {
           pressed && canDelete && styles.bubblePressed,
         ]}
       >
+        {message.reply_to ? (
+          <View style={styles.replyPreview}>
+            <Text style={styles.replyPreviewSender} numberOfLines={1}>
+              Replying to {message.reply_to.sender_name}
+            </Text>
+            <Text style={styles.replyPreviewBody} numberOfLines={2}>
+              {message.reply_to.body}
+            </Text>
+          </View>
+        ) : null}
+
         <Text
           style={[
             styles.bubbleText,
@@ -252,6 +264,21 @@ function MessageBubble({ message, onDelete, onReadReceipts }) {
           {message.body}
         </Text>
       </Pressable>
+
+      {(message.reactions || []).length > 0 ? (
+        <View style={[styles.reactionRow, message.is_mine && styles.reactionRowMine]}>
+          {message.reactions.map((reaction) => (
+            <View
+              key={reaction.emoji}
+              style={[styles.reactionPill, reaction.mine && styles.reactionPillMine]}
+            >
+              <Text style={styles.reactionText}>
+                {reaction.emoji} {reaction.count}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <Text style={[styles.messageTime, message.is_mine && styles.messageTimeMine]}>
         {message.is_deleted ? "Deleted" : formatTime(message.created_at)}
@@ -267,6 +294,7 @@ export default function MessagesScreen({ route }) {
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
+  const [replyingTo, setReplyingTo] = useState(null);
   const [sending, setSending] = useState(false);
   const [showPeople, setShowPeople] = useState(false);
   const [people, setPeople] = useState([]);
@@ -423,6 +451,7 @@ export default function MessagesScreen({ route }) {
 
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
+      setReplyingTo(null);
       scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
@@ -460,6 +489,50 @@ export default function MessagesScreen({ route }) {
     );
   }
 
+
+
+  function handleMessageActions(message) {
+    if (!message || message.is_deleted) return;
+
+    const options = [
+      {
+        text: "Reply",
+        onPress: () => setReplyingTo(message),
+      },
+      ...["👍", "❤️", "😂", "👀", "✅"].map((emoji) => ({
+        text: emoji,
+        onPress: () => handleToggleReaction(message, emoji),
+      })),
+      {
+        text: "Read Receipts",
+        onPress: () => handleReadReceipts(message),
+      },
+    ];
+
+    if (message.is_mine) {
+      options.push({
+        text: "Delete",
+        style: "destructive",
+        onPress: () => handleDeleteMessage(message),
+      });
+    }
+
+    options.push({ text: "Cancel", style: "cancel" });
+
+    Alert.alert("Message", "Choose an action", options);
+  }
+
+  async function handleToggleReaction(message, emoji) {
+    if (!selectedThread?.id || !message?.id) return;
+
+    try {
+      await toggleMessageReaction(selectedThread.id, message.id, emoji);
+      const data = await loadThread(selectedThread.id);
+      setSelectedThread(data.thread);
+    } catch (err) {
+      Alert.alert("Could not react", err.message || "Please try again.");
+    }
+  }
 
   async function handleReadReceipts(message) {
     if (!selectedThread?.id || !message?.id || message.is_deleted) return;
@@ -525,10 +598,13 @@ export default function MessagesScreen({ route }) {
     setDraft("");
 
     try {
-      await sendThreadMessage(selectedThread.id, body);
+      await sendThreadMessage(selectedThread.id, body, {
+        replyToMessageId: replyingTo?.id,
+      });
       await markThreadRead(selectedThread.id);
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
+      setReplyingTo(null);
       scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
@@ -859,12 +935,29 @@ export default function MessagesScreen({ route }) {
                       message={message}
                       onDelete={handleDeleteMessage}
                       onReadReceipts={handleReadReceipts}
+                      onMessageActions={handleMessageActions}
                     />
                   ))
                 )}
               </ScrollView>
 
               <View style={styles.composerDock}>
+                {replyingTo ? (
+                  <View style={styles.replyComposerPreview}>
+                    <View style={styles.replyComposerText}>
+                      <Text style={styles.replyPreviewSender} numberOfLines={1}>
+                        Replying to {replyingTo.sender_name}
+                      </Text>
+                      <Text style={styles.replyPreviewBody} numberOfLines={1}>
+                        {replyingTo.body}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => setReplyingTo(null)} style={styles.cancelReplyButton}>
+                      <Text style={styles.cancelReplyText}>×</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
                 <View style={styles.composer}>
                   <TextInput
                     value={draft}
@@ -1355,6 +1448,79 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     flexGrow: 1,
   },
+
+  replyPreview: {
+    borderLeftWidth: 3,
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    paddingLeft: 8,
+    marginBottom: 7,
+    opacity: 0.95,
+  },
+  replyPreviewSender: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: colors.primarySoft,
+  },
+  replyPreviewBody: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.muted,
+    marginTop: 1,
+  },
+  reactionRow: {
+    flexDirection: "row",
+    gap: 5,
+    marginTop: 4,
+    flexWrap: "wrap",
+  },
+  reactionRowMine: {
+    justifyContent: "flex-end",
+  },
+  reactionPill: {
+    backgroundColor: "#ffffff",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  reactionPillMine: {
+    borderColor: colors.primary,
+  },
+  reactionText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: colors.text,
+  },
+  replyComposerPreview: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  replyComposerText: {
+    flex: 1,
+  },
+  cancelReplyButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.chip,
+  },
+  cancelReplyText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
   bubbleWrap: {
     marginBottom: spacing.md,
     maxWidth: "82%",
