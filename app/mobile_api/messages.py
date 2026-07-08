@@ -302,8 +302,11 @@ def list_threads():
                     TrueOpsThreadMember.thread_id.label("thread_id"),
                     func.count(TrueOpsThreadMember.id).label("member_count"),
                 )
+                .join(User, User.id == TrueOpsThreadMember.user_id)
+                .join(TrueOpsThread, TrueOpsThread.id == TrueOpsThreadMember.thread_id)
                 .filter(TrueOpsThreadMember.thread_id.in_(thread_ids))
                 .filter(TrueOpsThreadMember.hidden_at.is_(None))
+                .filter(User.company_id == TrueOpsThread.company_id)
                 .group_by(TrueOpsThreadMember.thread_id)
                 .all()
             )
@@ -479,6 +482,7 @@ def list_thread_members(thread_id):
         .join(User)
         .filter(TrueOpsThreadMember.thread_id == thread.id)
         .filter(TrueOpsThreadMember.hidden_at.is_(None))
+        .filter(User.company_id == thread.company_id)
         .order_by(User.name.asc())
         .all()
     )
@@ -657,6 +661,7 @@ def get_message_read_receipts(thread_id, message_id):
         .join(User)
         .filter(TrueOpsThreadMember.thread_id == thread.id)
         .filter(TrueOpsThreadMember.hidden_at.is_(None))
+        .filter(User.company_id == thread.company_id)
         .order_by(User.name.asc())
         .all()
     )
@@ -1022,8 +1027,11 @@ def ensure_default_threads():
                     TrueOpsThreadMember.thread_id.label("thread_id"),
                     func.count(TrueOpsThreadMember.id).label("member_count"),
                 )
+                .join(User, User.id == TrueOpsThreadMember.user_id)
+                .join(TrueOpsThread, TrueOpsThread.id == TrueOpsThreadMember.thread_id)
                 .filter(TrueOpsThreadMember.thread_id.in_(thread_ids))
                 .filter(TrueOpsThreadMember.hidden_at.is_(None))
+                .filter(User.company_id == TrueOpsThread.company_id)
                 .group_by(TrueOpsThreadMember.thread_id)
                 .all()
             )
