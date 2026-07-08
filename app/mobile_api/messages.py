@@ -360,6 +360,240 @@ def list_threads():
     })
 
 
+
+
+def serialize_group_member(membership):
+    user = membership.user
+
+    return {
+        "membership_id": membership.id,
+        "user_id": user.id if user else None,
+        "name": user.name if user else "Unknown user",
+        "username": user.username if user else "",
+        "role": user.role if user else "",
+        "store_number": user.store_number if user else "",
+        "area_name": user.area_name if user else "",
+        "member_role": membership.member_role,
+        "joined_at": membership.joined_at.isoformat() if membership.joined_at else None,
+    }
+
+
+def serialize_group_candidate(user):
+    return {
+        "id": user.id,
+        "name": user.name,
+        "username": user.username,
+        "role": user.role,
+        "store_number": user.store_number,
+        "area_name": user.area_name,
+        "email": user.email,
+        "phone": getattr(user, "phone", "") or "",
+    }
+
+
+def user_can_manage_thread(user, thread):
+    if not user_can_access_thread(user, thread):
+        return False
+
+    if thread.thread_type == "direct":
+        return False
+
+    role = normalize_role(user)
+
+    if role in {"platform_admin", "admin", "hr", "coach"}:
+        return True
+
+    if role == "supervisor":
+        if thread.thread_type == "area":
+            return bool(user.area_name and user.area_name == thread.area_name)
+
+        if thread.thread_type == "store":
+            store = Store.query.filter_by(
+                company_id=user.company_id,
+                store_number=thread.store_number,
+                is_active=True,
+            ).first()
+
+            return bool(store and user.area_name and store.area_name == user.area_name)
+
+    return False
+
+
+def user_allowed_as_group_candidate(actor, thread, candidate):
+    if not actor or not thread or not candidate:
+        return False
+
+    if candidate.company_id != actor.company_id:
+        return False
+
+    if not candidate.is_active:
+        return False
+
+    role = normalize_role(actor)
+
+    if role in {"platform_admin", "admin", "hr", "coach"}:
+        return True
+
+    if role == "supervisor":
+        if thread.thread_type == "area":
+            return bool(actor.area_name and candidate.area_name == actor.area_name)
+
+        if thread.thread_type == "store":
+            return bool(thread.store_number and candidate.store_number == thread.store_number)
+
+    return False
+
+
+def load_manageable_thread(user, thread_id):
+    thread = TrueOpsThread.query.filter_by(
+        id=thread_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not thread or not user_can_access_thread(user, thread):
+        return None
+
+    if thread.thread_type == "direct":
+        return None
+
+    return thread
+
+
+@mobile_messages_bp.get("/threads/<int:thread_id>/members")
+@mobile_login_required
+def list_thread_members(thread_id):
+    user = g.mobile_user
+    thread = load_manageable_thread(user, thread_id)
+
+    if not thread:
+        return mobile_error("Thread not found.", 404)
+
+    memberships = (
+        TrueOpsThreadMember.query
+        .join(User)
+        .filter(TrueOpsThreadMember.thread_id == thread.id)
+        .filter(TrueOpsThreadMember.hidden_at.is_(None))
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    member_user_ids = {
+        membership.user_id
+        for membership in memberships
+        if membership.user_id
+    }
+
+    can_manage = user_can_manage_thread(user, thread)
+
+    candidates = []
+
+    if can_manage:
+        possible_users = (
+            User.query
+            .filter(User.company_id == user.company_id)
+            .filter(User.is_active.is_(True))
+            .filter(~User.id.in_(member_user_ids) if member_user_ids else True)
+            .order_by(User.name.asc())
+            .all()
+        )
+
+        candidates = [
+            serialize_group_candidate(candidate)
+            for candidate in possible_users
+            if user_allowed_as_group_candidate(user, thread, candidate)
+        ]
+
+    return jsonify({
+        "success": True,
+        "thread": {
+            "id": thread.id,
+            "name": thread.name,
+            "thread_type": thread.thread_type,
+            "store_number": thread.store_number,
+            "area_name": thread.area_name,
+            "role_key": thread.role_key,
+        },
+        "can_manage": can_manage,
+        "members": [serialize_group_member(membership) for membership in memberships],
+        "candidates": candidates,
+    })
+
+
+@mobile_messages_bp.post("/threads/<int:thread_id>/members")
+@mobile_login_required
+def add_thread_member(thread_id):
+    user = g.mobile_user
+    thread = load_manageable_thread(user, thread_id)
+
+    if not thread:
+        return mobile_error("Thread not found.", 404)
+
+    if not user_can_manage_thread(user, thread):
+        return mobile_error("You do not have permission to manage this group.", 403)
+
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return mobile_error("user_id is required.", 400)
+
+    candidate = User.query.filter_by(
+        id=user_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not candidate:
+        return mobile_error("User not found.", 404)
+
+    if not user_allowed_as_group_candidate(user, thread, candidate):
+        return mobile_error("You cannot add this user to this group.", 403)
+
+    membership = ensure_thread_member(thread.id, candidate.id)
+    membership.member_role = membership.member_role or "member"
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "member": serialize_group_member(membership),
+    })
+
+
+@mobile_messages_bp.post("/threads/<int:thread_id>/members/<int:user_id>/remove")
+@mobile_login_required
+def remove_thread_member(thread_id, user_id):
+    user = g.mobile_user
+    thread = load_manageable_thread(user, thread_id)
+
+    if not thread:
+        return mobile_error("Thread not found.", 404)
+
+    if not user_can_manage_thread(user, thread):
+        return mobile_error("You do not have permission to manage this group.", 403)
+
+    if int(user_id) == int(user.id):
+        return mobile_error("You cannot remove yourself from this group.", 400)
+
+    membership = TrueOpsThreadMember.query.filter_by(
+        thread_id=thread.id,
+        user_id=user_id,
+    ).first()
+
+    if not membership:
+        return mobile_error("Member not found.", 404)
+
+    membership.hidden_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+    })
+
+
 @mobile_messages_bp.get("/threads/<int:thread_id>")
 @mobile_login_required
 def get_thread(thread_id):
