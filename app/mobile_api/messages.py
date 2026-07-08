@@ -626,6 +626,91 @@ def get_thread(thread_id):
     })
 
 
+
+
+@mobile_messages_bp.get("/threads/<int:thread_id>/messages/<int:message_id>/reads")
+@mobile_login_required
+def get_message_read_receipts(thread_id, message_id):
+    user = g.mobile_user
+
+    thread = TrueOpsThread.query.filter_by(
+        id=thread_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not thread or not user_can_access_thread(user, thread):
+        return mobile_error("Thread not found.", 404)
+
+    message = TrueOpsThreadMessage.query.filter_by(
+        id=message_id,
+        thread_id=thread.id,
+        company_id=thread.company_id,
+    ).first()
+
+    if not message:
+        return mobile_error("Message not found.", 404)
+
+    memberships = (
+        TrueOpsThreadMember.query
+        .join(User)
+        .filter(TrueOpsThreadMember.thread_id == thread.id)
+        .filter(TrueOpsThreadMember.hidden_at.is_(None))
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    readers = []
+    unread = []
+
+    for membership in memberships:
+        member = membership.user
+
+        if not member:
+            continue
+
+        # Sender obviously has seen their own message.
+        if member.id == message.sender_user_id:
+            has_read = True
+            read_at = message.created_at
+        else:
+            has_read = bool(
+                membership.last_read_at
+                and message.created_at
+                and membership.last_read_at >= message.created_at
+            )
+            read_at = membership.last_read_at if has_read else None
+
+        payload = {
+            "user_id": member.id,
+            "name": member.name,
+            "username": member.username,
+            "role": member.role,
+            "store_number": member.store_number,
+            "area_name": member.area_name,
+            "read": has_read,
+            "read_at": read_at.isoformat() if read_at else None,
+        }
+
+        if has_read:
+            readers.append(payload)
+        else:
+            unread.append(payload)
+
+    return jsonify({
+        "success": True,
+        "message": {
+            "id": message.id,
+            "created_at": message.created_at.isoformat() if message.created_at else None,
+            "sender_user_id": message.sender_user_id,
+        },
+        "read_count": len(readers),
+        "unread_count": len(unread),
+        "readers": readers,
+        "unread": unread,
+    })
+
+
 @mobile_messages_bp.post("/threads/<int:thread_id>/messages")
 @mobile_login_required
 def create_thread_message(thread_id):
