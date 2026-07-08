@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdminScreen from "./AdminScreen";
@@ -25,6 +25,21 @@ function isAdmin(user) {
 
 function openUrl(url) {
   Linking.openURL(url);
+}
+
+function confirmSignOut(onLogout) {
+  Alert.alert(
+    "Sign out?",
+    "You will return to the TrueOps login screen.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: onLogout,
+      },
+    ]
+  );
 }
 
 function MenuCard({ title, text, onPress, danger = false }) {
@@ -105,8 +120,8 @@ export default function MoreScreen({ context, onLogout }) {
           danger
         />
 
-        <Pressable style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Log Out</Text>
+        <Pressable style={styles.logoutButton} onPress={() => confirmSignOut(onLogout)}>
+          <Text style={styles.logoutText}>Sign Out</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

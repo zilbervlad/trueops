@@ -43,8 +43,11 @@ export default function App() {
   }, []);
 
   async function handleLogout() {
-    await logout();
-    setContext(null);
+    try {
+      await logout();
+    } finally {
+      setContext(null);
+    }
   }
 
   if (booting) {
