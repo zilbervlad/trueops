@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdminScreen from "./AdminScreen";
+import { fetchAdminCompanies, loadMe, switchAdminCompany } from "../api/client";
 import { colors, spacing } from "../styles/theme";
 
 const PUBLIC_URLS = {
@@ -21,6 +22,10 @@ function prettyRole(role) {
 function isAdmin(user) {
   const role = String(user?.role || "").toLowerCase();
   return role === "admin" || role === "platform_admin";
+}
+
+function isPlatformAdmin(user) {
+  return String(user?.role || "").toLowerCase() === "platform_admin";
 }
 
 function openUrl(url) {
@@ -54,9 +59,52 @@ function MenuCard({ title, text, onPress, danger = false }) {
   );
 }
 
-export default function MoreScreen({ context, onLogout }) {
+export default function MoreScreen({ context, onLogout, onContextChange }) {
   const [activeScreen, setActiveScreen] = useState("menu");
+  const [companies, setCompanies] = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [companiesError, setCompaniesError] = useState("");
+  const [switchingCompanyId, setSwitchingCompanyId] = useState(null);
   const user = context?.user;
+
+  async function loadCompanies() {
+    if (!isPlatformAdmin(user)) return;
+
+    try {
+      setCompaniesLoading(true);
+      setCompaniesError("");
+      const data = await fetchAdminCompanies();
+      setCompanies(data.companies || []);
+    } catch (err) {
+      setCompaniesError(err.message || "Could not load companies.");
+    } finally {
+      setCompaniesLoading(false);
+    }
+  }
+
+  async function handleSwitchCompany(company) {
+    if (!company?.id || company.id === user?.company_id || switchingCompanyId) return;
+
+    try {
+      setSwitchingCompanyId(company.id);
+      await switchAdminCompany(company.id);
+      const data = await loadMe();
+
+      if (onContextChange) {
+        onContextChange(data.context);
+      }
+
+      Alert.alert("Company switched", `Now viewing ${company.name}.`);
+    } catch (err) {
+      Alert.alert("Could not switch company", err.message || "Please try again.");
+    } finally {
+      setSwitchingCompanyId(null);
+    }
+  }
+
+  useEffect(() => {
+    loadCompanies();
+  }, [user?.id, user?.company_id, user?.role]);
 
   if (activeScreen === "admin") {
     return <AdminScreen onBack={() => setActiveScreen("menu")} />;
@@ -81,6 +129,56 @@ export default function MoreScreen({ context, onLogout }) {
             <Text style={styles.profileMeta}>{prettyRole(user?.role)} · @{user?.username}</Text>
           </View>
         </View>
+
+        {isPlatformAdmin(user) && (
+          <>
+            <Text style={styles.sectionTitle}>Company Switcher</Text>
+
+            <View style={styles.companyCard}>
+              {companiesLoading ? (
+                <View style={styles.companyLoadingRow}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={styles.companyLoadingText}>Loading companies…</Text>
+                </View>
+              ) : companiesError ? (
+                <View style={styles.companyLoadingRow}>
+                  <Text style={styles.companyErrorText}>{companiesError}</Text>
+                </View>
+              ) : companies.length === 0 ? (
+                <View style={styles.companyLoadingRow}>
+                  <Text style={styles.companyLoadingText}>No companies available.</Text>
+                </View>
+              ) : (
+                companies.map((company) => {
+                  const active = company.id === user?.company_id;
+                  const switching = switchingCompanyId === company.id;
+
+                  return (
+                    <Pressable
+                      key={company.id}
+                      style={[styles.companyRow, active && styles.companyRowActive]}
+                      onPress={() => handleSwitchCompany(company)}
+                      disabled={active || switchingCompanyId}
+                    >
+                      <View style={styles.companyTextWrap}>
+                        <Text style={[styles.companyName, active && styles.companyNameActive]}>
+                          {company.name}
+                        </Text>
+                        <Text style={styles.companySlug}>
+                          {company.slug || `company-${company.id}`}
+                        </Text>
+                      </View>
+
+                      <Text style={[styles.companyStatus, active && styles.companyStatusActive]}>
+                        {switching ? "Switching…" : active ? "Active" : "Switch"}
+                      </Text>
+                    </Pressable>
+                  );
+                })
+              )}
+            </View>
+          </>
+        )}
 
         {isAdmin(user) && (
           <>
@@ -170,6 +268,65 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 10,
   },
+
+  companyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  companyLoadingRow: {
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  companyLoadingText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  companyRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  companyRowActive: {
+    backgroundColor: colors.primaryTint,
+  },
+  companyTextWrap: {
+    flex: 1,
+  },
+  companyName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  companyNameActive: {
+    color: colors.primaryDark,
+  },
+  companySlug: {
+    color: colors.faint,
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  companyStatus: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  companyStatusActive: {
+    color: colors.primaryDark,
+  },
+
   menuCard: {
     backgroundColor: colors.card,
     borderRadius: 21,

@@ -1,507 +1,426 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
-  ScrollView,
+  RefreshControl,
+  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-import { loadThreads } from "../api/client";
+import { fetchChecklistHeatmap } from "../api/client";
 import { colors } from "../styles/theme";
 
-function prettyRole(role) {
-  return String(role || "User")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+function firstName(context) {
+  return (context?.user?.name || context?.user?.username || "there").split(" ")[0];
 }
 
-function formatTime(value) {
-  if (!value) return "";
-
-  try {
-    const date = new Date(value);
-    return date.toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
+function todayLabel() {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function initials(name) {
-  const parts = String(name || "T")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  return String(name || "T").slice(0, 1).toUpperCase();
+function statusColor(status) {
+  if (status === "green") return colors.success;
+  if (status === "yellow") return colors.warning;
+  if (status === "red") return colors.danger;
+  return colors.faint;
 }
 
-function getGreeting(name) {
-  const hour = new Date().getHours();
-  const firstName = String(name || "there").trim().split(/\s+/)[0];
-
-  if (hour < 12) return `Good morning, ${firstName}`;
-  if (hour < 17) return `Good afternoon, ${firstName}`;
-  return `Good evening, ${firstName}`;
-}
-
-function SummaryStat({ value, label }) {
-  return (
-    <View style={styles.summaryStat}>
-      <Text style={styles.summaryStatValue}>{value}</Text>
-      <Text style={styles.summaryStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function ChatRow({ thread, onPress }) {
-  const last = thread.last_message;
-  const preview = last
-    ? `${last.is_mine ? "You" : last.sender_name}: ${last.body}`
-    : "No messages yet";
+function HeatmapStoreCard({ item, onPress }) {
+  const dotColor = statusColor(item.status);
 
   return (
-    <Pressable style={({ pressed }) => [styles.chatRow, pressed && styles.chatRowPressed]} onPress={onPress}>
-      <View style={styles.chatAvatar}>
-        <Text style={styles.chatAvatarText}>{initials(thread.name)}</Text>
-      </View>
+    <Pressable style={({ pressed }) => [styles.storeCard, pressed && styles.cardPressed]} onPress={onPress}>
+      <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
 
-      <View style={styles.chatBody}>
-        <View style={styles.chatTop}>
-          <Text style={styles.chatName} numberOfLines={1}>
-            {thread.name}
-          </Text>
-
-          {thread.unread_count > 0 ? (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>{thread.unread_count}</Text>
-            </View>
-          ) : null}
+      <View style={styles.storeMain}>
+        <View style={styles.storeTopRow}>
+          <Text style={styles.storeNumber}>#{item.store_number}</Text>
+          <Text style={styles.statusLabel}>{item.status_label}</Text>
         </View>
 
-        <Text style={styles.chatPreview} numberOfLines={1}>
-          {preview}
+        <Text style={styles.storeName} numberOfLines={1}>
+          {item.name}
         </Text>
 
-        <Text style={styles.chatMeta}>
-          {last?.created_at ? formatTime(last.created_at) : "Recent conversation"}
+        <Text style={styles.areaName} numberOfLines={1}>
+          {item.area_name || "No area"}
         </Text>
+      </View>
+
+      <View style={styles.scoreBlock}>
+        <Text style={styles.scoreNumber}>{item.percent_complete}%</Text>
+        <Text style={styles.scoreLabel}>Book</Text>
+      </View>
+
+      <View style={styles.scoreBlock}>
+        <Text style={styles.scoreNumber}>{item.integrity_score}%</Text>
+        <Text style={styles.scoreLabel}>Integrity</Text>
       </View>
     </Pressable>
   );
 }
 
 export default function HomeScreen({ context, navigation }) {
-  const user = context?.user;
-  const company = context?.company;
+  const [heatmap, setHeatmap] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
-  const [threads, setThreads] = useState([]);
-  const [threadsLoading, setThreadsLoading] = useState(true);
+  async function loadHeatmap({ silent = false } = {}) {
+    try {
+      if (!silent) setLoading(true);
+      setError("");
+
+      const data = await fetchChecklistHeatmap();
+      setHeatmap(data);
+    } catch (err) {
+      setError(err.message || "Could not load checklist heat map.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadHome() {
-      try {
-        const data = await loadThreads();
-        setThreads(data.threads || []);
-      } catch {
-        setThreads([]);
-      } finally {
-        setThreadsLoading(false);
-      }
-    }
-
-    loadHome();
+    loadHeatmap();
   }, []);
 
-  const recentThreads = useMemo(() => threads.slice(0, 4), [threads]);
+  const stores = heatmap?.stores || [];
+  const summary = heatmap?.summary || {};
 
-  const unreadCount = useMemo(
-    () => threads.reduce((sum, thread) => sum + (thread.unread_count || 0), 0),
-    [threads]
-  );
+  const sortedStores = useMemo(() => {
+    const rank = { red: 0, gray: 1, yellow: 2, green: 3 };
+
+    return [...stores].sort((a, b) => {
+      const statusDiff = (rank[a.status] ?? 9) - (rank[b.status] ?? 9);
+      if (statusDiff !== 0) return statusDiff;
+
+      const scoreDiff = (a.percent_complete || 0) - (b.percent_complete || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      return String(a.store_number).localeCompare(String(b.store_number));
+    });
+  }, [stores]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView
-        style={styles.page}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryTop}>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryKicker}>TRUEOPS</Text>
-              <Text style={styles.summaryTitle} numberOfLines={1}>{getGreeting(user?.name)}</Text>
-              <Text style={styles.summarySubtitle}>
-                {prettyRole(user?.role)} · {company?.name || "TrueOps"}
-              </Text>
-            </View>
-
-            <View style={styles.profileCircle}>
-              <Text style={styles.profileCircleText}>{initials(user?.name)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryStatsRow}>
-            <SummaryStat value={unreadCount} label="UNREAD" />
-            <View style={styles.summaryStatsDivider} />
-            <SummaryStat value={threads.length} label="THREADS" />
-          </View>
+    <SafeAreaView style={styles.page}>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.kicker}>TRUEOPS</Text>
+          <Text style={styles.title}>Hi, {firstName(context)}</Text>
+          <Text style={styles.subtitle}>Checklist Book Heat Map · {todayLabel()}</Text>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Latest Update</Text>
-            <Text style={styles.sectionSubtitle}>Account overview</Text>
-          </View>
+        <Pressable style={styles.refreshButton} onPress={() => loadHeatmap({ silent: true })}>
+          <Text style={styles.refreshText}>Refresh</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.summaryCard}>
+        <View>
+          <Text style={styles.summaryKicker}>TODAY</Text>
+          <Text style={styles.summaryTitle}>Checklist Book</Text>
+          <Text style={styles.summarySub}>
+            {summary.total || 0} stores · Avg {summary.average_percent || 0}%
+          </Text>
         </View>
 
-        <View style={styles.updateCard}>
-          <View style={styles.updateIcon}>
-            <Text style={styles.updateIconText}>i</Text>
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryPill}>
+            <Text style={styles.greenText}>{summary.green || 0}</Text>
+            <Text style={styles.pillLabel}>Strong</Text>
           </View>
 
-          <View style={styles.updateBody}>
-            <Text style={styles.updateEyebrow}>TRUEOPS STATUS</Text>
-            <Text style={styles.updateTitle}>{prettyRole(user?.role)} Access</Text>
-            <Text style={styles.updateText}>
-              Signed in to {company?.name || "TrueOps"}.
-            </Text>
-            <Text style={styles.updateMeta}>
-              {user?.name || "User"} · Active now
-            </Text>
+          <View style={styles.summaryPill}>
+            <Text style={styles.yellowText}>{summary.yellow || 0}</Text>
+            <Text style={styles.pillLabel}>Watch</Text>
           </View>
 
-          <Pressable
-            style={({ pressed }) => [styles.openButton, pressed && styles.openButtonPressed]}
-            onPress={() => navigation?.navigate("More")}
-          >
-            <Text style={styles.openButtonText}>Open</Text>
-          </Pressable>
+          <View style={styles.summaryPill}>
+            <Text style={styles.redText}>{summary.red || 0}</Text>
+            <Text style={styles.pillLabel}>Behind</Text>
+          </View>
         </View>
+      </View>
 
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Recent Chats</Text>
-            <Text style={styles.sectionSubtitle}>Latest team activity</Text>
-          </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Pressable onPress={() => navigation?.navigate("Messages")}>
-            <Text style={styles.viewAll}>View all</Text>
-          </Pressable>
+      <View style={styles.listHeader}>
+        <Text style={styles.sectionTitle}>Stores</Text>
+        <Text style={styles.sectionMeta}>worst first</Text>
+      </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.stateText}>Loading heat map…</Text>
         </View>
-
-        <View style={styles.chatListCard}>
-          {threadsLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color="#ffffff" />
-              <Text style={styles.loadingText}>Loading chats…</Text>
+      ) : (
+        <FlatList
+          data={sortedStores}
+          keyExtractor={(item) => String(item.store_number)}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadHeatmap({ silent: true });
+              }}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No checklist data</Text>
+              <Text style={styles.emptyText}>Stores will show here once they are available.</Text>
             </View>
-          ) : recentThreads.length ? (
-            recentThreads.map((thread, index) => (
-              <View key={thread.id}>
-                <ChatRow
-                  thread={thread}
-                  onPress={() => navigation?.navigate("Messages")}
-                />
-                {index < recentThreads.length - 1 ? <View style={styles.chatDivider} /> : null}
-              </View>
-            ))
-          ) : (
-            <View style={styles.loadingWrap}>
-              <Text style={styles.loadingText}>No recent chats yet.</Text>
-            </View>
+          }
+          renderItem={({ item }) => (
+            <HeatmapStoreCard
+              item={item}
+              onPress={() => navigation?.navigate?.("Ops")}
+            />
           )}
-        </View>
-      </ScrollView>
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.navy,
-  },
-  page: {
-    flex: 1,
-    backgroundColor: colors.navy,
-  },
-  content: {
+  page: { flex: 1, backgroundColor: colors.navy },
+  header: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 132,
+    paddingTop: 6,
+    paddingBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
   },
-
+  headerText: { flex: 1 },
+  kicker: {
+    color: colors.primarySoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#ffffff",
+    letterSpacing: -0.8,
+    marginTop: 1,
+  },
+  subtitle: {
+    color: "#94a3b8",
+    marginTop: 3,
+    fontWeight: "800",
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  refreshButton: {
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  refreshText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
   summaryCard: {
     backgroundColor: "#ffffff",
+    marginHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 24,
     padding: 14,
-    marginBottom: 18,
-  },
-  summaryTop: {
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
     flexDirection: "row",
-    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
-  summaryText: {
-    flex: 1,
-  },
   summaryKicker: {
     color: colors.primary,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "900",
-    letterSpacing: 2.1,
+    letterSpacing: 1.4,
   },
   summaryTitle: {
     color: colors.text,
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: -0.6,
-    marginTop: 4,
+    marginTop: 2,
   },
-  summarySubtitle: {
+  summarySub: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-  profileCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primaryTint,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileCircleText: {
-    color: colors.primaryDark,
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: colors.borderSoft,
-    marginTop: 12,
-    marginBottom: 10,
-  },
-  summaryStatsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  summaryStat: {
-    flex: 1,
-  },
-  summaryStatsDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.borderSoft,
-    marginHorizontal: 10,
-  },
-  summaryStatValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  summaryStatLabel: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-    marginTop: 1,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 10,
-    marginTop: 10,
-  },
-  sectionTitle: {
-    color: "#ffffff",
-    fontSize: 25,
-    fontWeight: "900",
-    letterSpacing: -0.65,
-  },
-  sectionSubtitle: {
-    color: "#94a3b8",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
     marginTop: 2,
   },
-  viewAll: {
-    color: colors.primarySoft,
-    fontSize: 14,
-    fontWeight: "900",
+  summaryGrid: {
+    flexDirection: "row",
+    gap: 7,
+    alignItems: "center",
   },
-
-  updateCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 14,
-    marginBottom: 18,
+  summaryPill: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+    minWidth: 48,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  greenText: { color: colors.success, fontSize: 17, fontWeight: "900" },
+  yellowText: { color: colors.warning, fontSize: 17, fontWeight: "900" },
+  redText: { color: colors.danger, fontSize: 17, fontWeight: "900" },
+  pillLabel: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: "900",
+    marginTop: 1,
+  },
+  error: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    color: colors.danger,
+    fontWeight: "800",
+    backgroundColor: colors.dangerSoft,
+    borderRadius: 18,
+    padding: 12,
+  },
+  listHeader: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
   },
-  updateIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 17,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updateIconText: {
+  sectionTitle: {
     color: "#ffffff",
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: "900",
+    letterSpacing: -0.4,
   },
-  updateBody: {
-    flex: 1,
-  },
-  updateEyebrow: {
-    color: colors.primary,
+  sectionMeta: {
+    color: "#94a3b8",
     fontSize: 12,
     fontWeight: "900",
-    letterSpacing: 1.8,
   },
-  updateTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "900",
-    marginTop: 3,
-    letterSpacing: -0.25,
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 116,
+    gap: 8,
   },
-  updateText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 5,
-    lineHeight: 18,
-  },
-  updateMeta: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: "800",
-    marginTop: 8,
-  },
-  openButton: {
-    backgroundColor: colors.primaryTint,
-    borderRadius: 18,
-    paddingHorizontal: 14,
+  storeCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: colors.primarySoft,
-  },
-  openButtonPressed: {
-    opacity: 0.85,
-  },
-  openButtonText: {
-    color: colors.primaryDark,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-
-  chatListCard: {
-    backgroundColor: "#12233f",
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    overflow: "hidden",
-  },
-  chatRow: {
+    borderColor: colors.borderSoft,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 10,
   },
-  chatRowPressed: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+  cardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
-  chatDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    marginLeft: 76,
-  },
-  chatAvatar: {
-    width: 44,
+  statusDot: {
+    width: 11,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 999,
   },
-  chatAvatarText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  chatBody: {
-    flex: 1,
-  },
-  chatTop: {
+  storeMain: { flex: 1 },
+  storeTopRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  chatName: {
-    flex: 1,
-    color: "#ffffff",
-    fontSize: 16,
+  storeNumber: {
+    color: colors.text,
+    fontSize: 15,
     fontWeight: "900",
   },
-  unreadBadge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
-  unreadBadgeText: {
-    color: "#ffffff",
+  statusLabel: {
+    color: colors.muted,
     fontSize: 11,
     fontWeight: "900",
   },
-  chatPreview: {
-    color: "#94a3b8",
+  storeName: {
+    color: colors.text,
     fontSize: 13,
-    fontWeight: "700",
-    marginTop: 3,
-  },
-  chatMeta: {
-    color: "#cbd5e1",
-    fontSize: 12,
     fontWeight: "800",
-    marginTop: 6,
+    marginTop: 2,
   },
-  loadingWrap: {
+  areaName: {
+    color: colors.faint,
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  scoreBlock: {
+    width: 54,
+    alignItems: "center",
+  },
+  scoreNumber: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  scoreLabel: {
+    color: colors.faint,
+    fontSize: 9,
+    fontWeight: "900",
+    marginTop: 1,
+  },
+  center: {
     padding: 18,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
   },
-  loadingText: {
+  stateText: {
     color: "#cbd5e1",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  emptyCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 6,
   },
 });

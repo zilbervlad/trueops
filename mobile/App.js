@@ -141,7 +141,13 @@ export default function App() {
           <Tab.Screen name="Ops" component={OpsScreen} />
 
           <Tab.Screen name="More">
-            {() => <MoreScreen context={context} onLogout={handleLogout} />}
+            {() => (
+              <MoreScreen
+                context={context}
+                onLogout={handleLogout}
+                onContextChange={setContext}
+              />
+            )}
           </Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>

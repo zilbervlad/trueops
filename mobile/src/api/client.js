@@ -267,3 +267,18 @@ export async function ensureMobileAdminDefaultThreads() {
   });
 }
 
+export async function fetchChecklistHeatmap(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : "";
+  return request(`/api/mobile/checklist/heatmap${query}`);
+}
+
+export async function fetchAdminCompanies() {
+  return request("/api/mobile/admin/companies");
+}
+
+export async function switchAdminCompany(companyId) {
+  return request("/api/mobile/admin/companies/switch", {
+    method: "POST",
+    body: JSON.stringify({ company_id: companyId }),
+  });
+}
