@@ -10,6 +10,7 @@ import { loadMe, logout } from "./src/api/client";
 import HomeScreen from "./src/screens/HomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import MessagesScreen from "./src/screens/MessagesScreen";
+import PeopleScreen from "./src/screens/PeopleScreen";
 import MoreScreen from "./src/screens/MoreScreen";
 import OpsScreen from "./src/screens/OpsScreen";
 import { colors } from "./src/styles/theme";

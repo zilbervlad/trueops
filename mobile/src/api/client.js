@@ -42,7 +42,7 @@ export async function clearToken() {
   return SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const token = await getToken();
 
   const headers = {
