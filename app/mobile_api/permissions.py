@@ -74,3 +74,63 @@ def mobile_login_required(view):
         return view(*args, **kwargs)
 
     return wrapped_view
+
+
+def normalize_mobile_role(user):
+    return (getattr(user, "role", "") or "").strip().lower()
+
+
+def scoped_store_query_for_user(user, StoreModel):
+    """
+    Single source of truth for mobile ops store visibility.
+
+    Admin-style roles see only their selected company.
+    Supervisors see stores in their assigned area.
+    Managers/GMs/TMs see only their assigned store.
+    No user should see stores outside their company.
+    """
+    if not user or not getattr(user, "company_id", None):
+        return StoreModel.query.filter(False)
+
+    role = normalize_mobile_role(user)
+
+    query = StoreModel.query.filter(
+        StoreModel.company_id == user.company_id,
+        StoreModel.is_active.is_(True),
+    )
+
+    if role in {"platform_admin", "admin", "hr", "coach"}:
+        return query
+
+    if role == "maintenance":
+        # Keep maintenance company-scoped for now. If we later assign maintenance users
+        # to stores/areas, tighten this here and every module follows.
+        return query
+
+    if role == "supervisor":
+        area_name = (getattr(user, "area_name", "") or "").strip()
+        if not area_name:
+            return StoreModel.query.filter(False)
+
+        return query.filter(StoreModel.area_name == area_name)
+
+    store_number = (getattr(user, "store_number", "") or "").strip()
+    if not store_number:
+        return StoreModel.query.filter(False)
+
+    return query.filter(StoreModel.store_number == store_number)
+
+
+def scoped_store_numbers_for_user(user, StoreModel):
+    return [
+        str(store.store_number)
+        for store in scoped_store_query_for_user(user, StoreModel).all()
+    ]
+
+
+def user_can_access_store_number(user, StoreModel, store_number):
+    if not store_number:
+        return False
+
+    allowed = set(scoped_store_numbers_for_user(user, StoreModel))
+    return str(store_number) in allowed

@@ -4,7 +4,7 @@ from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
 from app.models import MaintenanceTicket, Store
-from app.mobile_api.permissions import mobile_error, mobile_login_required
+from app.mobile_api.permissions import mobile_error, mobile_login_required, scoped_store_query_for_user, user_can_access_store_number
 
 
 mobile_maintenance_bp = Blueprint(
@@ -26,23 +26,7 @@ def normalize_role(user):
 
 
 def visible_store_query(user):
-    role = normalize_role(user)
-
-    query = Store.query.filter_by(
-        company_id=user.company_id,
-        is_active=True,
-    )
-
-    if role in {"platform_admin", "admin", "hr", "coach", "maintenance"}:
-        return query
-
-    if role == "supervisor":
-        return query.filter(Store.area_name == user.area_name)
-
-    if role in {"general_manager", "manager"}:
-        return query.filter(Store.store_number == user.store_number)
-
-    return query.filter(Store.id == -1)
+    return scoped_store_query_for_user(user, Store)
 
 
 def visible_store_numbers(user):
