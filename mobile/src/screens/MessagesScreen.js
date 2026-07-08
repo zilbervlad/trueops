@@ -39,11 +39,20 @@ const FILTERS = [
   { key: "role", label: "Roles" },
 ];
 
+function parseServerTime(value) {
+  if (!value) return null;
+
+  const raw = String(value);
+  const hasTimezone = /Z$|[+-]\\d{2}:?\\d{2}$/.test(raw);
+
+  return new Date(hasTimezone ? raw : `${raw}Z`);
+}
+
 function formatTime(value) {
   if (!value) return "";
 
   try {
-    const date = new Date(value);
+    const date = parseServerTime(value);
     return date.toLocaleString([], {
       month: "short",
       day: "numeric",
