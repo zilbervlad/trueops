@@ -19,6 +19,7 @@ import {
   createDirectThread,
   deleteThreadMessage,
   ensureDefaultMessageThreads,
+  fetchMessageReadReceipts,
   fetchThreadMembers,
   hideThread,
   loadMessagePeople,
@@ -223,7 +224,7 @@ function CandidateRow({ person, onAdd, disabled }) {
   );
 }
 
-function MessageBubble({ message, onDelete }) {
+function MessageBubble({ message, onDelete, onReadReceipts }) {
   const canDelete = message.is_mine && !message.is_deleted;
 
   return (
@@ -231,7 +232,8 @@ function MessageBubble({ message, onDelete }) {
       {!message.is_mine ? <Text style={styles.senderName}>{message.sender_name}</Text> : null}
 
       <Pressable
-        disabled={!canDelete}
+        disabled={message.is_deleted}
+        onPress={() => onReadReceipts?.(message)}
         onLongPress={() => canDelete && onDelete?.(message)}
         style={({ pressed }) => [
           styles.bubble,
@@ -271,6 +273,7 @@ export default function MessagesScreen({ route }) {
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [peopleSearch, setPeopleSearch] = useState("");
+  const [readReceiptsLoading, setReadReceiptsLoading] = useState(false);
   const messagesScrollRef = useRef(null);
   const [showManageGroup, setShowManageGroup] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
@@ -455,6 +458,37 @@ export default function MessagesScreen({ route }) {
         },
       ]
     );
+  }
+
+
+  async function handleReadReceipts(message) {
+    if (!selectedThread?.id || !message?.id || message.is_deleted) return;
+
+    setReadReceiptsLoading(true);
+
+    try {
+      const data = await fetchMessageReadReceipts(selectedThread.id, message.id);
+
+      const readers = data.readers || [];
+      const unread = data.unread || [];
+
+      const readLines = readers.length
+        ? readers.map((person) => `✓ ${person.name}`).join("\n")
+        : "Nobody yet";
+
+      const unreadLines = unread.length
+        ? unread.map((person) => `• ${person.name}`).join("\n")
+        : "Everyone has read it";
+
+      Alert.alert(
+        `Read receipts`,
+        `Read by (${data.read_count || 0})\n${readLines}\n\nNot read yet (${data.unread_count || 0})\n${unreadLines}`
+      );
+    } catch (err) {
+      Alert.alert("Could not load read receipts", err.message || "Please try again.");
+    } finally {
+      setReadReceiptsLoading(false);
+    }
   }
 
   async function handleDeleteMessage(message) {
@@ -824,6 +858,7 @@ export default function MessagesScreen({ route }) {
                       key={message.id}
                       message={message}
                       onDelete={handleDeleteMessage}
+                      onReadReceipts={handleReadReceipts}
                     />
                   ))
                 )}

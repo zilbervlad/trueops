@@ -299,3 +299,7 @@ export async function removeThreadMember(threadId, userId) {
     method: "POST",
   });
 }
+
+export async function fetchMessageReadReceipts(threadId, messageId) {
+  return request(`/api/mobile/messages/threads/${threadId}/messages/${messageId}/reads`);
+}
