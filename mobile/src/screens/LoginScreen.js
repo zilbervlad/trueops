@@ -12,9 +12,9 @@ import {
 } from "react-native";
 
 import { login } from "../api/client";
-
-const SUPPORT_URL = "https://true-ops.net/support";
 import { colors, radius, shadow } from "../styles/theme";
+
+const FORGOT_PASSWORD_URL = "https://true-ops.net/forgot-password";
 
 export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -92,7 +92,7 @@ export default function LoginScreen({ onLogin }) {
           )}
         </Pressable>
 
-        <Pressable style={styles.forgotButton} onPress={() => Linking.openURL(SUPPORT_URL)}>
+        <Pressable style={styles.forgotButton} onPress={() => Linking.openURL(FORGOT_PASSWORD_URL)}>
           <Text style={styles.forgotText}>Forgot password?</Text>
         </Pressable>
       </View>

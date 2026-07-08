@@ -1,12 +1,14 @@
 from functools import wraps
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, session, flash
 
 from app.services.tenant import scoped_get_or_404
 from app.models import User, Company
 from app.extensions import db
 from app.services.email_service import send_email
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -47,6 +49,127 @@ def role_required(*allowed_roles):
 
 def current_company_id():
     return session.get("current_company_id")
+
+
+
+
+PASSWORD_RESET_SALT = "trueops-password-reset"
+PASSWORD_RESET_MAX_AGE_SECONDS = 30 * 60
+
+
+def password_reset_serializer():
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+
+
+def make_password_reset_token(user):
+    return password_reset_serializer().dumps({"user_id": user.id}, salt=PASSWORD_RESET_SALT)
+
+
+def load_password_reset_user(token):
+    data = password_reset_serializer().loads(
+        token,
+        salt=PASSWORD_RESET_SALT,
+        max_age=PASSWORD_RESET_MAX_AGE_SECONDS,
+    )
+    user_id = data.get("user_id")
+    if not user_id:
+        return None
+    return User.query.filter_by(id=user_id, is_active=True).first()
+
+
+def find_user_for_password_reset(identifier):
+    identifier = (identifier or "").strip()
+    if not identifier:
+        return None
+
+    lowered = identifier.lower()
+
+    return (
+        User.query
+        .filter(User.is_active.is_(True))
+        .filter(
+            or_(
+                db.func.lower(User.username) == lowered,
+                db.func.lower(User.email) == lowered,
+                db.func.lower(User.notification_email) == lowered,
+            )
+        )
+        .first()
+    )
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip()
+        user = find_user_for_password_reset(identifier)
+
+        if user:
+            to_email = user.notification_email or user.email
+
+            if to_email:
+                token = make_password_reset_token(user)
+                reset_url = url_for("auth.reset_password", token=token, _external=True)
+
+                body = (
+                    f"Hi {user.name},\n\n"
+                    "We received a request to reset your TrueOps password.\n\n"
+                    f"Reset your password here:\n{reset_url}\n\n"
+                    "This link expires in 30 minutes. If you did not request this, you can ignore this email.\n\n"
+                    "TrueOps"
+                )
+
+                try:
+                    send_email(
+                        to_email=to_email,
+                        subject="Reset your TrueOps password",
+                        body=body,
+                    )
+                except Exception:
+                    current_app.logger.exception("Password reset email failed for user_id=%s", user.id)
+                    flash("We could not send the reset email. Please contact your TrueOps administrator.", "error")
+                    return render_template("forgot_password.html")
+
+        flash("If that account exists and has an email on file, a reset link has been sent.", "success")
+        return redirect(url_for("auth.login"))
+
+    return render_template("forgot_password.html")
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    try:
+        user = load_password_reset_user(token)
+    except SignatureExpired:
+        flash("That password reset link has expired. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+    except BadSignature:
+        flash("That password reset link is invalid. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+
+    if not user:
+        flash("That password reset link is invalid. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+            return render_template("reset_password.html", token=token)
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("reset_password.html", token=token)
+
+        user.set_password(password)
+        db.session.commit()
+
+        flash("Password updated. Please sign in.", "success")
+        return redirect(url_for("auth.login"))
+
+    return render_template("reset_password.html", token=token)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
