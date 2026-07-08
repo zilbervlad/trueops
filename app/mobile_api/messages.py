@@ -203,6 +203,14 @@ def list_message_people():
         if not user_can_message_user(user, candidate):
             continue
 
+        phone = (
+            getattr(candidate, "phone", None)
+            or getattr(candidate, "phone_number", None)
+            or getattr(candidate, "mobile_phone", None)
+            or getattr(candidate, "cell_phone", None)
+            or ""
+        )
+
         people.append({
             "id": candidate.id,
             "name": candidate.name,
@@ -211,6 +219,7 @@ def list_message_people():
             "store_number": candidate.store_number,
             "area_name": candidate.area_name,
             "email": candidate.email,
+            "phone": phone,
         })
 
     return jsonify({
