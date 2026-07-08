@@ -15,14 +15,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
+  addThreadMember,
   createDirectThread,
   deleteThreadMessage,
   ensureDefaultMessageThreads,
+  fetchThreadMembers,
   hideThread,
   loadMessagePeople,
   loadThread,
   loadThreads,
   markThreadRead,
+  removeThreadMember,
   sendThreadMessage,
 } from "../api/client";
 import { colors, radius, spacing } from "../styles/theme";
@@ -154,6 +157,63 @@ function PersonCard({ person, onPress }) {
   );
 }
 
+
+function MemberRow({ member, canManage, onRemove }) {
+  return (
+    <View style={styles.memberCard}>
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initials(member.name)}</Text>
+      </View>
+
+      <View style={styles.memberBody}>
+        <Text style={styles.memberName} numberOfLines={1}>
+          {member.name}
+        </Text>
+        <Text style={styles.memberMeta} numberOfLines={1}>
+          {threadTypeLabel(member.role) === "Thread" ? member.role || "user" : threadTypeLabel(member.role)}
+          {member.store_number ? ` · Store ${member.store_number}` : ""}
+          {member.area_name ? ` · ${member.area_name}` : ""}
+        </Text>
+      </View>
+
+      {canManage ? (
+        <Pressable style={styles.removeMemberButton} onPress={() => onRemove(member)}>
+          <Text style={styles.removeMemberText}>Remove</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function CandidateRow({ person, onAdd, disabled }) {
+  return (
+    <View style={styles.memberCard}>
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initials(person.name)}</Text>
+      </View>
+
+      <View style={styles.memberBody}>
+        <Text style={styles.memberName} numberOfLines={1}>
+          {person.name || person.username}
+        </Text>
+        <Text style={styles.memberMeta} numberOfLines={1}>
+          {person.role || "user"}
+          {person.store_number ? ` · Store ${person.store_number}` : ""}
+          {person.area_name ? ` · ${person.area_name}` : ""}
+        </Text>
+      </View>
+
+      <Pressable
+        style={[styles.addMemberButton, disabled && styles.addMemberButtonDisabled]}
+        onPress={() => onAdd(person)}
+        disabled={disabled}
+      >
+        <Text style={styles.addMemberText}>{disabled ? "Adding…" : "Add"}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function MessageBubble({ message, onDelete }) {
   const canDelete = message.is_mine && !message.is_deleted;
 
@@ -202,6 +262,13 @@ export default function MessagesScreen({ route }) {
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [peopleSearch, setPeopleSearch] = useState("");
+  const [showManageGroup, setShowManageGroup] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [groupCandidates, setGroupCandidates] = useState([]);
+  const [groupCanManage, setGroupCanManage] = useState(false);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [addingUserId, setAddingUserId] = useState(null);
 
   async function refreshThreads() {
     setError("");
@@ -294,6 +361,81 @@ export default function MessagesScreen({ route }) {
     } finally {
       setThreadLoading(false);
     }
+  }
+
+
+  async function openManageGroup() {
+    if (!selectedThread?.id || selectedThread.thread_type === "direct") return;
+
+    setShowManageGroup(true);
+    setGroupSearch("");
+    await loadGroupMembers();
+  }
+
+  async function loadGroupMembers() {
+    if (!selectedThread?.id) return;
+
+    setGroupLoading(true);
+    setError("");
+
+    try {
+      const data = await fetchThreadMembers(selectedThread.id);
+      setGroupMembers(data.members || []);
+      setGroupCandidates(data.candidates || []);
+      setGroupCanManage(Boolean(data.can_manage));
+    } catch (err) {
+      setError(err.message || "Could not load group members.");
+    } finally {
+      setGroupLoading(false);
+    }
+  }
+
+  async function handleAddMember(person) {
+    if (!selectedThread?.id || !person?.id) return;
+
+    setAddingUserId(person.id);
+    setError("");
+
+    try {
+      await addThreadMember(selectedThread.id, person.id);
+      await loadGroupMembers();
+
+      const data = await loadThread(selectedThread.id);
+      setSelectedThread(data.thread);
+      await refreshThreads();
+    } catch (err) {
+      Alert.alert("Could not add member", err.message || "Please try again.");
+    } finally {
+      setAddingUserId(null);
+    }
+  }
+
+  async function handleRemoveMember(member) {
+    if (!selectedThread?.id || !member?.user_id) return;
+
+    Alert.alert(
+      "Remove member?",
+      `Remove ${member.name} from this group?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await removeThreadMember(selectedThread.id, member.user_id);
+              await loadGroupMembers();
+
+              const data = await loadThread(selectedThread.id);
+              setSelectedThread(data.thread);
+              await refreshThreads();
+            } catch (err) {
+              Alert.alert("Could not remove member", err.message || "Please try again.");
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function handleDeleteMessage(message) {
@@ -421,6 +563,29 @@ export default function MessagesScreen({ route }) {
     });
   }, [people, peopleSearch]);
 
+
+  const filteredGroupCandidates = useMemo(() => {
+    const search = groupSearch.trim().toLowerCase();
+
+    if (!search) return groupCandidates;
+
+    return groupCandidates.filter((person) => {
+      const haystack = [
+        person.name,
+        person.username,
+        person.role,
+        person.store_number,
+        person.area_name,
+        person.email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(search);
+    });
+  }, [groupCandidates, groupSearch]);
+
   if (showPeople) {
     return (
       <SafeAreaView style={styles.page} edges={["top"]}>
@@ -487,6 +652,88 @@ export default function MessagesScreen({ route }) {
     );
   }
 
+
+  if (showManageGroup && selectedThread) {
+    return (
+      <SafeAreaView style={styles.page} edges={["top"]}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setShowManageGroup(false)} style={styles.backButton}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </Pressable>
+
+          <View style={styles.headerText}>
+            <Text style={styles.kicker}>MANAGE GROUP</Text>
+            <Text style={styles.title} numberOfLines={1}>{selectedThread.name}</Text>
+            <Text style={styles.subtitle}>
+              {groupMembers.length} member{groupMembers.length === 1 ? "" : "s"}
+            </Text>
+          </View>
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {groupLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.stateText}>Loading group…</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.manageContent}>
+            <Text style={styles.sectionTitle}>Members</Text>
+
+            {groupMembers.map((member) => (
+              <MemberRow
+                key={member.membership_id}
+                member={member}
+                canManage={groupCanManage}
+                onRemove={handleRemoveMember}
+              />
+            ))}
+
+            {groupCanManage ? (
+              <>
+                <Text style={styles.sectionTitle}>Add People</Text>
+
+                <View style={styles.searchCard}>
+                  <TextInput
+                    value={groupSearch}
+                    onChangeText={setGroupSearch}
+                    placeholder="Search people to add..."
+                    placeholderTextColor={colors.faint}
+                    style={styles.searchInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                {filteredGroupCandidates.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyTitle}>No people to add</Text>
+                    <Text style={styles.emptyText}>Everyone available may already be in this group.</Text>
+                  </View>
+                ) : (
+                  filteredGroupCandidates.map((person) => (
+                    <CandidateRow
+                      key={person.id}
+                      person={person}
+                      onAdd={handleAddMember}
+                      disabled={addingUserId === person.id}
+                    />
+                  ))
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>View only</Text>
+                <Text style={styles.emptyText}>You can see group members, but cannot add or remove people.</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    );
+  }
+
   if (selectedThread || threadLoading) {
     const messages = selectedThread?.messages || [];
 
@@ -518,6 +765,10 @@ export default function MessagesScreen({ route }) {
                 style={styles.hideButton}
               >
                 <Text style={styles.hideText}>Delete</Text>
+              </Pressable>
+            ) : selectedThread ? (
+              <Pressable onPress={openManageGroup} style={styles.manageButton}>
+                <Text style={styles.manageButtonText}>Manage</Text>
               </Pressable>
             ) : null}
           </View>
@@ -955,6 +1206,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
   },
+
+  manageContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 116,
+    gap: 8,
+  },
+  memberCard: {
+    backgroundColor: "#ffffff",
+    borderColor: colors.borderSoft,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  memberBody: {
+    flex: 1,
+  },
+  memberName: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  memberMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  manageButton: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  manageButtonText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  addMemberButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  addMemberButtonDisabled: {
+    opacity: 0.7,
+  },
+  addMemberText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  removeMemberButton: {
+    backgroundColor: colors.dangerSoft,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+  },
+  removeMemberText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+
   messages: {
     flex: 1,
     backgroundColor: colors.navy,

@@ -282,3 +282,20 @@ export async function switchAdminCompany(companyId) {
     body: JSON.stringify({ company_id: companyId }),
   });
 }
+
+export async function fetchThreadMembers(threadId) {
+  return request(`/api/mobile/messages/threads/${threadId}/members`);
+}
+
+export async function addThreadMember(threadId, userId) {
+  return request(`/api/mobile/messages/threads/${threadId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+export async function removeThreadMember(threadId, userId) {
+  return request(`/api/mobile/messages/threads/${threadId}/members/${userId}/remove`, {
+    method: "POST",
+  });
+}
