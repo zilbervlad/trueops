@@ -52,8 +52,6 @@ function formatTime(value) {
   }
 }
 
-const QUICK_EMOJIS = ["👍", "❤️", "😂", "✅", "🙏", "🔥", "👀", "🎉"];
-
 function threadTypeLabel(type) {
   const labels = {
     company: "Company",
@@ -540,53 +538,38 @@ export default function MessagesScreen() {
                 )}
               </ScrollView>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.emojiRow}
-                keyboardShouldPersistTaps="handled"
-              >
-                {QUICK_EMOJIS.map((emoji) => (
+              <View style={styles.composerDock}>
+                <View style={styles.composer}>
+                  <TextInput
+                    value={draft}
+                    onChangeText={setDraft}
+                    placeholder="Message"
+                    placeholderTextColor={colors.faint}
+                    style={styles.composerInput}
+                    multiline
+                    blurOnSubmit={false}
+                    onKeyPress={({ nativeEvent }) => {
+                      if (
+                        Platform.OS === "web" &&
+                        nativeEvent.key === "Enter" &&
+                        !nativeEvent.shiftKey
+                      ) {
+                        handleSend();
+                      }
+                    }}
+                  />
+
                   <Pressable
-                    key={emoji}
-                    style={({ pressed }) => [styles.emojiButton, pressed && styles.emojiButtonPressed]}
-                    onPress={() => setDraft((current) => `${current}${emoji}`)}
+                    onPress={handleSend}
+                    disabled={!draft.trim() || sending}
+                    style={[
+                      styles.sendButton,
+                      (!draft.trim() || sending) && styles.sendButtonDisabled,
+                    ]}
                   >
-                    <Text style={styles.emojiText}>{emoji}</Text>
+                    <Text style={styles.sendText}>{sending ? "..." : "Send"}</Text>
                   </Pressable>
-                ))}
-              </ScrollView>
-
-              <View style={styles.composer}>
-                <TextInput
-                  value={draft}
-                  onChangeText={setDraft}
-                  placeholder="Message"
-                  placeholderTextColor={colors.faint}
-                  style={styles.composerInput}
-                  multiline
-                  blurOnSubmit={false}
-                  onKeyPress={({ nativeEvent }) => {
-                    if (
-                      Platform.OS === "web" &&
-                      nativeEvent.key === "Enter" &&
-                      !nativeEvent.shiftKey
-                    ) {
-                      handleSend();
-                    }
-                  }}
-                />
-
-                <Pressable
-                  onPress={handleSend}
-                  disabled={!draft.trim() || sending}
-                  style={[
-                    styles.sendButton,
-                    (!draft.trim() || sending) && styles.sendButtonDisabled,
-                  ]}
-                >
-                  <Text style={styles.sendText}>{sending ? "..." : "Send"}</Text>
-                </Pressable>
+                </View>
               </View>
             </>
           )}
@@ -673,7 +656,7 @@ const styles = StyleSheet.create({
   },
   threadPage: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.navy,
   },
   header: {
     paddingHorizontal: 16,
@@ -879,6 +862,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
     alignItems: "center",
+    marginTop: 20,
   },
   emptyTitle: {
     color: colors.text,
@@ -912,47 +896,51 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   backButton: {
-    backgroundColor: colors.card,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
   },
   backText: {
     color: colors.text,
+    fontSize: 13,
     fontWeight: "900",
   },
   threadHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    backgroundColor: colors.navy,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
-    backgroundColor: colors.bg,
+    gap: 10,
   },
   threadTitleWrap: {
     flex: 1,
   },
   threadTitle: {
-    color: colors.text,
-    fontSize: 18,
+    color: "#ffffff",
+    fontSize: 19,
     fontWeight: "900",
+    letterSpacing: -0.35,
   },
   threadSubtitle: {
-    color: "#ffffff",
+    color: "#94a3b8",
     fontSize: 12,
     fontWeight: "800",
     marginTop: 2,
   },
   hideButton: {
     backgroundColor: colors.dangerSoft,
-    borderRadius: 18,
-    paddingHorizontal: 11,
+    borderRadius: 16,
+    paddingHorizontal: 10,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#fecaca",
   },
   hideText: {
     color: colors.danger,
@@ -961,10 +949,13 @@ const styles = StyleSheet.create({
   },
   messages: {
     flex: 1,
+    backgroundColor: colors.navy,
   },
   messagesContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 18,
+    flexGrow: 1,
   },
   bubbleWrap: {
     marginBottom: spacing.md,
@@ -1025,57 +1016,40 @@ const styles = StyleSheet.create({
   messageTimeMine: {
     marginRight: 4,
   },
-  emojiRow: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    gap: spacing.sm,
-  },
-  emojiButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emojiButtonPressed: {
-    transform: [{ scale: 0.94 }],
-    backgroundColor: colors.primaryTint,
-    borderColor: colors.primarySoft,
-  },
-  emojiText: {
-    fontSize: 20,
+  composerDock: {
+    backgroundColor: colors.navy,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 92,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   composer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: Platform.OS === "ios" ? spacing.lg : spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-    backgroundColor: colors.card,
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   composerInput: {
     flex: 1,
-    maxHeight: 110,
-    minHeight: 44,
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
     color: colors.text,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "700",
+    maxHeight: 92,
+    minHeight: 38,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   sendButton: {
     backgroundColor: colors.primary,
-    borderRadius: 22,
-    minHeight: 44,
-    paddingHorizontal: 16,
+    borderRadius: 17,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1084,6 +1058,7 @@ const styles = StyleSheet.create({
   },
   sendText: {
     color: "#ffffff",
+    fontSize: 13,
     fontWeight: "900",
   },
 });
