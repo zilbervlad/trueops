@@ -117,7 +117,10 @@ def user_can_access_thread(user, thread):
         user_id=user.id,
     ).first()
 
-    if membership and not membership.hidden_at:
+    if membership:
+        if membership.hidden_at:
+            return False
+
         return True
 
     if thread.thread_type == "company":
@@ -299,6 +302,7 @@ def list_threads():
                     func.count(TrueOpsThreadMember.id).label("member_count"),
                 )
                 .filter(TrueOpsThreadMember.thread_id.in_(thread_ids))
+                .filter(TrueOpsThreadMember.hidden_at.is_(None))
                 .group_by(TrueOpsThreadMember.thread_id)
                 .all()
             )
@@ -852,6 +856,7 @@ def ensure_default_threads():
                     func.count(TrueOpsThreadMember.id).label("member_count"),
                 )
                 .filter(TrueOpsThreadMember.thread_id.in_(thread_ids))
+                .filter(TrueOpsThreadMember.hidden_at.is_(None))
                 .group_by(TrueOpsThreadMember.thread_id)
                 .all()
             )
