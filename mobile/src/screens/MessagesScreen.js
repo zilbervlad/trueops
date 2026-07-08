@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -271,6 +271,7 @@ export default function MessagesScreen({ route }) {
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [peopleSearch, setPeopleSearch] = useState("");
+  const messagesScrollRef = useRef(null);
   const [showManageGroup, setShowManageGroup] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
   const [groupCandidates, setGroupCandidates] = useState([]);
@@ -278,6 +279,13 @@ export default function MessagesScreen({ route }) {
   const [groupLoading, setGroupLoading] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
   const [addingUserId, setAddingUserId] = useState(null);
+
+
+  function scrollMessagesToBottom(animated = true) {
+    setTimeout(() => {
+      messagesScrollRef.current?.scrollToEnd?.({ animated });
+    }, 80);
+  }
 
   async function refreshThreads() {
     setError("");
@@ -363,6 +371,7 @@ export default function MessagesScreen({ route }) {
     try {
       const data = await loadThread(thread.id);
       setSelectedThread(data.thread);
+      scrollMessagesToBottom(false);
       await markThreadRead(thread.id);
       await refreshThreads();
     } catch (err) {
@@ -411,6 +420,7 @@ export default function MessagesScreen({ route }) {
 
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
+      scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
       Alert.alert("Could not add member", err.message || "Please try again.");
@@ -485,6 +495,7 @@ export default function MessagesScreen({ route }) {
       await markThreadRead(selectedThread.id);
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
+      scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
       setError(err.message || "Could not send message.");
@@ -540,6 +551,13 @@ export default function MessagesScreen({ route }) {
 
     return () => clearInterval(interval);
   }, [selectedThread?.id]);
+
+
+  useEffect(() => {
+    if (!selectedThread?.id) return;
+
+    scrollMessagesToBottom(false);
+  }, [selectedThread?.id, selectedThread?.messages?.length]);
 
   const filteredThreads = useMemo(
     () =>
@@ -789,7 +807,12 @@ export default function MessagesScreen({ route }) {
             </View>
           ) : (
             <>
-              <ScrollView style={styles.messages} contentContainerStyle={styles.messagesContent}>
+              <ScrollView
+                ref={messagesScrollRef}
+                style={styles.messages}
+                contentContainerStyle={styles.messagesContent}
+                onContentSizeChange={() => scrollMessagesToBottom(false)}
+              >
                 {messages.length === 0 ? (
                   <View style={styles.emptyCard}>
                     <Text style={styles.emptyTitle}>Start the conversation</Text>
