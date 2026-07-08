@@ -681,6 +681,13 @@ class TrueOpsThreadMessage(db.Model):
     requires_ack = db.Column(db.Boolean, nullable=False, default=False)
     is_deleted = db.Column(db.Boolean, nullable=False, default=False)
 
+    reply_to_message_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_thread_messages.id"),
+        nullable=True,
+        index=True,
+    )
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship("Company")
@@ -689,6 +696,36 @@ class TrueOpsThreadMessage(db.Model):
         backref=db.backref("messages", lazy=True, cascade="all, delete-orphan"),
     )
     sender = db.relationship("User")
+    reply_to = db.relationship("TrueOpsThreadMessage", remote_side=[id])
+
+
+class TrueOpsThreadMessageReaction(db.Model):
+    __tablename__ = "trueops_thread_message_reactions"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    message_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_thread_messages.id"),
+        nullable=False,
+        index=True,
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    emoji = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    message = db.relationship(
+        "TrueOpsThreadMessage",
+        backref=db.backref("reactions", lazy=True, cascade="all, delete-orphan"),
+    )
+    user = db.relationship("User")
 
 
 class TrueOpsThreadMessageAck(db.Model):

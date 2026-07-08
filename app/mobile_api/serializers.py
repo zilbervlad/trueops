@@ -139,6 +139,41 @@ def display_thread_name(thread, current_user=None):
 def serialize_thread_message(message, current_user=None):
     sender = message.sender
 
+    reaction_groups = {}
+    for reaction in (message.reactions or []):
+        if not reaction.emoji:
+            continue
+
+        group = reaction_groups.setdefault(reaction.emoji, {
+            "emoji": reaction.emoji,
+            "count": 0,
+            "mine": False,
+            "users": [],
+        })
+
+        group["count"] += 1
+
+        if reaction.user:
+            group["users"].append({
+                "id": reaction.user.id,
+                "name": reaction.user.name,
+            })
+
+        if current_user and reaction.user_id == current_user.id:
+            group["mine"] = True
+
+    reply_to = None
+    parent = getattr(message, "reply_to", None)
+
+    if parent:
+        parent_sender = parent.sender
+        reply_to = {
+            "id": parent.id,
+            "sender_name": parent_sender.name if parent_sender else "Unknown",
+            "body": "This message was deleted" if parent.is_deleted else parent.body,
+            "is_deleted": bool(parent.is_deleted),
+        }
+
     return {
         "id": message.id,
         "thread_id": message.thread_id,
@@ -151,6 +186,9 @@ def serialize_thread_message(message, current_user=None):
         "is_mine": bool(current_user and message.sender_user_id == current_user.id),
         "created_at": message.created_at.isoformat() if message.created_at else None,
         "ack_count": len(message.acks or []),
+        "reply_to_message_id": getattr(message, "reply_to_message_id", None),
+        "reply_to": reply_to,
+        "reactions": list(reaction_groups.values()),
     }
 
 

@@ -9,6 +9,7 @@ from app.models import (
     TrueOpsThread,
     TrueOpsThreadMember,
     TrueOpsThreadMessage,
+    TrueOpsThreadMessageReaction,
     User,
 )
 from app.mobile_api.permissions import mobile_error, mobile_login_required
@@ -719,6 +720,12 @@ def create_thread_message(thread_id):
 
     body = (data.get("body") or "").strip()
     requires_ack = bool(data.get("requires_ack", False))
+    reply_to_message_id = data.get("reply_to_message_id")
+
+    try:
+        reply_to_message_id = int(reply_to_message_id) if reply_to_message_id else None
+    except (TypeError, ValueError):
+        return mobile_error("Invalid reply_to_message_id.", 400)
 
     if not body:
         return mobile_error("Message body is required.", 400)
@@ -732,12 +739,25 @@ def create_thread_message(thread_id):
     if not thread or not user_can_send_to_thread(user, thread):
         return mobile_error("You do not have permission to send to this thread.", 403)
 
+    reply_to_message = None
+
+    if reply_to_message_id:
+        reply_to_message = TrueOpsThreadMessage.query.filter_by(
+            id=reply_to_message_id,
+            thread_id=thread.id,
+            company_id=thread.company_id,
+        ).first()
+
+        if not reply_to_message:
+            return mobile_error("Reply message not found.", 404)
+
     message = TrueOpsThreadMessage(
         company_id=thread.company_id,
         thread_id=thread.id,
         sender_user_id=user.id,
         body=body,
         requires_ack=requires_ack,
+        reply_to_message_id=reply_to_message.id if reply_to_message else None,
     )
 
     ensure_thread_member(thread.id, user.id)
@@ -751,6 +771,68 @@ def create_thread_message(thread_id):
         "success": True,
         "message": serialize_thread_message(message, current_user=user),
     }), 201
+
+
+
+
+@mobile_messages_bp.post("/threads/<int:thread_id>/messages/<int:message_id>/reactions")
+@mobile_login_required
+def toggle_message_reaction(thread_id, message_id):
+    user = g.mobile_user
+    data = request.get_json(silent=True) or {}
+
+    emoji = (data.get("emoji") or "").strip()
+
+    allowed = {"👍", "❤️", "😂", "👀", "✅"}
+
+    if emoji not in allowed:
+        return mobile_error("Invalid reaction.", 400)
+
+    thread = TrueOpsThread.query.filter_by(
+        id=thread_id,
+        company_id=user.company_id,
+        is_active=True,
+    ).first()
+
+    if not thread or not user_can_access_thread(user, thread):
+        return mobile_error("Thread not found.", 404)
+
+    message = TrueOpsThreadMessage.query.filter_by(
+        id=message_id,
+        thread_id=thread.id,
+        company_id=thread.company_id,
+    ).first()
+
+    if not message or message.is_deleted:
+        return mobile_error("Message not found.", 404)
+
+    reaction = TrueOpsThreadMessageReaction.query.filter_by(
+        message_id=message.id,
+        user_id=user.id,
+        emoji=emoji,
+    ).first()
+
+    if reaction:
+        db.session.delete(reaction)
+        active = False
+    else:
+        reaction = TrueOpsThreadMessageReaction(
+            message_id=message.id,
+            user_id=user.id,
+            emoji=emoji,
+        )
+        db.session.add(reaction)
+        active = True
+
+    db.session.commit()
+
+    fresh_message = TrueOpsThreadMessage.query.get(message.id)
+
+    return jsonify({
+        "success": True,
+        "active": active,
+        "message": serialize_thread_message(fresh_message, current_user=user),
+    })
 
 
 @mobile_messages_bp.post("/direct")
