@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 import { login } from "../api/client";
-import { colors, radius, shadow } from "../styles/theme";
+import { colors, shadow } from "../styles/theme";
 
 const FORGOT_PASSWORD_URL = "https://true-ops.net/forgot-password";
 
@@ -106,19 +106,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     justifyContent: "center",
     paddingHorizontal: 20,
+    alignItems: "center",
   },
   brandBlock: {
+    width: "100%",
+    maxWidth: 430,
     alignItems: "center",
     marginBottom: 22,
   },
   logoMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
+    width: 66,
+    height: 66,
+    borderRadius: 24,
     backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 14,
     ...shadow.soft,
   },
   logoMarkText: {
@@ -128,8 +131,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   card: {
+    width: "100%",
+    maxWidth: 430,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 28,
     padding: 22,
     borderWidth: 1,
     borderColor: colors.borderSoft,
@@ -169,9 +174,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
     fontSize: 16,
     marginBottom: 12,
   },
@@ -182,10 +187,10 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.navy,
-    borderRadius: radius.md,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingVertical: 15,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 6,
   },
   buttonPressed: {
     backgroundColor: colors.primaryDark,

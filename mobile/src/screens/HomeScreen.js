@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { loadThreads } from "../api/client";
-import { colors, radius, spacing } from "../styles/theme";
+import { colors } from "../styles/theme";
 
 function prettyRole(role) {
   return String(role || "User")
@@ -48,28 +47,34 @@ function initials(name) {
   return String(name || "T").slice(0, 1).toUpperCase();
 }
 
-function threadTypeLabel(type) {
-  const labels = {
-    company: "Company",
-    store: "Store",
-    area: "Area",
-    role: "Role",
-    direct: "Direct",
-  };
+function getGreeting(name) {
+  const hour = new Date().getHours();
+  const firstName = String(name || "there").trim().split(/\s+/)[0];
 
-  return labels[type] || "Thread";
+  if (hour < 12) return `Good morning, ${firstName}`;
+  if (hour < 17) return `Good afternoon, ${firstName}`;
+  return `Good evening, ${firstName}`;
 }
 
-function RecentChatCard({ thread }) {
+function SummaryStat({ value, label }) {
+  return (
+    <View style={styles.summaryStat}>
+      <Text style={styles.summaryStatValue}>{value}</Text>
+      <Text style={styles.summaryStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ChatRow({ thread, onPress }) {
   const last = thread.last_message;
   const preview = last
     ? `${last.is_mine ? "You" : last.sender_name}: ${last.body}`
     : "No messages yet";
 
   return (
-    <View style={styles.chatCard}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initials(thread.name)}</Text>
+    <Pressable style={({ pressed }) => [styles.chatRow, pressed && styles.chatRowPressed]} onPress={onPress}>
+      <View style={styles.chatAvatar}>
+        <Text style={styles.chatAvatarText}>{initials(thread.name)}</Text>
       </View>
 
       <View style={styles.chatBody}>
@@ -80,7 +85,7 @@ function RecentChatCard({ thread }) {
 
           {thread.unread_count > 0 ? (
             <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>{thread.unread_count}</Text>
+              <Text style={styles.unreadBadgeText}>{thread.unread_count}</Text>
             </View>
           ) : null}
         </View>
@@ -90,11 +95,10 @@ function RecentChatCard({ thread }) {
         </Text>
 
         <Text style={styles.chatMeta}>
-          {threadTypeLabel(thread.thread_type)}
-          {last?.created_at ? ` · ${formatTime(last.created_at)}` : ""}
+          {last?.created_at ? formatTime(last.created_at) : "Recent conversation"}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -104,27 +108,28 @@ export default function HomeScreen({ context, navigation }) {
 
   const [threads, setThreads] = useState([]);
   const [threadsLoading, setThreadsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const recentThreads = useMemo(() => threads.slice(0, 3), [threads]);
-
-  const loadHome = useCallback(async ({ quiet = false } = {}) => {
-    if (!quiet) setThreadsLoading(true);
-
-    try {
-      const data = await loadThreads();
-      setThreads(data.threads || []);
-    } catch {
-      setThreads([]);
-    } finally {
-      setThreadsLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
 
   useEffect(() => {
+    async function loadHome() {
+      try {
+        const data = await loadThreads();
+        setThreads(data.threads || []);
+      } catch {
+        setThreads([]);
+      } finally {
+        setThreadsLoading(false);
+      }
+    }
+
     loadHome();
-  }, [loadHome]);
+  }, []);
+
+  const recentThreads = useMemo(() => threads.slice(0, 4), [threads]);
+
+  const unreadCount = useMemo(
+    () => threads.reduce((sum, thread) => sum + (thread.unread_count || 0), 0),
+    [threads]
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -132,116 +137,94 @@ export default function HomeScreen({ context, navigation }) {
         style={styles.page}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              loadHome({ quiet: true });
-            }}
-          />
-        }
       >
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.kicker}>TRUEOPS</Text>
-            <Text style={styles.title} numberOfLines={1}>
-              {user?.name || "Welcome"}
-            </Text>
-            <Text style={styles.subtitle}>
-              {company?.name || "Company"} · {prettyRole(user?.role)}
-            </Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTop}>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryKicker}>TRUEOPS</Text>
+              <Text style={styles.summaryTitle} numberOfLines={1}>{getGreeting(user?.name)}</Text>
+              <Text style={styles.summarySubtitle}>
+                {prettyRole(user?.role)} · {company?.name || "TrueOps"}
+              </Text>
+            </View>
+
+            <View style={styles.profileCircle}>
+              <Text style={styles.profileCircleText}>{initials(user?.name)}</Text>
+            </View>
           </View>
 
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>{prettyRole(user?.role)}</Text>
-          </View>
-        </View>
+          <View style={styles.summaryDivider} />
 
-        <View style={styles.heroCard}>
-          <Text style={styles.heroKicker}>Today</Text>
-          <Text style={styles.heroTitle}>Run the day.</Text>
-          <Text style={styles.heroText}>
-            Messages, Checklist, SVR, and Maintenance are ready from mobile.
-          </Text>
+          <View style={styles.summaryStatsRow}>
+            <SummaryStat value={unreadCount} label="UNREAD" />
+            <View style={styles.summaryStatsDivider} />
+            <SummaryStat value={threads.length} label="THREADS" />
+          </View>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent chats</Text>
-          <Text style={styles.sectionMeta}>Latest 3</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Latest Update</Text>
+            <Text style={styles.sectionSubtitle}>Account overview</Text>
+          </View>
         </View>
 
-        {threadsLoading ? (
-          <View style={styles.stateCard}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading chats…</Text>
+        <View style={styles.updateCard}>
+          <View style={styles.updateIcon}>
+            <Text style={styles.updateIconText}>i</Text>
           </View>
-        ) : recentThreads.length ? (
-          <View style={styles.chatList}>
-            {recentThreads.map((thread) => (
-              <RecentChatCard key={thread.id} thread={thread} />
-            ))}
+
+          <View style={styles.updateBody}>
+            <Text style={styles.updateEyebrow}>TRUEOPS STATUS</Text>
+            <Text style={styles.updateTitle}>{prettyRole(user?.role)} Access</Text>
+            <Text style={styles.updateText}>
+              Signed in to {company?.name || "TrueOps"}.
+            </Text>
+            <Text style={styles.updateMeta}>
+              {user?.name || "User"} · Active now
+            </Text>
           </View>
-        ) : (
-          <View style={styles.stateCard}>
-            <Text style={styles.emptyTitle}>No recent chats</Text>
-            <Text style={styles.stateText}>Your latest conversations will show here.</Text>
-          </View>
-        )}
+
+          <Pressable
+            style={({ pressed }) => [styles.openButton, pressed && styles.openButtonPressed]}
+            onPress={() => navigation?.navigate("More")}
+          >
+            <Text style={styles.openButtonText}>Open</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick actions</Text>
-          <Text style={styles.sectionMeta}>Ops</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Recent Chats</Text>
+            <Text style={styles.sectionSubtitle}>Latest team activity</Text>
+          </View>
+
+          <Pressable onPress={() => navigation?.navigate("Messages")}>
+            <Text style={styles.viewAll}>View all</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.quickGrid}>
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
-            onPress={() => navigation?.navigate("Ops", { initialTool: "checklist", initialToolNonce: Date.now() })}
-          >
-            <Text style={styles.quickIcon}>✓</Text>
-            <View style={styles.quickBody}>
-              <Text style={styles.quickTitle}>Checklist</Text>
-              <Text style={styles.quickText}>Open today’s checklist</Text>
+        <View style={styles.chatListCard}>
+          {threadsLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color="#ffffff" />
+              <Text style={styles.loadingText}>Loading chats…</Text>
             </View>
-            <Text style={styles.quickArrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
-            onPress={() => navigation?.navigate("Ops", { initialTool: "svr", initialToolNonce: Date.now() })}
-          >
-            <Text style={styles.quickIcon}>↗</Text>
-            <View style={styles.quickBody}>
-              <Text style={styles.quickTitle}>SVR</Text>
-              <Text style={styles.quickText}>Start a visit report</Text>
+          ) : recentThreads.length ? (
+            recentThreads.map((thread, index) => (
+              <View key={thread.id}>
+                <ChatRow
+                  thread={thread}
+                  onPress={() => navigation?.navigate("Messages")}
+                />
+                {index < recentThreads.length - 1 ? <View style={styles.chatDivider} /> : null}
+              </View>
+            ))
+          ) : (
+            <View style={styles.loadingWrap}>
+              <Text style={styles.loadingText}>No recent chats yet.</Text>
             </View>
-            <Text style={styles.quickArrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
-            onPress={() => navigation?.navigate("Ops", { initialTool: "maintenance", initialToolNonce: Date.now() })}
-          >
-            <Text style={styles.quickIcon}>⚙</Text>
-            <View style={styles.quickBody}>
-              <Text style={styles.quickTitle}>Maintenance</Text>
-              <Text style={styles.quickText}>Review open tasks</Text>
-            </View>
-            <Text style={styles.quickArrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.quickCardPressed]}
-            onPress={() => navigation?.navigate("Messages")}
-          >
-            <Text style={styles.quickIcon}>✉</Text>
-            <View style={styles.quickBody}>
-              <Text style={styles.quickTitle}>Messages</Text>
-              <Text style={styles.quickText}>Open store chats</Text>
-            </View>
-            <Text style={styles.quickArrow}>›</Text>
-          </Pressable>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -251,131 +234,223 @@ export default function HomeScreen({ context, navigation }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.navy,
   },
   page: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.navy,
   },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: 110,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 132,
   },
-  header: {
+
+  summaryCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    padding: 14,
+    marginBottom: 18,
+  },
+  summaryTop: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    gap: 12,
   },
-  headerText: {
+  summaryText: {
     flex: 1,
   },
-  kicker: {
+  summaryKicker: {
     color: colors.primary,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.1,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 31,
-    fontWeight: "900",
-    letterSpacing: -1,
-    marginTop: 2,
-  },
-  subtitle: {
-    color: colors.muted,
-    marginTop: 3,
-    fontWeight: "800",
-  },
-  roleBadge: {
-    backgroundColor: colors.primaryTint,
-    borderRadius: radius.pill,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: colors.primarySoft,
-  },
-  roleBadgeText: {
-    color: colors.primaryDark,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  heroCard: {
-    backgroundColor: colors.navy,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  heroKicker: {
-    color: colors.navySoft,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  heroTitle: {
-    color: "#ffffff",
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -0.7,
-    marginTop: 4,
-  },
-  heroText: {
-    color: colors.navySoft,
-    fontWeight: "800",
-    lineHeight: 20,
-    marginTop: 5,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: -0.3,
-  },
-  sectionMeta: {
-    color: colors.muted,
     fontSize: 12,
     fontWeight: "900",
+    letterSpacing: 2.1,
   },
-  chatList: {
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+  summaryTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.6,
+    marginTop: 4,
   },
-  chatCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    flexDirection: "row",
-    gap: spacing.md,
+  summarySubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 4,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
+  profileCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primaryTint,
-    borderWidth: 1,
-    borderColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
+  profileCircleText: {
     color: colors.primaryDark,
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: colors.borderSoft,
+    marginTop: 12,
+    marginBottom: 10,
+  },
+  summaryStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  summaryStat: {
+    flex: 1,
+  },
+  summaryStatsDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.borderSoft,
+    marginHorizontal: 10,
+  },
+  summaryStatValue: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  summaryStatLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+    marginTop: 1,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  sectionTitle: {
+    color: "#ffffff",
+    fontSize: 25,
+    fontWeight: "900",
+    letterSpacing: -0.65,
+  },
+  sectionSubtitle: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  viewAll: {
+    color: colors.primarySoft,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  updateCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    padding: 14,
+    marginBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  updateIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 17,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  updateIconText: {
+    color: "#ffffff",
+    fontSize: 26,
+    fontWeight: "900",
+  },
+  updateBody: {
+    flex: 1,
+  },
+  updateEyebrow: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1.8,
+  },
+  updateTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 3,
+    letterSpacing: -0.25,
+  },
+  updateText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 5,
+    lineHeight: 18,
+  },
+  updateMeta: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 8,
+  },
+  openButton: {
+    backgroundColor: colors.primaryTint,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.primarySoft,
+  },
+  openButtonPressed: {
+    opacity: 0.85,
+  },
+  openButtonText: {
+    color: colors.primaryDark,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  chatListCard: {
+    backgroundColor: "#12233f",
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+  },
+  chatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  chatRowPressed: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  chatDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginLeft: 76,
+  },
+  chatAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chatAvatarText: {
+    color: colors.text,
+    fontSize: 18,
     fontWeight: "900",
   },
   chatBody: {
@@ -384,96 +459,49 @@ const styles = StyleSheet.create({
   chatTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: 8,
   },
   chatName: {
     flex: 1,
-    color: colors.text,
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "900",
   },
   unreadBadge: {
-    backgroundColor: colors.primary,
     minWidth: 22,
     height: 22,
     borderRadius: 11,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  unreadText: {
+  unreadBadgeText: {
     color: "#ffffff",
     fontSize: 11,
     fontWeight: "900",
   },
   chatPreview: {
-    color: colors.muted,
-    fontWeight: "800",
+    color: "#94a3b8",
+    fontSize: 13,
+    fontWeight: "700",
     marginTop: 3,
   },
   chatMeta: {
-    color: colors.faint,
+    color: "#cbd5e1",
     fontSize: 12,
     fontWeight: "800",
-    marginTop: 4,
+    marginTop: 6,
   },
-  stateCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.lg,
+  loadingWrap: {
+    padding: 18,
     alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    justifyContent: "center",
+    gap: 10,
   },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  stateText: {
-    color: colors.muted,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  quickGrid: {
-    gap: spacing.sm,
-  },
-  quickCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  quickCardPressed: {
-    transform: [{ scale: 0.985 }],
-    backgroundColor: colors.primaryTint,
-    borderColor: colors.primarySoft,
-  },
-  quickIcon: {
-    width: 34,
-    color: colors.primary,
-    fontSize: 20,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  quickBody: {
-    flex: 1,
-  },
-  quickTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  quickText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    marginTop: 2,
+  loadingText: {
+    color: "#cbd5e1",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

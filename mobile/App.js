@@ -79,46 +79,52 @@ export default function App() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <NavigationContainer>
         <Tab.Navigator
           screenOptions={({ route }) => ({
             headerShown: false,
-            tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: colors.faint,
+            tabBarActiveTintColor: "#ffffff",
+            tabBarInactiveTintColor: "#94a3b8",
             tabBarStyle: {
-              height: 78,
-              paddingTop: 8,
-              paddingBottom: 14,
-              borderTopColor: colors.borderSoft,
-              borderTopWidth: 1,
-              backgroundColor: colors.card,
+              position: "absolute",
+              left: 18,
+              right: 18,
+              bottom: 10,
+              height: 68,
+              paddingTop: 6,
+              paddingBottom: 8,
+              borderTopWidth: 0,
+              borderRadius: 24,
+              backgroundColor: "#10213a",
               shadowColor: colors.shadow,
-              shadowOpacity: 0.07,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: -7 },
-              elevation: 8,
+              shadowOpacity: 0.22,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 12,
             },
             tabBarItemStyle: {
-              paddingVertical: 3,
+              paddingVertical: 2,
             },
             tabBarLabelStyle: {
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: "900",
               letterSpacing: 0.1,
               marginTop: 2,
             },
             tabBarIcon: ({ color, focused }) => {
               const icons = {
-                Home: "H",
-                Messages: "M",
-                Ops: "O",
-                More: "•",
+                Home: "⌂",
+                Messages: "◉",
+                Ops: "➤",
+                More: "•••",
               };
 
               return (
                 <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-                  <Text style={[styles.tabIconText, { color }]}>{icons[route.name] || "•"}</Text>
+                  <Text style={[styles.tabIconText, { color: focused ? "#ffffff" : color }]}>
+                    {icons[route.name] || "•"}
+                  </Text>
                 </View>
               );
             },
@@ -150,15 +156,15 @@ const styles = StyleSheet.create({
   tabIcon: {
     minWidth: 30,
     height: 24,
-    borderRadius: 999,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   tabIconActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   tabIconText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "900",
   },
 });

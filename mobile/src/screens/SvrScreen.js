@@ -432,7 +432,7 @@ export default function SvrScreen({ onBack }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.navy,
   },
   container: {
     flex: 1,
@@ -462,20 +462,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kicker: {
-    color: colors.primary,
+    color: colors.primarySoft,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.1,
   },
   title: {
-    color: colors.text,
+    color: "#ffffff",
     fontSize: 32,
     fontWeight: "900",
     letterSpacing: -1,
     marginTop: 2,
   },
   subtitle: {
-    color: colors.muted,
+    color: "#94a3b8",
     marginTop: 4,
     fontWeight: "700",
     lineHeight: 19,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    borderRadius: radius.lg,
+    borderRadius: 18,
     paddingHorizontal: 13,
     paddingVertical: 9,
   },
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: colors.navy,
-    borderRadius: radius.xl,
+    borderRadius: 26,
     padding: spacing.lg,
     marginBottom: spacing.md,
     flexDirection: "row",
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: radius.lg,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   },
   controlCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 26,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSoft,
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 26,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSoft,
@@ -619,13 +619,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   sectionSubtitle: {
-    color: colors.muted,
+    color: "#ffffff",
     fontWeight: "800",
     marginTop: 2,
   },
   groupCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 26,
     borderColor: colors.borderSoft,
     borderWidth: 1,
     padding: spacing.md,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.text,
-    borderRadius: radius.lg,
+    borderRadius: 18,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: spacing.sm,
