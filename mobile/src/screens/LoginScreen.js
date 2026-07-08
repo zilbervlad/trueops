@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +12,8 @@ import {
 } from "react-native";
 
 import { login } from "../api/client";
+
+const SUPPORT_URL = "https://true-ops.net/support";
 import { colors, radius, shadow } from "../styles/theme";
 
 export default function LoginScreen({ onLogin }) {
@@ -87,6 +90,10 @@ export default function LoginScreen({ onLogin }) {
           ) : (
             <Text style={styles.buttonText}>Sign in to TrueOps</Text>
           )}
+        </Pressable>
+
+        <Pressable style={styles.forgotButton} onPress={() => Linking.openURL(SUPPORT_URL)}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -190,5 +197,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "800",
+  },
+  forgotButton: {
+    alignItems: "center",
+    paddingTop: 16,
+    paddingBottom: 2,
+  },
+  forgotText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "900",
   },
 });
