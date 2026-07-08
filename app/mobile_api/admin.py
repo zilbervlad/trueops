@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
-from app.models import Store, User
+from app.models import Company, Store, User
 from app.mobile_api.permissions import mobile_error, mobile_login_required
 from app.mobile_api.thread_helpers import ensure_default_threads_for_company
 
@@ -92,6 +92,76 @@ def clean_scope_for_role(role, area_name, store_number):
         return None, store_number
 
     return area_name, store_number
+
+
+
+
+@mobile_admin_bp.get("/companies")
+@mobile_login_required
+def admin_companies():
+    actor = g.mobile_user
+
+    if normalize_role(actor) != "platform_admin":
+        return mobile_error("Platform admin access required.", 403)
+
+    companies = (
+        Company.query
+        .order_by(Company.name.asc())
+        .all()
+    )
+
+    return jsonify({
+        "success": True,
+        "active_company_id": actor.company_id,
+        "companies": [
+            {
+                "id": company.id,
+                "name": company.name,
+                "slug": company.slug,
+                "is_active": bool(getattr(company, "is_active", True)),
+            }
+            for company in companies
+        ],
+    })
+
+
+@mobile_admin_bp.post("/companies/switch")
+@mobile_login_required
+def admin_switch_company():
+    actor = g.mobile_user
+
+    if normalize_role(actor) != "platform_admin":
+        return mobile_error("Platform admin access required.", 403)
+
+    payload = request.get_json(silent=True) or {}
+    company_id = payload.get("company_id")
+
+    try:
+        company_id = int(company_id)
+    except (TypeError, ValueError):
+        return mobile_error("Invalid company id.", 400)
+
+    company = Company.query.get(company_id)
+
+    if not company:
+        return mobile_error("Company not found.", 404)
+
+    actor.company_id = company.id
+
+    if getattr(g, "mobile_token", None):
+        g.mobile_token.company_id = company.id
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "active_company_id": company.id,
+        "company": {
+            "id": company.id,
+            "name": company.name,
+            "slug": company.slug,
+        },
+    })
 
 
 @mobile_admin_bp.get("/users")
