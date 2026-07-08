@@ -117,6 +117,7 @@ export default function App() {
               const icons = {
                 Home: "⌂",
                 Messages: "◉",
+                People: "◎",
                 Ops: "➤",
                 More: "•••",
               };
@@ -135,7 +136,8 @@ export default function App() {
             {({ navigation }) => <HomeScreen context={context} navigation={navigation} />}
           </Tab.Screen>
 
-          <Tab.Screen name="Messages" component={MessagesScreen} />
+          <Tab.Screen name="Messages" options={{ title: "Chats" }} component={MessagesScreen} />
+          <Tab.Screen name="People" component={PeopleScreen} />
           <Tab.Screen name="Ops" component={OpsScreen} />
 
           <Tab.Screen name="More">

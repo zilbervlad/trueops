@@ -189,7 +189,7 @@ function MessageBubble({ message, onDelete }) {
   );
 }
 
-export default function MessagesScreen() {
+export default function MessagesScreen({ route }) {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -364,6 +364,14 @@ export default function MessagesScreen() {
 
     return () => clearInterval(interval);
   }, [selectedThread, showPeople]);
+
+  useEffect(() => {
+    const threadId = route?.params?.threadId;
+
+    if (!threadId) return;
+
+    openThread({ id: threadId });
+  }, [route?.params?.threadId]);
 
   useEffect(() => {
     if (!selectedThread?.id) return;

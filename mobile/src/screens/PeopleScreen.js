@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Linking,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -11,7 +13,7 @@ import {
   View,
 } from "react-native";
 
-import { loadMessagePeople } from "../api/client";
+import { createDirectThread, loadMessagePeople } from "../api/client";
 import { colors } from "../styles/theme";
 
 function initialsFor(person) {
@@ -31,7 +33,38 @@ function prettyRole(role) {
   return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function PersonCard({ person }) {
+function phoneFor(person) {
+  return (
+    person.phone ||
+    person.phone_number ||
+    person.mobile_phone ||
+    person.cell_phone ||
+    ""
+  ).trim();
+}
+
+async function openPhoneLink(type, person) {
+  const phone = phoneFor(person);
+
+  if (!phone) {
+    Alert.alert("No phone number", "This person does not have a phone number saved yet.");
+    return;
+  }
+
+  const scheme = type === "sms" ? "sms" : "tel";
+  const url = `${scheme}:${phone.replace(/[^+\d]/g, "")}`;
+
+  const supported = await Linking.canOpenURL(url);
+
+  if (!supported) {
+    Alert.alert("Not available", type === "sms" ? "Text messaging is not available here." : "Calling is not available here.");
+    return;
+  }
+
+  await Linking.openURL(url);
+}
+
+function PersonCard({ person, onMessage }) {
   const scope = person.store_number
     ? `Store ${person.store_number}`
     : person.area_name || "Company";
@@ -60,17 +93,45 @@ function PersonCard({ person }) {
         <Text style={styles.personUsername} numberOfLines={1}>
           @{person.username}
         </Text>
+
+        <View style={styles.actionRow}>
+          <Pressable style={styles.actionButtonPrimary} onPress={() => onMessage(person)}>
+            <Text style={styles.actionButtonPrimaryText}>Message</Text>
+          </Pressable>
+
+          <Pressable style={styles.actionButton} onPress={() => openPhoneLink("tel", person)}>
+            <Text style={styles.actionButtonText}>Call</Text>
+          </Pressable>
+
+          <Pressable style={styles.actionButton} onPress={() => openPhoneLink("sms", person)}>
+            <Text style={styles.actionButtonText}>Text</Text>
+          </Pressable>
+        </View>
       </View>
     </Pressable>
   );
 }
 
-export default function PeopleScreen() {
+export default function PeopleScreen({ navigation }) {
   const [people, setPeople] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  async function handleMessage(person) {
+    try {
+      const data = await createDirectThread(person.id);
+
+      if (navigation?.navigate) {
+        navigation.navigate("Messages", {
+          threadId: data.thread?.id,
+        });
+      }
+    } catch (err) {
+      Alert.alert("Could not open chat", err.message || "Please try again.");
+    }
+  }
 
   async function loadPeople({ silent = false } = {}) {
     try {
@@ -177,7 +238,7 @@ export default function PeopleScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => <PersonCard person={item} />}
+          renderItem={({ item }) => <PersonCard person={item} onMessage={handleMessage} />}
         />
       )}
     </SafeAreaView>
@@ -328,6 +389,37 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginTop: 2,
   },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 9,
+  },
+  actionButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  actionButtonPrimaryText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  actionButton: {
+    backgroundColor: colors.primaryTint,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: colors.primarySoft,
+  },
+  actionButtonText: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
   center: {
     padding: 18,
     alignItems: "center",
