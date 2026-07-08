@@ -29,9 +29,6 @@ def normalize_role(user):
 def visible_store_query(user):
     role = normalize_role(user)
 
-    if role == "platform_admin":
-        return Store.query.filter_by(is_active=True)
-
     query = Store.query.filter_by(
         company_id=user.company_id,
         is_active=True,
@@ -71,8 +68,7 @@ def resolve_store_for_user(user, store_number):
         is_active=True,
     )
 
-    if normalize_role(user) != "platform_admin":
-        query = query.filter_by(company_id=user.company_id)
+    query = query.filter_by(company_id=user.company_id)
 
     return query.first()
 
@@ -210,10 +206,7 @@ def recent_svr_reports():
     user = g.mobile_user
     allowed_stores = visible_store_numbers(user)
 
-    query = SVRReport.query
-
-    if normalize_role(user) != "platform_admin":
-        query = query.filter(SVRReport.company_id == user.company_id)
+    query = SVRReport.query.filter(SVRReport.company_id == user.company_id)
 
     reports = (
         query

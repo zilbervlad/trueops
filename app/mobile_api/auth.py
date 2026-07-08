@@ -45,7 +45,7 @@ def mobile_login():
             "error": "Invalid username or password.",
         }), 401
 
-    if not user.company_id and not user.is_platform_admin():
+    if not user.company_id:
         return jsonify({
             "success": False,
             "error": "This account is not assigned to a company.",

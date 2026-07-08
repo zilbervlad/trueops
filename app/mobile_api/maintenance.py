@@ -28,9 +28,6 @@ def normalize_role(user):
 def visible_store_query(user):
     role = normalize_role(user)
 
-    if role == "platform_admin":
-        return Store.query.filter_by(is_active=True)
-
     query = Store.query.filter_by(
         company_id=user.company_id,
         is_active=True,
@@ -70,8 +67,7 @@ def resolve_store_for_user(user, store_number):
         is_active=True,
     )
 
-    if normalize_role(user) != "platform_admin":
-        query = query.filter_by(company_id=user.company_id)
+    query = query.filter_by(company_id=user.company_id)
 
     return query.first()
 
@@ -149,9 +145,6 @@ def ticket_allowed_for_user(user, ticket):
     if str(ticket.store_number) not in visible_store_numbers(user):
         return False
 
-    if normalize_role(user) == "platform_admin":
-        return True
-
     return ticket.company_id == user.company_id
 
 
@@ -177,10 +170,7 @@ def maintenance_tickets():
 
     allowed_stores = visible_store_numbers(user)
 
-    query = MaintenanceTicket.query
-
-    if normalize_role(user) != "platform_admin":
-        query = query.filter(MaintenanceTicket.company_id == user.company_id)
+    query = MaintenanceTicket.query.filter(MaintenanceTicket.company_id == user.company_id)
 
     tickets = (
         query

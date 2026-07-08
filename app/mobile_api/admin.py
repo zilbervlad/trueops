@@ -65,9 +65,6 @@ def serialize_admin_store(store):
 
 
 def target_user_for_actor(actor, user_id):
-    if normalize_role(actor) == "platform_admin":
-        return User.query.get(user_id)
-
     return User.query.filter_by(
         id=user_id,
         company_id=actor_company_id(actor),
@@ -79,9 +76,7 @@ def store_allowed_for_actor(actor, store_number):
         return True
 
     query = Store.query.filter_by(store_number=store_number, is_active=True)
-
-    if normalize_role(actor) != "platform_admin":
-        query = query.filter(Store.company_id == actor_company_id(actor))
+    query = query.filter(Store.company_id == actor_company_id(actor))
 
     return query.first() is not None
 
@@ -107,10 +102,7 @@ def admin_users():
     if not is_mobile_admin(actor):
         return mobile_error("Admin access required.", 403)
 
-    users_query = User.query
-
-    if normalize_role(actor) != "platform_admin":
-        users_query = users_query.filter(User.company_id == actor_company_id(actor))
+    users_query = User.query.filter(User.company_id == actor_company_id(actor))
 
     users = (
         users_query
@@ -119,9 +111,7 @@ def admin_users():
     )
 
     stores_query = Store.query.filter_by(is_active=True)
-
-    if normalize_role(actor) != "platform_admin":
-        stores_query = stores_query.filter(Store.company_id == actor_company_id(actor))
+    stores_query = stores_query.filter(Store.company_id == actor_company_id(actor))
 
     stores = (
         stores_query
@@ -204,12 +194,7 @@ def update_admin_user(user_id):
     if password:
       target.set_password(password)
 
-    if normalize_role(actor) == "platform_admin" and payload.get("company_id"):
-        try:
-            target.company_id = int(payload.get("company_id"))
-        except (TypeError, ValueError):
-            return mobile_error("Invalid company id.", 400)
-
+    # Mobile admin is intentionally company-scoped. Company reassignment belongs in the web platform admin.
     db.session.commit()
 
     return jsonify({

@@ -50,9 +50,6 @@ def same_company(user, other_user):
     if not user or not other_user:
         return False
 
-    if user.role == "platform_admin":
-        return True
-
     return user.company_id and user.company_id == other_user.company_id
 
 
@@ -106,9 +103,6 @@ def user_can_message_user(sender, recipient):
 def user_can_access_thread(user, thread):
     if not user or not thread:
         return False
-
-    if user.role == "platform_admin":
-        return True
 
     if user.company_id != thread.company_id:
         return False

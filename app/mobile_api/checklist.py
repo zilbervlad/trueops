@@ -42,9 +42,6 @@ def visible_store_query(user):
     company_id = user.company_id
     role = normalize_role(user)
 
-    if role == "platform_admin":
-        return Store.query.filter_by(is_active=True)
-
     query = Store.query.filter_by(
         company_id=company_id,
         is_active=True,
@@ -212,8 +209,7 @@ def load_checklist_response(store_number="", selected_date=None):
         is_active=True,
     )
 
-    if normalize_role(user) != "platform_admin":
-        store_query = store_query.filter_by(company_id=company_id)
+    store_query = store_query.filter_by(company_id=company_id)
 
     store = store_query.first()
 
@@ -357,8 +353,7 @@ def save_checklist_manager():
         is_active=True,
     )
 
-    if normalize_role(user) != "platform_admin":
-        store_query = store_query.filter_by(company_id=company_id)
+    store_query = store_query.filter_by(company_id=company_id)
 
     store = store_query.first()
 
