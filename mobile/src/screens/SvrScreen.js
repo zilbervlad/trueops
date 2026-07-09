@@ -198,6 +198,14 @@ export default function SvrScreen({ onBack }) {
     [fields]
   );
 
+  const answeredCount = visibleFields.filter(
+    (field) => String(values[field.field_key] || "").trim()
+  ).length;
+
+  const completionPercent = visibleFields.length
+    ? Math.round((answeredCount / visibleFields.length) * 100)
+    : 0;
+
   const groupedFields = useMemo(() => {
     const used = new Set();
     const groups = FIELD_GROUPS.map((group) => {
@@ -344,7 +352,7 @@ export default function SvrScreen({ onBack }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -364,14 +372,30 @@ export default function SvrScreen({ onBack }) {
           </View>
 
           <View style={styles.heroCard}>
-            <View>
-              <Text style={styles.heroKicker}>Visit Date</Text>
-              <Text style={styles.heroTitle}>{templatePayload?.visit_date || "Today"}</Text>
-              <Text style={styles.heroText}>{prettyCount(visibleFields)} to review</Text>
+            <View style={styles.heroTopRow}>
+              <View>
+                <Text style={styles.heroKicker}>VISIT PROGRESS</Text>
+                <Text style={styles.heroTitle}>{completionPercent}%</Text>
+                <Text style={styles.heroText}>
+                  {answeredCount} of {visibleFields.length} fields completed
+                </Text>
+              </View>
+
+              <View style={styles.heroDateBlock}>
+                <Text style={styles.heroDateLabel}>VISIT DATE</Text>
+                <Text style={styles.heroDateValue}>
+                  {templatePayload?.visit_date || "Today"}
+                </Text>
+              </View>
             </View>
 
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>SVR</Text>
+            <View style={styles.heroProgressTrack}>
+              <View
+                style={[
+                  styles.heroProgressFill,
+                  { width: `${Math.max(0, Math.min(100, completionPercent))}%` },
+                ]}
+              />
             </View>
           </View>
 
@@ -412,8 +436,8 @@ export default function SvrScreen({ onBack }) {
 
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Report notes</Text>
-              <Text style={styles.sectionSubtitle}>Grouped for faster entry</Text>
+              <Text style={styles.sectionTitle}>Visit review</Text>
+              <Text style={styles.sectionSubtitle}>Complete each section below</Text>
             </View>
           </View>
 
@@ -459,7 +483,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 110,
   },
   loadingWrap: {
@@ -474,10 +499,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.md,
-    gap: spacing.md,
+    marginBottom: 12,
+    gap: 12,
   },
   headerText: {
     flex: 1,
@@ -490,10 +515,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontSize: 32,
+    fontSize: 27,
     fontWeight: "900",
-    letterSpacing: -1,
-    marginTop: 2,
+    letterSpacing: -0.8,
+    marginTop: 1,
   },
   subtitle: {
     color: "#94a3b8",
@@ -514,18 +539,56 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   heroCard: {
-    backgroundColor: colors.navy,
-    borderRadius: 26,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    backgroundColor: "#17233a",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 7,
+  },
+  heroTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  heroDateBlock: {
+    alignItems: "flex-end",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  heroDateLabel: {
+    color: colors.navySoft,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.9,
+  },
+  heroDateValue: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  heroProgressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    overflow: "hidden",
+    marginTop: 16,
+  },
+  heroProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.primary,
   },
   heroKicker: {
     color: colors.navySoft,
@@ -536,7 +599,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: "#ffffff",
-    fontSize: 28,
+    fontSize: 38,
     fontWeight: "900",
     letterSpacing: -0.7,
     marginTop: 3,
@@ -558,8 +621,8 @@ const styles = StyleSheet.create({
   },
   controlCard: {
     backgroundColor: colors.card,
-    borderRadius: 26,
-    padding: spacing.md,
+    borderRadius: 22,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     marginBottom: spacing.md,
@@ -617,8 +680,8 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     backgroundColor: colors.card,
-    borderRadius: 26,
-    padding: spacing.md,
+    borderRadius: 22,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     marginBottom: spacing.md,
@@ -640,17 +703,22 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   sectionSubtitle: {
-    color: "#ffffff",
+    color: "#94a3b8",
     fontWeight: "800",
     marginTop: 2,
   },
   groupCard: {
     backgroundColor: colors.card,
-    borderRadius: 26,
+    borderRadius: 22,
     borderColor: colors.borderSoft,
     borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   groupHeader: {
     flexDirection: "row",
@@ -665,9 +733,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   groupMeta: {
-    color: colors.muted,
-    fontSize: 12,
+    color: colors.primary,
+    fontSize: 11,
     fontWeight: "900",
+    backgroundColor: colors.primaryTint,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   input: {
     backgroundColor: colors.surface,
@@ -682,7 +754,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   textArea: {
-    minHeight: 92,
+    minHeight: 82,
     textAlignVertical: "top",
   },
   fieldWrap: {
@@ -716,13 +788,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.borderSoft,
     borderWidth: 1,
-    borderRadius: radius.md,
-    paddingVertical: 11,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: "center",
   },
   yesNoButtonActive: {
-    backgroundColor: colors.text,
-    borderColor: colors.text,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   yesNoText: {
     color: colors.text,
@@ -754,13 +826,13 @@ const styles = StyleSheet.create({
   },
 
   submitButton: {
-    backgroundColor: colors.text,
+    backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: spacing.sm,
     shadowColor: colors.shadow,
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.20,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 7 },
     elevation: 5,

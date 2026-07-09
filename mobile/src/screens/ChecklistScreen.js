@@ -245,21 +245,27 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
         </View>
 
         <View style={styles.scoreCard}>
-          <View>
-            <Text style={styles.scoreKicker}>Today</Text>
-            <Text style={styles.scoreMain}>{complete}%</Text>
-            <Text style={styles.scoreSub}>overall complete</Text>
+          <View style={styles.scoreTopRow}>
+            <View>
+              <Text style={styles.scoreKicker}>TODAY'S EXECUTION</Text>
+              <Text style={styles.scoreMain}>{complete}%</Text>
+              <Text style={styles.scoreSub}>Checklist complete</Text>
+            </View>
+
+            <View style={styles.scoreStats}>
+              <View style={styles.scoreStat}>
+                <Text style={styles.scoreStatValue}>{integrity}</Text>
+                <Text style={styles.scoreStatLabel}>Integrity</Text>
+              </View>
+              <View style={styles.scoreStat}>
+                <Text style={styles.scoreStatValue}>{walk}</Text>
+                <Text style={styles.scoreStatLabel}>Walk</Text>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.scoreStats}>
-            <View style={styles.scoreStat}>
-              <Text style={styles.scoreStatValue}>{integrity}</Text>
-              <Text style={styles.scoreStatLabel}>Integrity</Text>
-            </View>
-            <View style={styles.scoreStat}>
-              <Text style={styles.scoreStatValue}>{walk}</Text>
-              <Text style={styles.scoreStatLabel}>Walk</Text>
-            </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, complete))}%` }]} />
           </View>
         </View>
 
@@ -414,7 +420,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 110,
   },
   loadingWrap: {
@@ -430,9 +437,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: spacing.md,
-    gap: spacing.md,
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 12,
   },
   headerText: {
     flex: 1,
@@ -445,10 +452,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontSize: 32,
+    fontSize: 27,
     fontWeight: "900",
-    letterSpacing: -1,
-    marginTop: 2,
+    letterSpacing: -0.8,
+    marginTop: 1,
   },
   subtitle: {
     color: "#94a3b8",
@@ -469,18 +476,35 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   scoreCard: {
-    backgroundColor: colors.navy,
-    borderRadius: 26,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    backgroundColor: "#17233a",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 7,
+  },
+  scoreTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    gap: 14,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    overflow: "hidden",
+    marginTop: 16,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.primary,
   },
   scoreKicker: {
     color: colors.navySoft,
@@ -491,7 +515,7 @@ const styles = StyleSheet.create({
   },
   scoreMain: {
     color: "#ffffff",
-    fontSize: 44,
+    fontSize: 40,
     fontWeight: "900",
     letterSpacing: -1.2,
     marginTop: 2,
@@ -506,12 +530,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   scoreStat: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minWidth: 74,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    minWidth: 68,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
   scoreStatValue: {
     color: "#ffffff",
@@ -544,8 +570,8 @@ const styles = StyleSheet.create({
   },
   controlCard: {
     backgroundColor: colors.card,
-    borderRadius: 26,
-    padding: spacing.md,
+    borderRadius: 22,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     marginBottom: spacing.md,
@@ -645,20 +671,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionPill: {
-    backgroundColor: colors.card,
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: 18,
+    borderColor: "rgba(255,255,255,0.09)",
+    borderRadius: 16,
     paddingHorizontal: 13,
-    paddingVertical: 10,
-    minWidth: 138,
+    paddingVertical: 9,
+    minWidth: 132,
   },
   sectionPillActive: {
-    backgroundColor: colors.text,
-    borderColor: colors.text,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   sectionPillText: {
-    color: colors.text,
+    color: "#dbeafe",
     fontWeight: "900",
     maxWidth: 150,
   },
@@ -691,7 +717,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   sectionSubtitle: {
-    color: "#ffffff",
+    color: "#94a3b8",
     fontWeight: "800",
     marginTop: 2,
   },
@@ -719,19 +745,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderColor: colors.borderSoft,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderRadius: 17,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    marginBottom: 8,
     flexDirection: "row",
-    gap: spacing.md,
+    gap: 12,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.035,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   itemRowDone: {
-    backgroundColor: colors.surface,
+    backgroundColor: "#f4fbf7",
+    borderColor: "#d7f0df",
   },
   checkCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 2,
     borderColor: colors.border,
     alignItems: "center",
@@ -756,8 +789,9 @@ const styles = StyleSheet.create({
   itemText: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: "850",
+    fontWeight: "800",
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
   itemTextDone: {
     color: colors.muted,
