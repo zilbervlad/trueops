@@ -185,6 +185,7 @@ export default function SvrScreen({ onBack }) {
   const [managerOnDuty, setManagerOnDuty] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [canCreateReport, setCanCreateReport] = useState(false);
 
   const fields = templatePayload?.fields || [];
 
@@ -222,6 +223,7 @@ export default function SvrScreen({ onBack }) {
     async (storeNumber) => {
       const response = await fetchSvrTemplate(storeNumber);
       setTemplatePayload(response);
+      setCanCreateReport(Boolean(response.can_create_svr));
 
       const nextValues = {};
       for (const field of response.fields || []) {
@@ -289,6 +291,11 @@ export default function SvrScreen({ onBack }) {
   async function handleSubmit() {
     if (!selectedStore) {
       Alert.alert("SVR", "Select a store first.");
+      return;
+    }
+
+    if (!canCreateReport) {
+      Alert.alert("SVR locked", "Only supervisors and above can create Supervisor Visit Reports.");
       return;
     }
 
@@ -376,6 +383,17 @@ export default function SvrScreen({ onBack }) {
             onSelect={handleStoreSelect}
           />
 
+          {!canCreateReport ? (
+            <View style={styles.lockedCard}>
+              <Text style={styles.lockedTitle}>Supervisor access required</Text>
+              <Text style={styles.lockedText}>
+                SVRs are Supervisor Visit Reports. Managers can view SVR information for their store, but only supervisors and above can create or submit new reports.
+              </Text>
+            </View>
+          ) : null}
+
+          {canCreateReport ? (
+            <>
           <View style={styles.detailCard}>
             <Text style={styles.cardTitle}>Visit details</Text>
 
@@ -421,6 +439,9 @@ export default function SvrScreen({ onBack }) {
               <Text style={styles.submitButtonText}>Save SVR</Text>
             )}
           </TouchableOpacity>
+
+            </>
+          ) : null}
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -710,6 +731,28 @@ const styles = StyleSheet.create({
   yesNoTextActive: {
     color: "#ffffff",
   },
+
+  lockedCard: {
+    backgroundColor: "#fff7ed",
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: "#fed7aa",
+    marginBottom: spacing.md,
+  },
+  lockedTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#9a3412",
+    marginBottom: 6,
+  },
+  lockedText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    color: "#9a3412",
+  },
+
   submitButton: {
     backgroundColor: colors.text,
     borderRadius: 18,
