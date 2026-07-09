@@ -69,7 +69,12 @@ export default function OpsScreen({ route }) {
   }, [route?.params?.initialTool, route?.params?.initialToolNonce]);
 
   if (activeModule === "checklist") {
-    return <ChecklistScreen onBack={() => setActiveModule("menu")} />;
+    return (
+      <ChecklistScreen
+        initialStore={route?.params?.initialStore}
+        onBack={() => setActiveModule("menu")}
+      />
+    );
   }
 
   if (activeModule === "svr") {

@@ -185,7 +185,13 @@ export default function HomeScreen({ context, navigation }) {
           renderItem={({ item }) => (
             <HeatmapStoreCard
               item={item}
-              onPress={() => navigation?.navigate?.("Ops")}
+              onPress={() =>
+                navigation?.navigate?.("Ops", {
+                  initialTool: "checklist",
+                  initialStore: item.store_number,
+                  initialToolNonce: Date.now(),
+                })
+              }
             />
           )}
         />

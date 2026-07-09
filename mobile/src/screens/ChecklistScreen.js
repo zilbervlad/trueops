@@ -78,9 +78,11 @@ function ChecklistItem({ item, readOnly, saving, onToggle }) {
   );
 }
 
-export default function ChecklistScreen({ onBack }) {
+export default function ChecklistScreen({ onBack, initialStore = "" }) {
   const [stores, setStores] = useState([]);
-  const [selectedStore, setSelectedStore] = useState("");
+  const [selectedStore, setSelectedStore] = useState(
+    String(initialStore || "")
+  );
   const [storePickerOpen, setStorePickerOpen] = useState(false);
   const [payload, setPayload] = useState(null);
   const [activeSectionName, setActiveSectionName] = useState("");
@@ -141,8 +143,8 @@ export default function ChecklistScreen({ onBack }) {
   );
 
   useEffect(() => {
-    load();
-  }, []);
+    load({ storeNumber: String(initialStore || "") });
+  }, [initialStore]);
 
   async function handleStoreSelect(storeNumber) {
     setStorePickerOpen(false);
