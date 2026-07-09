@@ -1,3 +1,5 @@
+import base64
+
 from app.models import Store
 
 
@@ -136,6 +138,23 @@ def display_thread_name(thread, current_user=None):
     return thread.name
 
 
+
+
+def serialize_message_attachment(attachment):
+    if not attachment:
+        return None
+
+    encoded = base64.b64encode(attachment.data or b"").decode("ascii")
+
+    return {
+        "id": attachment.id,
+        "filename": attachment.filename,
+        "content_type": attachment.content_type,
+        "data_url": f"data:{attachment.content_type};base64,{encoded}",
+        "created_at": attachment.created_at.isoformat() if attachment.created_at else None,
+    }
+
+
 def serialize_thread_message(message, current_user=None):
     sender = message.sender
 
@@ -186,6 +205,10 @@ def serialize_thread_message(message, current_user=None):
         "is_mine": bool(current_user and message.sender_user_id == current_user.id),
         "created_at": message.created_at.isoformat() if message.created_at else None,
         "ack_count": len(message.acks or []),
+        "attachments": [
+            serialize_message_attachment(attachment)
+            for attachment in (message.attachments or [])
+        ],
         "reply_to_message_id": getattr(message, "reply_to_message_id", None),
         "reply_to": reply_to,
         "reactions": list(reaction_groups.values()),

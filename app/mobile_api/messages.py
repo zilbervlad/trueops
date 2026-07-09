@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 
 from flask import Blueprint, g, jsonify, request
@@ -9,6 +10,7 @@ from app.models import (
     TrueOpsThread,
     TrueOpsThreadMember,
     TrueOpsThreadMessage,
+    TrueOpsThreadMessageAttachment,
     TrueOpsThreadMessageReaction,
     User,
 )
@@ -724,6 +726,7 @@ def create_thread_message(thread_id):
     data = request.get_json(silent=True) or {}
 
     body = (data.get("body") or "").strip()
+    attachment_payload = data.get("attachment") or None
     requires_ack = bool(data.get("requires_ack", False))
     reply_to_message_id = data.get("reply_to_message_id")
 
@@ -732,8 +735,8 @@ def create_thread_message(thread_id):
     except (TypeError, ValueError):
         return mobile_error("Invalid reply_to_message_id.", 400)
 
-    if not body:
-        return mobile_error("Message body is required.", 400)
+    if not body and not attachment_payload:
+        return mobile_error("Message body or attachment is required.", 400)
 
     thread = TrueOpsThread.query.filter_by(
         id=thread_id,
@@ -760,7 +763,7 @@ def create_thread_message(thread_id):
         company_id=thread.company_id,
         thread_id=thread.id,
         sender_user_id=user.id,
-        body=body,
+        body=body or "",
         requires_ack=requires_ack,
         reply_to_message_id=reply_to_message.id if reply_to_message else None,
     )
@@ -768,6 +771,33 @@ def create_thread_message(thread_id):
     ensure_thread_member(thread.id, user.id)
 
     db.session.add(message)
+    db.session.flush()
+
+    if attachment_payload:
+        content_type = (attachment_payload.get("content_type") or "").strip().lower()
+        filename = (attachment_payload.get("filename") or "photo.jpg").strip()
+        data_base64 = attachment_payload.get("data_base64") or ""
+
+        if content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            return mobile_error("Unsupported image type.", 400)
+
+        try:
+            raw_data = base64.b64decode(data_base64, validate=True)
+        except Exception:
+            return mobile_error("Invalid image data.", 400)
+
+        max_bytes = 2 * 1024 * 1024
+
+        if len(raw_data) > max_bytes:
+            return mobile_error("Image is too large. Please choose a smaller image.", 400)
+
+        db.session.add(TrueOpsThreadMessageAttachment(
+            message_id=message.id,
+            filename=filename[:255],
+            content_type=content_type,
+            data=raw_data,
+        ))
+
     db.session.commit()
 
     send_message_pushes(thread, message)

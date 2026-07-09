@@ -699,6 +699,30 @@ class TrueOpsThreadMessage(db.Model):
     reply_to = db.relationship("TrueOpsThreadMessage", remote_side=[id])
 
 
+
+class TrueOpsThreadMessageAttachment(db.Model):
+    __tablename__ = "trueops_thread_message_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    message_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trueops_thread_messages.id"),
+        nullable=False,
+        index=True,
+    )
+
+    filename = db.Column(db.String(255))
+    content_type = db.Column(db.String(100), nullable=False)
+    data = db.Column(db.LargeBinary, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    message = db.relationship(
+        "TrueOpsThreadMessage",
+        backref=db.backref("attachments", lazy=True, cascade="all, delete-orphan"),
+    )
+
+
 class TrueOpsThreadMessageReaction(db.Model):
     __tablename__ = "trueops_thread_message_reactions"
 
