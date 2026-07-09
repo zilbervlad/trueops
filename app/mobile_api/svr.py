@@ -192,6 +192,7 @@ def svr_stores():
     return jsonify({
         "success": True,
         "stores": [serialize_store(store) for store in stores],
+        "can_create_svr": normalize_role(user) in SVR_CREATOR_ROLES,
     })
 
 
@@ -211,6 +212,7 @@ def svr_template():
         "store": serialize_store(store),
         "visit_date": today_et().isoformat(),
         "fields": [serialize_field(field) for field in fields],
+        "can_create_svr": user_can_create_svr_for_store(user, store.store_number),
     })
 
 
