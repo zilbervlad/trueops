@@ -32,11 +32,18 @@ SECTION_ORDER = [
 
 
 def normalize_role(user):
-    if getattr(user, "is_platform_admin", False):
+    is_platform_admin = getattr(user, "is_platform_admin", False)
+
+    if callable(is_platform_admin):
+        try:
+            if is_platform_admin():
+                return "platform_admin"
+        except TypeError:
+            pass
+    elif is_platform_admin:
         return "platform_admin"
 
     return (getattr(user, "role", "") or "").strip().lower()
-
 
 def visible_store_query(user):
     return scoped_store_query_for_user(user, Store)

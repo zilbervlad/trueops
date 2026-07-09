@@ -20,11 +20,18 @@ mobile_svr_bp = Blueprint(
 
 
 def normalize_role(user):
-    if getattr(user, "is_platform_admin", False):
+    is_platform_admin = getattr(user, "is_platform_admin", False)
+
+    if callable(is_platform_admin):
+        try:
+            if is_platform_admin():
+                return "platform_admin"
+        except TypeError:
+            pass
+    elif is_platform_admin:
         return "platform_admin"
 
     return (getattr(user, "role", "") or "").strip().lower()
-
 
 def visible_store_query(user):
     return scoped_store_query_for_user(user, Store)
@@ -55,6 +62,29 @@ def resolve_store_for_user(user, store_number):
     query = query.filter_by(company_id=user.company_id)
 
     return query.first()
+
+
+SVR_CREATOR_ROLES = {
+    "platform_admin",
+    "admin",
+    "hr",
+    "coach",
+    "supervisor",
+}
+
+
+def user_can_create_svr_for_store(user, store_number):
+    role = normalize_role(user)
+
+    if role not in SVR_CREATOR_ROLES:
+        return False
+
+    store_number = str(store_number or "").strip()
+
+    if not store_number:
+        return False
+
+    return user_can_access_store_number(user, Store, store_number)
 
 
 def active_template_fields_for_company(company_id):
@@ -221,6 +251,9 @@ def create_svr_report():
 
     if not store:
         return mobile_error("Store not found.", 404)
+
+    if not user_can_create_svr_for_store(user, store.store_number):
+        return mobile_error("Only supervisors and above can create SVRs.", 403)
 
     visit_date = parse_visit_date(data.get("visit_date"))
 
