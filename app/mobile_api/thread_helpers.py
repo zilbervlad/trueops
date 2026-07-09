@@ -72,7 +72,8 @@ def ensure_thread_member(thread, user, member_role="member"):
     ).first()
 
     if membership:
-        membership.hidden_at = None
+        # Preserve hidden_at here so default thread sync does not undo
+        # a manual group-member removal.
         return membership
 
     membership = TrueOpsThreadMember(
