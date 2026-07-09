@@ -10,9 +10,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Image,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 
 import {
   addThreadMember,
@@ -254,6 +257,16 @@ function MessageBubble({ message, onDelete, onReadReceipts, onMessageActions }) 
           </View>
         ) : null}
 
+        {(message.attachments || []).map((attachment) => (
+          <Image
+            key={attachment.id}
+            source={{ uri: attachment.data_url }}
+            style={styles.messageImage}
+            resizeMode="cover"
+          />
+        ))}
+
+        {message.body ? (
         <Text
           style={[
             styles.bubbleText,
@@ -263,6 +276,7 @@ function MessageBubble({ message, onDelete, onReadReceipts, onMessageActions }) 
         >
           {message.body}
         </Text>
+        ) : null}
       </Pressable>
 
       {(message.reactions || []).length > 0 ? (
@@ -296,6 +310,7 @@ export default function MessagesScreen({ route }) {
   const [draft, setDraft] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [sending, setSending] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showPeople, setShowPeople] = useState(false);
   const [people, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
@@ -452,6 +467,7 @@ export default function MessagesScreen({ route }) {
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
       setReplyingTo(null);
+      setSelectedPhoto(null);
       scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
@@ -589,22 +605,72 @@ export default function MessagesScreen({ route }) {
     );
   }
 
+
+  async function handlePickPhoto() {
+    if (sending) return;
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Photos permission needed", "Allow photo access to send pictures in chat.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.55,
+        base64: false,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+
+      setSelectedPhoto({
+        uri: asset.uri,
+        filename: asset.fileName || "photo.jpg",
+        contentType: asset.mimeType || "image/jpeg",
+      });
+    } catch (err) {
+      Alert.alert("Could not pick photo", err.message || "Please try again.");
+    }
+  }
+
+
   async function handleSend() {
     const body = draft.trim();
 
-    if (!body || !selectedThread || sending) return;
+    if ((!body && !selectedPhoto) || !selectedThread || sending) return;
 
     setSending(true);
     setDraft("");
 
     try {
+      let attachment = null;
+
+      if (selectedPhoto?.uri) {
+        const dataBase64 = await FileSystem.readAsStringAsync(selectedPhoto.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        attachment = {
+          filename: selectedPhoto.filename || "photo.jpg",
+          content_type: selectedPhoto.contentType || "image/jpeg",
+          data_base64: dataBase64,
+        };
+      }
+
       await sendThreadMessage(selectedThread.id, body, {
         replyToMessageId: replyingTo?.id,
+        attachment,
       });
       await markThreadRead(selectedThread.id);
       const data = await loadThread(selectedThread.id);
       setSelectedThread(data.thread);
       setReplyingTo(null);
+      setSelectedPhoto(null);
       scrollMessagesToBottom(true);
       await refreshThreads();
     } catch (err) {
@@ -958,7 +1024,20 @@ export default function MessagesScreen({ route }) {
                   </View>
                 ) : null}
 
+                {selectedPhoto ? (
+                  <View style={styles.photoPreview}>
+                    <Image source={{ uri: selectedPhoto.uri }} style={styles.photoPreviewImage} />
+                    <Pressable onPress={() => setSelectedPhoto(null)} style={styles.removePhotoButton}>
+                      <Text style={styles.removePhotoText}>×</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
                 <View style={styles.composer}>
+                  <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={sending}>
+                    <Text style={styles.attachButtonText}>＋</Text>
+                  </Pressable>
+
                   <TextInput
                     value={draft}
                     onChangeText={setDraft}
@@ -980,7 +1059,7 @@ export default function MessagesScreen({ route }) {
 
                   <Pressable
                     onPress={handleSend}
-                    disabled={!draft.trim() || sending}
+                    disabled={(!draft.trim() && !selectedPhoto) || sending}
                     style={[
                       styles.sendButton,
                       (!draft.trim() || sending) && styles.sendButtonDisabled,
@@ -1588,6 +1667,57 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
+
+  messageImage: {
+    width: 210,
+    height: 160,
+    borderRadius: 14,
+    marginBottom: 7,
+    backgroundColor: colors.chip,
+  },
+  photoPreview: {
+    alignSelf: "flex-start",
+    position: "relative",
+    marginBottom: 8,
+  },
+  photoPreviewImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 14,
+    backgroundColor: colors.chip,
+  },
+  removePhotoButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    backgroundColor: colors.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removePhotoText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  attachButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    backgroundColor: colors.chip,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  attachButtonText: {
+    color: colors.primary,
+    fontSize: 24,
+    fontWeight: "900",
+    marginTop: -2,
+  },
+
   composer: {
     backgroundColor: "#ffffff",
     borderRadius: 22,

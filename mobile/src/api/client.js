@@ -122,6 +122,7 @@ export async function sendThreadMessage(threadId, body, options = {}) {
     body: JSON.stringify({
       body,
       reply_to_message_id: options.replyToMessageId || null,
+      attachment: options.attachment || null,
     }),
   });
 }
