@@ -75,6 +75,52 @@ def get_or_create_mobile_daily_checklist(company_id, store_number, checklist_dat
     )
 
     if daily:
+        # Keep today's generated checklist aligned with the current template.
+        # Past ops days remain historical snapshots and are never modified.
+        if not is_past_ops_day(checklist_date):
+            template_items = get_active_checklist_template_items_for_company(company_id)
+            active_by_id = {item.id: item for item in template_items}
+
+            existing_by_template_id = {
+                item.template_item_id: item
+                for item in daily.items
+                if item.template_item_id is not None
+            }
+
+            # Remove items that were deactivated or removed from the template.
+            for item in list(daily.items):
+                if (
+                    item.template_item_id is not None
+                    and item.template_item_id not in active_by_id
+                ):
+                    db.session.delete(item)
+
+            # Add newly activated items and refresh current template details.
+            for template in template_items:
+                existing = existing_by_template_id.get(template.id)
+
+                if existing:
+                    existing.section_name = template.section_name
+                    existing.task_text = template.task_text
+                    existing.expected_minutes = template.expected_minutes
+                    existing.is_required = template.is_required
+                else:
+                    db.session.add(
+                        DailyChecklistItem(
+                            daily_checklist_id=daily.id,
+                            template_item_id=template.id,
+                            section_name=template.section_name,
+                            task_text=template.task_text,
+                            expected_minutes=template.expected_minutes,
+                            is_required=template.is_required,
+                            is_completed=False,
+                            notes="",
+                        )
+                    )
+
+            db.session.commit()
+            update_checklist_progress(daily)
+
         return daily
 
     daily = DailyChecklist(
