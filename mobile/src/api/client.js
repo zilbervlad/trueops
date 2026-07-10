@@ -315,3 +315,10 @@ export async function toggleMessageReaction(threadId, messageId, emoji) {
     body: JSON.stringify({ emoji }),
   });
 }
+
+
+export async function toggleWeeklyFocusItem(itemId) {
+  return request(`/api/mobile/checklist/weekly-focus/${itemId}/toggle`, {
+    method: "POST",
+  });
+}

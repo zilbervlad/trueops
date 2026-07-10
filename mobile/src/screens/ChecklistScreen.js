@@ -17,6 +17,7 @@ import {
   fetchTodayChecklist,
   saveChecklistManager,
   toggleChecklistItem,
+  toggleWeeklyFocusItem,
 } from "../api/client";
 import { colors, radius, spacing } from "../styles/theme";
 
@@ -91,6 +92,7 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingItemId, setSavingItemId] = useState(null);
+  const [savingFocusItemId, setSavingFocusItemId] = useState(null);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
 
@@ -159,6 +161,45 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
     setSelectedStore(storeNumber);
     await load({ storeNumber });
   }
+
+  async function handleToggleWeeklyFocus(item) {
+    if (!item?.id || savingFocusItemId) return;
+
+    setSavingFocusItemId(item.id);
+
+    try {
+      const response = await toggleWeeklyFocusItem(item.id);
+      const updatedItem = response.item;
+
+      setPayload((current) => {
+        const currentFocus = current?.weekly_focus || {};
+
+        const updateList = (items = []) =>
+          items.map((focusItem) =>
+            focusItem.id === updatedItem.id
+              ? { ...focusItem, ...updatedItem }
+              : focusItem
+          );
+
+        return {
+          ...current,
+          weekly_focus: {
+            cleaning: updateList(currentFocus.cleaning),
+            goals: updateList(currentFocus.goals),
+            other: updateList(currentFocus.other),
+          },
+        };
+      });
+    } catch (error) {
+      Alert.alert(
+        "Store Focus",
+        error.message || "Could not update this item."
+      );
+    } finally {
+      setSavingFocusItemId(null);
+    }
+  }
+
 
   async function handleToggle(item) {
     if (!checklist || checklist.read_only || savingItemId) return;
@@ -309,19 +350,26 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                 </View>
 
                 {cleaningFocus.map((item) => (
-                  <View
+                  <TouchableOpacity
                     key={`cleaning-${item.id}`}
                     style={[
                       styles.focusItem,
                       item.is_completed && styles.focusItemComplete,
                     ]}
+                    onPress={() => handleToggleWeeklyFocus(item)}
+                    disabled={savingFocusItemId === item.id}
+                    activeOpacity={0.8}
                   >
                     <View
                       style={[
-                        styles.focusBullet,
-                        item.is_completed && styles.focusBulletComplete,
+                        styles.focusCheck,
+                        item.is_completed && styles.focusCheckComplete,
                       ]}
-                    />
+                    >
+                      <Text style={styles.focusCheckText}>
+                        {item.is_completed ? "✓" : ""}
+                      </Text>
+                    </View>
 
                     <Text
                       style={[
@@ -331,7 +379,7 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                     >
                       {item.item_text}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ) : null}
@@ -353,20 +401,26 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                 </View>
 
                 {storeGoals.map((item) => (
-                  <View
+                  <TouchableOpacity
                     key={`goal-${item.id}`}
                     style={[
                       styles.focusItem,
                       item.is_completed && styles.focusItemComplete,
                     ]}
+                    onPress={() => handleToggleWeeklyFocus(item)}
+                    disabled={savingFocusItemId === item.id}
+                    activeOpacity={0.8}
                   >
                     <View
                       style={[
-                        styles.focusBullet,
-                        styles.focusBulletGoal,
-                        item.is_completed && styles.focusBulletComplete,
+                        styles.focusCheck,
+                        item.is_completed && styles.focusCheckComplete,
                       ]}
-                    />
+                    >
+                      <Text style={styles.focusCheckText}>
+                        {item.is_completed ? "✓" : ""}
+                      </Text>
+                    </View>
 
                     <Text
                       style={[
@@ -376,7 +430,7 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                     >
                       {item.item_text}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ) : null}
@@ -398,20 +452,26 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                 </View>
 
                 {otherFocus.map((item) => (
-                  <View
+                  <TouchableOpacity
                     key={`other-${item.id}`}
                     style={[
                       styles.focusItem,
                       item.is_completed && styles.focusItemComplete,
                     ]}
+                    onPress={() => handleToggleWeeklyFocus(item)}
+                    disabled={savingFocusItemId === item.id}
+                    activeOpacity={0.8}
                   >
                     <View
                       style={[
-                        styles.focusBullet,
-                        styles.focusBulletOther,
-                        item.is_completed && styles.focusBulletComplete,
+                        styles.focusCheck,
+                        item.is_completed && styles.focusCheckComplete,
                       ]}
-                    />
+                    >
+                      <Text style={styles.focusCheckText}>
+                        {item.is_completed ? "✓" : ""}
+                      </Text>
+                    </View>
 
                     <Text
                       style={[
@@ -421,7 +481,7 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
                     >
                       {item.item_text}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ) : null}
@@ -812,6 +872,27 @@ const styles = StyleSheet.create({
   focusItemComplete: {
     opacity: 0.65,
   },
+  focusCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  focusCheckComplete: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  focusCheckText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+
   focusBullet: {
     width: 8,
     height: 8,

@@ -530,3 +530,40 @@ def save_checklist_manager():
         "success": True,
         "checklist": serialize_daily_checklist(daily),
     })
+
+
+@mobile_checklist_bp.post("/weekly-focus/<int:item_id>/toggle")
+@mobile_login_required
+def toggle_weekly_focus_item(item_id):
+    user = g.mobile_user
+
+    item = WeeklyFocusItem.query.filter_by(
+        id=item_id,
+        company_id=user.company_id,
+    ).first()
+
+    if not item:
+        return mobile_error("Weekly focus item not found.", 404)
+
+    if str(item.store_number) not in visible_store_numbers(user):
+        return mobile_error("Unauthorized store.", 403)
+
+    item.is_completed = not bool(item.is_completed)
+    item.completed_at = datetime.utcnow() if item.is_completed else None
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "item": {
+            "id": item.id,
+            "item_type": item.item_type,
+            "item_text": item.item_text,
+            "is_completed": bool(item.is_completed),
+            "completed_at": (
+                item.completed_at.isoformat()
+                if item.completed_at
+                else None
+            ),
+        },
+    })
