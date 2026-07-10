@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
-from app.models import DailyChecklist, DailyChecklistItem, Store
+from app.models import DailyChecklist, DailyChecklistItem, Store, WeeklyFocusItem
 from app.mobile_api.permissions import mobile_error, mobile_login_required, scoped_store_query_for_user, user_can_access_store_number
 from app.checklist.routes import (
     build_section_stats,
@@ -260,6 +260,47 @@ def load_checklist_response(store_number="", selected_date=None):
         checklist_date=selected_date,
     )
 
+    weekly_focus_rows = (
+        WeeklyFocusItem.query
+        .filter(
+            WeeklyFocusItem.company_id == checklist_company_id,
+            WeeklyFocusItem.store_number == str(store_number),
+        )
+        .order_by(
+            WeeklyFocusItem.is_completed.asc(),
+            WeeklyFocusItem.item_type.asc(),
+            WeeklyFocusItem.id.asc(),
+        )
+        .all()
+    )
+
+    weekly_focus = {
+        "cleaning": [],
+        "goals": [],
+        "other": [],
+    }
+
+    for item in weekly_focus_rows:
+        serialized = {
+            "id": item.id,
+            "item_type": item.item_type,
+            "item_text": item.item_text,
+            "is_completed": bool(item.is_completed),
+            "completed_at": (
+                item.completed_at.isoformat()
+                if item.completed_at
+                else None
+            ),
+            "source_type": item.source_type,
+        }
+
+        if item.item_type == "cleaning":
+            weekly_focus["cleaning"].append(serialized)
+        elif item.item_type == "goal":
+            weekly_focus["goals"].append(serialized)
+        else:
+            weekly_focus["other"].append(serialized)
+
     return jsonify({
         "success": True,
         "store": {
@@ -269,6 +310,7 @@ def load_checklist_response(store_number="", selected_date=None):
             "area_name": store.area_name,
         },
         "checklist": serialize_daily_checklist(daily),
+        "weekly_focus": weekly_focus,
     })
 
 

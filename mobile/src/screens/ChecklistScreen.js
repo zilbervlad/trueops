@@ -96,6 +96,14 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
 
   const checklist = payload?.checklist;
   const store = payload?.store;
+  const weeklyFocus = payload?.weekly_focus || {};
+  const cleaningFocus = weeklyFocus.cleaning || [];
+  const storeGoals = weeklyFocus.goals || [];
+  const otherFocus = weeklyFocus.other || [];
+  const hasWeeklyFocus =
+    cleaningFocus.length > 0 ||
+    storeGoals.length > 0 ||
+    otherFocus.length > 0;
 
   const activeSection = useMemo(() => {
     const sections = checklist?.sections || [];
@@ -268,6 +276,157 @@ export default function ChecklistScreen({ onBack, initialStore = "" }) {
             <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, complete))}%` }]} />
           </View>
         </View>
+
+        {hasWeeklyFocus ? (
+          <View style={styles.weeklyFocusCard}>
+            <View style={styles.weeklyFocusHeader}>
+              <View>
+                <Text style={styles.weeklyFocusKicker}>THIS WEEK</Text>
+                <Text style={styles.weeklyFocusTitle}>Store Focus</Text>
+              </View>
+
+              <View style={styles.weeklyFocusCount}>
+                <Text style={styles.weeklyFocusCountText}>
+                  {cleaningFocus.length + storeGoals.length + otherFocus.length}
+                </Text>
+              </View>
+            </View>
+
+            {cleaningFocus.length ? (
+              <View style={styles.focusSection}>
+                <View style={styles.focusSectionHeader}>
+                  <View style={[styles.focusIcon, styles.focusIconCleaning]}>
+                    <Text style={styles.focusIconText}>✦</Text>
+                  </View>
+
+                  <View>
+                    <Text style={styles.focusSectionTitle}>Cleaning Focus</Text>
+                    <Text style={styles.focusSectionMeta}>
+                      {cleaningFocus.length} priority
+                      {cleaningFocus.length === 1 ? "" : " items"}
+                    </Text>
+                  </View>
+                </View>
+
+                {cleaningFocus.map((item) => (
+                  <View
+                    key={`cleaning-${item.id}`}
+                    style={[
+                      styles.focusItem,
+                      item.is_completed && styles.focusItemComplete,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.focusBullet,
+                        item.is_completed && styles.focusBulletComplete,
+                      ]}
+                    />
+
+                    <Text
+                      style={[
+                        styles.focusItemText,
+                        item.is_completed && styles.focusItemTextComplete,
+                      ]}
+                    >
+                      {item.item_text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {storeGoals.length ? (
+              <View style={styles.focusSection}>
+                <View style={styles.focusSectionHeader}>
+                  <View style={[styles.focusIcon, styles.focusIconGoal]}>
+                    <Text style={styles.focusIconText}>◎</Text>
+                  </View>
+
+                  <View>
+                    <Text style={styles.focusSectionTitle}>Store Goals</Text>
+                    <Text style={styles.focusSectionMeta}>
+                      {storeGoals.length} goal
+                      {storeGoals.length === 1 ? "" : "s"}
+                    </Text>
+                  </View>
+                </View>
+
+                {storeGoals.map((item) => (
+                  <View
+                    key={`goal-${item.id}`}
+                    style={[
+                      styles.focusItem,
+                      item.is_completed && styles.focusItemComplete,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.focusBullet,
+                        styles.focusBulletGoal,
+                        item.is_completed && styles.focusBulletComplete,
+                      ]}
+                    />
+
+                    <Text
+                      style={[
+                        styles.focusItemText,
+                        item.is_completed && styles.focusItemTextComplete,
+                      ]}
+                    >
+                      {item.item_text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {otherFocus.length ? (
+              <View style={styles.focusSection}>
+                <View style={styles.focusSectionHeader}>
+                  <View style={[styles.focusIcon, styles.focusIconOther]}>
+                    <Text style={styles.focusIconText}>!</Text>
+                  </View>
+
+                  <View>
+                    <Text style={styles.focusSectionTitle}>Additional Focus</Text>
+                    <Text style={styles.focusSectionMeta}>
+                      {otherFocus.length} item
+                      {otherFocus.length === 1 ? "" : "s"}
+                    </Text>
+                  </View>
+                </View>
+
+                {otherFocus.map((item) => (
+                  <View
+                    key={`other-${item.id}`}
+                    style={[
+                      styles.focusItem,
+                      item.is_completed && styles.focusItemComplete,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.focusBullet,
+                        styles.focusBulletOther,
+                        item.is_completed && styles.focusBulletComplete,
+                      ]}
+                    />
+
+                    <Text
+                      style={[
+                        styles.focusItemText,
+                        item.is_completed && styles.focusItemTextComplete,
+                      ]}
+                    >
+                      {item.item_text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {readOnly && (
           <View style={styles.warningCard}>
@@ -551,6 +710,136 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginTop: 1,
   },
+  weeklyFocusCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    marginBottom: 12,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  weeklyFocusHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  weeklyFocusKicker: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  weeklyFocusTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+    marginTop: 2,
+  },
+  weeklyFocusCount: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primaryTint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weeklyFocusCountText: {
+    color: colors.primary,
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  focusSection: {
+    backgroundColor: colors.surface,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: 12,
+    marginTop: 8,
+  },
+  focusSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  focusIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  focusIconCleaning: {
+    backgroundColor: colors.successSoft,
+  },
+  focusIconGoal: {
+    backgroundColor: colors.primarySoft,
+  },
+  focusIconOther: {
+    backgroundColor: colors.warningSoft,
+  },
+  focusIconText: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  focusSectionTitle: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  focusSectionMeta: {
+    color: colors.muted,
+    fontWeight: "700",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  focusItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+  },
+  focusItemComplete: {
+    opacity: 0.65,
+  },
+  focusBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    marginTop: 6,
+  },
+  focusBulletGoal: {
+    backgroundColor: colors.primary,
+  },
+  focusBulletOther: {
+    backgroundColor: colors.warning,
+  },
+  focusBulletComplete: {
+    backgroundColor: colors.faint,
+  },
+  focusItemText: {
+    flex: 1,
+    color: colors.textSoft,
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 20,
+  },
+  focusItemTextComplete: {
+    color: colors.muted,
+    textDecorationLine: "line-through",
+  },
+
   warningCard: {
     backgroundColor: colors.warningSoft,
     borderColor: "#fed7aa",
