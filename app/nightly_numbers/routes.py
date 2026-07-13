@@ -283,19 +283,21 @@ def current_business_date():
     return now_et.date()
 
 
-def nightly_numbers_config_query():
-    company_id = current_company_id()
+def nightly_numbers_config_query(company_id=None):
+    company_id = company_id or current_company_id()
 
     query = NightlyNumbersFieldConfig.query
 
     if company_id and hasattr(NightlyNumbersFieldConfig, "company_id"):
-        query = query.filter(NightlyNumbersFieldConfig.company_id == company_id)
+        query = query.filter(
+            NightlyNumbersFieldConfig.company_id == company_id
+        )
 
     return query
 
 
-def ensure_field_config_seeded():
-    company_id = current_company_id()
+def ensure_field_config_seeded(company_id=None):
+    company_id = company_id or current_company_id()
 
     if not company_id:
         return
@@ -372,11 +374,14 @@ def ensure_field_config_seeded():
     db.session.commit()
 
 
-def get_field_config():
-    ensure_field_config_seeded()
-    return nightly_numbers_config_query().order_by(
+def get_field_config(company_id=None):
+    company_id = company_id or current_company_id()
+
+    ensure_field_config_seeded(company_id)
+
+    return nightly_numbers_config_query(company_id).order_by(
         NightlyNumbersFieldConfig.sort_order.asc(),
-        NightlyNumbersFieldConfig.id.asc()
+        NightlyNumbersFieldConfig.id.asc(),
     ).all()
 
 
@@ -460,8 +465,11 @@ def apply_form_value_to_report(report, field):
     setattr(report, field_key, raw_value or None)
 
 
-def send_nightly_numbers_email(report: NightlyNumbersReport):
-    company_id = current_company_id()
+def send_nightly_numbers_email(
+    report: NightlyNumbersReport,
+    company_id=None,
+):
+    company_id = company_id or report.company_id or current_company_id()
 
     store = Store.query.filter_by(
         company_id=company_id,
@@ -511,8 +519,23 @@ def send_nightly_numbers_email(report: NightlyNumbersReport):
     if not manager_email:
         raise ValueError(f"No manager notification email configured for store {report.store_number}.")
 
-    fields = get_field_config()
-    enabled_fields = [field for field in fields if field.is_enabled]
+    fields = (
+        NightlyNumbersFieldConfig.query
+        .filter(
+            NightlyNumbersFieldConfig.company_id == company_id,
+        )
+        .order_by(
+            NightlyNumbersFieldConfig.sort_order.asc(),
+            NightlyNumbersFieldConfig.id.asc(),
+        )
+        .all()
+    )
+
+    enabled_fields = [
+        field
+        for field in fields
+        if field.is_enabled
+    ]
 
     lines = [
         "Nightly Numbers Report",
@@ -595,15 +618,17 @@ def index():
             return redirect(url_for("nightly_numbers.index"))
 
         report = NightlyNumbersReport.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
-            report_date=report_date
+            report_date=report_date,
         ).first()
 
         if not report:
             report = NightlyNumbersReport(
+                company_id=company_id,
                 store_number=user_store,
                 report_date=report_date,
-                created_by_user_id=session.get("user_id")
+                created_by_user_id=session.get("user_id"),
             )
             db.session.add(report)
             db.session.flush()
@@ -629,8 +654,9 @@ def index():
 
     if not reset:
         existing_report = NightlyNumbersReport.query.filter_by(
+            company_id=company_id,
             store_number=user_store,
-            report_date=business_date
+            report_date=business_date,
         ).first()
 
     field_values = {}
