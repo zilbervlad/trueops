@@ -322,3 +322,39 @@ export async function toggleWeeklyFocusItem(itemId) {
     method: "POST",
   });
 }
+
+
+export async function fetchNightlyNumbersStores() {
+  return request("/api/mobile/nightly-numbers/stores");
+}
+
+export async function fetchNightlyNumbersForm(storeNumber, reportDate = "") {
+  const params = [];
+
+  if (storeNumber) {
+    params.push(
+      `store_number=${encodeURIComponent(storeNumber)}`
+    );
+  }
+
+  if (reportDate) {
+    params.push(
+      `report_date=${encodeURIComponent(reportDate)}`
+    );
+  }
+
+  const query = params.length
+    ? `?${params.join("&")}`
+    : "";
+
+  return request(
+    `/api/mobile/nightly-numbers/form${query}`
+  );
+}
+
+export async function submitNightlyNumbers(payload) {
+  return request("/api/mobile/nightly-numbers/submit", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

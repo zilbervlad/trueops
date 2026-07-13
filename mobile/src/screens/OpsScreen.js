@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ChecklistScreen from "./ChecklistScreen";
 import SvrScreen from "./SvrScreen";
 import MaintenanceScreen from "./MaintenanceScreen";
+import NightlyNumbersScreen from "./NightlyNumbersScreen";
 import { colors, radius, spacing } from "../styles/theme";
 
 const MODULES = [
@@ -15,6 +16,14 @@ const MODULES = [
     description: "Open, dayshift, 3 O’Clock Restock, and Manager’s Walk.",
     badge: "Daily",
     icon: "✓",
+  },
+  {
+    key: "nightly_numbers",
+    title: "Nightly Numbers",
+    eyebrow: "Closing report",
+    description: "Submit store results and send the nightly email.",
+    badge: "Nightly",
+    icon: "#",
   },
   {
     key: "svr",
@@ -63,7 +72,7 @@ export default function OpsScreen({ route }) {
 
   useEffect(() => {
     const requestedTool = route?.params?.initialTool;
-    if (["checklist", "svr", "maintenance"].includes(requestedTool)) {
+    if (["checklist", "nightly_numbers", "svr", "maintenance"].includes(requestedTool)) {
       setActiveModule(requestedTool);
     }
   }, [route?.params?.initialTool, route?.params?.initialToolNonce]);
@@ -72,6 +81,14 @@ export default function OpsScreen({ route }) {
     return (
       <ChecklistScreen
         initialStore={route?.params?.initialStore}
+        onBack={() => setActiveModule("menu")}
+      />
+    );
+  }
+
+  if (activeModule === "nightly_numbers") {
+    return (
+      <NightlyNumbersScreen
         onBack={() => setActiveModule("menu")}
       />
     );
@@ -100,7 +117,7 @@ export default function OpsScreen({ route }) {
           <View style={styles.commandHeader}>
             <View>
               <Text style={styles.commandKicker}>Live tools</Text>
-              <Text style={styles.commandTitle}>Checklist · SVR · Maintenance</Text>
+              <Text style={styles.commandTitle}>Checklist · Nightly · SVR · Maintenance</Text>
             </View>
             <View style={styles.commandDot} />
           </View>
