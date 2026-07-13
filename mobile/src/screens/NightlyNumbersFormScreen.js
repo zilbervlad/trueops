@@ -139,6 +139,7 @@ export default function NightlyNumbersFormScreen({
 }) {
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
+  const [storePickerOpen, setStorePickerOpen] = useState(false);
   const [reportDate, setReportDate] = useState("");
   const [businessDate, setBusinessDate] = useState("");
 
@@ -490,6 +491,93 @@ export default function NightlyNumbersFormScreen({
           ) : (
             <>
               <View style={styles.summaryCard}>
+                <TouchableOpacity
+                  style={styles.storeSelector}
+                  onPress={() => {
+                    if (stores.length > 1) {
+                      setStorePickerOpen(
+                        (current) => !current
+                      );
+                    }
+                  }}
+                  activeOpacity={0.86}
+                >
+                  <View>
+                    <Text style={styles.summaryKicker}>
+                      Store
+                    </Text>
+
+                    <Text style={styles.summaryTitle}>
+                      {selectedStore}
+                    </Text>
+                  </View>
+
+                  {stores.length > 1 && (
+                    <Text style={styles.storeSelectorArrow}>
+                      {storePickerOpen ? "⌃" : "⌄"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {storePickerOpen && (
+                  <View style={styles.storePickerList}>
+                    {stores.map((store) => (
+                      <TouchableOpacity
+                        key={`${store.company_id}-${store.store_number}`}
+                        style={[
+                          styles.storePickerRow,
+                          store.store_number === selectedStore
+                            && styles.storePickerRowActive,
+                        ]}
+                        onPress={async () => {
+                          setStorePickerOpen(false);
+
+                          if (
+                            store.store_number
+                            === selectedStore
+                          ) {
+                            return;
+                          }
+
+                          setLoading(true);
+                          setError("");
+
+                          try {
+                            await loadForm(
+                              store.store_number,
+                              reportDate
+                            );
+                          } catch (loadError) {
+                            setError(
+                              loadError.message
+                              || "Could not load that store."
+                            );
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        activeOpacity={0.86}
+                      >
+                        <View>
+                          <Text style={styles.storePickerNumber}>
+                            Store {store.store_number}
+                          </Text>
+
+                          <Text style={styles.storePickerName}>
+                            {store.name || store.area_name || "TrueOps store"}
+                          </Text>
+                        </View>
+
+                        {store.store_number === selectedStore && (
+                          <Text style={styles.storePickerCheck}>
+                            ✓
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
                 <View style={styles.summaryTop}>
                   <View>
                     <Text style={styles.summaryKicker}>
@@ -763,6 +851,69 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     padding: 15,
     marginBottom: 11,
+  },
+
+  storeSelector: {
+    minHeight: 58,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  storeSelectorArrow: {
+    color: colors.primaryDark,
+    fontSize: 20,
+    fontWeight: "900",
+  },
+
+  storePickerList: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+
+  storePickerRow: {
+    minHeight: 58,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  storePickerRowActive: {
+    backgroundColor: colors.primaryTint,
+  },
+
+  storePickerNumber: {
+    color: colors.navy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  storePickerName: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+
+  storePickerCheck: {
+    color: colors.primaryDark,
+    fontSize: 17,
+    fontWeight: "900",
   },
 
   summaryTop: {
