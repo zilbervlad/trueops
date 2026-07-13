@@ -48,7 +48,13 @@ def normalize_role(user):
 
 
 def user_can_submit_nightly_numbers(user):
-    return normalize_role(user) == "manager"
+    return normalize_role(user) in {
+        "manager",
+        "general_manager",
+        "supervisor",
+        "admin",
+        "platform_admin",
+    }
 
 
 def field_query(company_id):
@@ -267,7 +273,7 @@ def nightly_numbers_form():
 
     if not user_can_submit_nightly_numbers(user):
         return mobile_error(
-            "Nightly Numbers submission is available to store managers.",
+            "You do not have permission to submit Nightly Numbers.",
             403,
         )
 
@@ -358,7 +364,7 @@ def submit_nightly_numbers():
 
     if not user_can_submit_nightly_numbers(user):
         return mobile_error(
-            "Nightly Numbers submission is available to store managers.",
+            "You do not have permission to submit Nightly Numbers.",
             403,
         )
 
@@ -477,5 +483,233 @@ def submit_nightly_numbers():
             "Nightly numbers saved and emailed."
             if email_sent
             else "Nightly numbers saved, but the email could not be sent."
+        ),
+    })
+
+
+def report_summary_value(report, field_key):
+    if not report:
+        return None
+
+    if field_key in FIXED_NIGHTLY_REPORT_FIELDS:
+        return getattr(report, field_key, None)
+
+    return get_custom_value(
+        report,
+        field_key,
+    )
+
+
+def serialize_report_summary(report):
+    return {
+        "id": report.id,
+        "company_id": report.company_id,
+        "store_number": str(report.store_number),
+        "report_date": (
+            report.report_date.isoformat()
+            if report.report_date
+            else None
+        ),
+        "manager_name": report.manager_name or "",
+        "royalty_sales": report.royalty_sales,
+        "labor_variance": report.variable_labor,
+        "variance_to_ideal": report.labor_goal,
+        "food_variance": report.food_variance,
+        "adt": report.adt,
+        "load_time": report.load_time or "",
+        "cash_diff": report.cash_diff,
+        "created_at": (
+            report.created_at.isoformat()
+            if report.created_at
+            else None
+        ),
+        "updated_at": (
+            report.updated_at.isoformat()
+            if report.updated_at
+            else None
+        ),
+    }
+
+
+def serialize_report_detail(report, fields):
+    return {
+        **serialize_report_summary(report),
+        "fields": [
+            serialize_field(
+                field,
+                report,
+            )
+            for field in fields
+        ],
+    }
+
+
+@mobile_nightly_numbers_bp.get("/reports")
+@mobile_login_required
+def nightly_numbers_reports():
+    user = g.mobile_user
+    company_id = user.company_id
+
+    allowed_store_numbers = {
+        str(store.store_number)
+        for store in (
+            scoped_store_query_for_user(
+                user,
+                Store,
+            )
+            .all()
+        )
+    }
+
+    if not allowed_store_numbers:
+        return jsonify({
+            "success": True,
+            "can_submit": (
+                user_can_submit_nightly_numbers(user)
+            ),
+            "stores": [],
+            "reports": [],
+        })
+
+    report_date_text = (
+        request.args.get("report_date")
+        or current_business_date().isoformat()
+    )
+
+    try:
+        report_date = datetime.strptime(
+            report_date_text,
+            "%Y-%m-%d",
+        ).date()
+    except ValueError:
+        return mobile_error(
+            "Invalid report date.",
+            400,
+        )
+
+    stores = (
+        scoped_store_query_for_user(
+            user,
+            Store,
+        )
+        .order_by(
+            Store.store_number.asc()
+        )
+        .all()
+    )
+
+    reports = (
+        NightlyNumbersReport.query
+        .filter(
+            NightlyNumbersReport.company_id == company_id,
+            NightlyNumbersReport.store_number.in_(
+                allowed_store_numbers
+            ),
+            NightlyNumbersReport.report_date == report_date,
+        )
+        .order_by(
+            NightlyNumbersReport.store_number.asc(),
+            NightlyNumbersReport.updated_at.desc(),
+            NightlyNumbersReport.id.desc(),
+        )
+        .all()
+    )
+
+    report_by_store = {
+        str(report.store_number): report
+        for report in reports
+    }
+
+    rows = []
+
+    for store in stores:
+        store_number = str(
+            store.store_number
+        )
+
+        report = report_by_store.get(
+            store_number
+        )
+
+        rows.append({
+            "store": serialize_store(store),
+            "submitted": bool(report),
+            "report": (
+                serialize_report_summary(
+                    report
+                )
+                if report
+                else None
+            ),
+        })
+
+    return jsonify({
+        "success": True,
+        "report_date": (
+            report_date.isoformat()
+        ),
+        "business_date": (
+            current_business_date().isoformat()
+        ),
+        "can_submit": (
+            user_can_submit_nightly_numbers(user)
+        ),
+        "stores": [
+            serialize_store(store)
+            for store in stores
+        ],
+        "reports": rows,
+        "submitted_count": sum(
+            1
+            for row in rows
+            if row["submitted"]
+        ),
+        "store_count": len(rows),
+    })
+
+
+@mobile_nightly_numbers_bp.get(
+    "/reports/<int:report_id>"
+)
+@mobile_login_required
+def nightly_numbers_report_detail(
+    report_id,
+):
+    user = g.mobile_user
+
+    report = (
+        NightlyNumbersReport.query
+        .filter_by(
+            id=report_id,
+            company_id=user.company_id,
+        )
+        .first()
+    )
+
+    if not report:
+        return mobile_error(
+            "Nightly Numbers report not found.",
+            404,
+        )
+
+    if not user_can_access_store_number(
+        user,
+        Store,
+        report.store_number,
+    ):
+        return mobile_error(
+            "You do not have access to that report.",
+            403,
+        )
+
+    fields = enabled_fields(
+        user.company_id
+    )
+
+    return jsonify({
+        "success": True,
+        "report": serialize_report_detail(
+            report,
+            fields,
         ),
     })

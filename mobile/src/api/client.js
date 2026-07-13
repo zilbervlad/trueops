@@ -358,3 +358,27 @@ export async function submitNightlyNumbers(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+
+export async function fetchNightlyNumbersReports(
+  reportDate = ""
+) {
+  const query = reportDate
+    ? `?report_date=${encodeURIComponent(
+        reportDate
+      )}`
+    : "";
+
+  return request(
+    `/api/mobile/nightly-numbers/reports${query}`
+  );
+}
+
+
+export async function fetchNightlyNumbersReportDetail(
+  reportId
+) {
+  return request(
+    `/api/mobile/nightly-numbers/reports/${reportId}`
+  );
+}

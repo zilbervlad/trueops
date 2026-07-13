@@ -8,11 +8,8 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -24,9 +21,8 @@ import {
 } from "react-native-safe-area-context";
 
 import {
-  fetchNightlyNumbersForm,
-  fetchNightlyNumbersStores,
-  submitNightlyNumbers,
+  fetchNightlyNumbersReportDetail,
+  fetchNightlyNumbersReports,
 } from "../api/client";
 
 import {
@@ -35,101 +31,220 @@ import {
   spacing,
 } from "../styles/theme";
 
+import NightlyNumbersFormScreen
+  from "./NightlyNumbersFormScreen";
 
-function formatFieldValue(field) {
-  const value = field?.value;
 
-  if (field?.field_type === "checkbox") {
-    return Boolean(value);
-  }
-
+function metricText(label, value) {
   if (
     value === null
     || value === undefined
+    || value === ""
   ) {
-    return "";
+    return null;
   }
 
-  return String(value);
+  return `${label} ${value}`;
 }
 
 
-function FieldControl({
-  field,
-  value,
-  onChange,
+function ReportRow({
+  row,
+  onPress,
 }) {
-  const requiredMark = field.is_required
-    ? " *"
-    : "";
+  const report = row.report;
 
-  if (field.field_type === "checkbox") {
-    return (
-      <View style={styles.checkboxCard}>
-        <View style={styles.checkboxCopy}>
-          <Text style={styles.fieldLabel}>
-            {field.field_label}
-            {requiredMark}
+  const metrics = report
+    ? [
+        metricText(
+          "ADT",
+          report.adt
+        ),
+        metricText(
+          "Load",
+          report.load_time
+        ),
+        metricText(
+          "Food",
+          report.food_variance
+        ),
+      ].filter(Boolean)
+    : [];
+
+  return (
+    <TouchableOpacity
+      style={styles.reportCard}
+      onPress={
+        report
+          ? onPress
+          : undefined
+      }
+      activeOpacity={0.86}
+    >
+      <View style={styles.reportTop}>
+        <View>
+          <Text style={styles.storeLabel}>
+            STORE
           </Text>
 
-          <Text style={styles.checkboxHint}>
-            {value ? "Yes" : "No"}
+          <Text style={styles.storeNumber}>
+            {row.store.store_number}
+          </Text>
+
+          <Text style={styles.storeName}>
+            {
+              row.store.name
+              || row.store.area_name
+              || "TrueOps store"
+            }
           </Text>
         </View>
 
-        <Switch
-          value={Boolean(value)}
-          onValueChange={onChange}
-          trackColor={{
-            false: "#cbd5e1",
-            true: colors.primarySoft,
-          }}
-          thumbColor={
-            value
-              ? colors.primaryDark
-              : "#ffffff"
-          }
-        />
+        <View
+          style={[
+            styles.statusBadge,
+            row.submitted
+              ? styles.statusSubmitted
+              : styles.statusMissing,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusText,
+              row.submitted
+                ? styles.statusTextSubmitted
+                : styles.statusTextMissing,
+            ]}
+          >
+            {
+              row.submitted
+                ? "Submitted"
+                : "Missing"
+            }
+          </Text>
+        </View>
       </View>
-    );
-  }
 
-  const multiline = (
-    field.field_type === "textarea"
+      {
+        row.submitted ? (
+          <>
+            <Text style={styles.managerText}>
+              {
+                report.manager_name
+                || "Nightly report"
+              }
+            </Text>
+
+            <Text style={styles.metricLine}>
+              {
+                metrics.length
+                  ? metrics.join("  ·  ")
+                  : "Tap to view report"
+              }
+            </Text>
+
+            <Text style={styles.openText}>
+              View report ›
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.missingText}>
+            No Nightly Numbers report has
+            been submitted for this date.
+          </Text>
+        )
+      }
+    </TouchableOpacity>
   );
+}
 
+
+function ReportDetail({
+  report,
+  onBack,
+}) {
   return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>
-        {field.field_label}
-        {requiredMark}
-      </Text>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={
+          styles.content
+        }
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onBack}
+          >
+            <Text style={styles.backText}>
+              ‹
+            </Text>
+          </TouchableOpacity>
 
-      <TextInput
-        value={String(value ?? "")}
-        onChangeText={onChange}
-        placeholder={
-          field.placeholder
-          || (
-            multiline
-              ? "Add details..."
-              : "Enter value"
-          )
-        }
-        placeholderTextColor={colors.faint}
-        multiline={multiline}
-        keyboardType="default"
-        textAlignVertical={
-          multiline
-            ? "top"
-            : "center"
-        }
-        style={[
-          styles.input,
-          multiline && styles.textArea,
-        ]}
-      />
-    </View>
+          <View style={styles.headerCopy}>
+            <Text style={styles.kicker}>
+              NIGHTLY NUMBERS
+            </Text>
+
+            <Text style={styles.title}>
+              Store {report.store_number}
+            </Text>
+
+            <Text style={styles.subtitle}>
+              {report.report_date}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.detailCard}>
+          {
+            (report.fields || []).map(
+              (field) => {
+                let value = field.value;
+
+                if (
+                  field.field_type
+                  === "checkbox"
+                ) {
+                  value = value
+                    ? "Yes"
+                    : "No";
+                }
+
+                if (
+                  value === null
+                  || value === undefined
+                  || value === ""
+                ) {
+                  value = "Not provided";
+                }
+
+                return (
+                  <View
+                    key={
+                      `${field.id}-${field.field_key}`
+                    }
+                    style={styles.detailRow}
+                  >
+                    <Text
+                      style={styles.detailLabel}
+                    >
+                      {field.field_label}
+                    </Text>
+
+                    <Text
+                      style={styles.detailValue}
+                    >
+                      {String(value)}
+                    </Text>
+                  </View>
+                );
+              }
+            )
+          }
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -137,155 +252,83 @@ function FieldControl({
 export default function NightlyNumbersScreen({
   onBack,
 }) {
-  const [stores, setStores] = useState([]);
-  const [selectedStore, setSelectedStore] = useState("");
-  const [reportDate, setReportDate] = useState("");
-  const [businessDate, setBusinessDate] = useState("");
-
-  const [fields, setFields] = useState([]);
-  const [values, setValues] = useState({});
+  const [
+    activeView,
+    setActiveView,
+  ] = useState("dashboard");
 
   const [
-    hasExistingReport,
-    setHasExistingReport,
+    reportPayload,
+    setReportPayload,
+  ] = useState(null);
+
+  const [
+    selectedReport,
+    setSelectedReport,
+  ] = useState(null);
+
+  const [
+    reportDate,
+    setReportDate,
+  ] = useState("");
+
+  const [loading, setLoading] = useState(
+    true
+  );
+
+  const [
+    detailLoading,
+    setDetailLoading,
   ] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
 
-  const requiredFields = useMemo(
-    () => (
-      fields.filter(
-        (field) => field.is_required
-      )
-    ),
-    [fields]
+  const rows = (
+    reportPayload?.reports || []
   );
 
 
-  const completedRequiredCount = useMemo(
-    () => (
-      requiredFields.filter((field) => {
-        const value = values[field.field_key];
+  const progressPercent = useMemo(
+    () => {
+      const total = (
+        reportPayload?.store_count || 0
+      );
 
-        if (
-          field.field_type === "checkbox"
-        ) {
-          return value === true;
-        }
+      const submitted = (
+        reportPayload?.submitted_count
+        || 0
+      );
 
-        return (
-          String(value ?? "").trim() !== ""
-        );
-      }).length
-    ),
-    [requiredFields, values]
+      return total
+        ? Math.round(
+            (submitted / total) * 100
+          )
+        : 0;
+    },
+    [reportPayload]
   );
 
 
-  const completionPercent = (
-    requiredFields.length
-      ? Math.round(
-          (
-            completedRequiredCount
-            / requiredFields.length
-          ) * 100
-        )
-      : 100
-  );
-
-
-  const loadForm = useCallback(
+  const loadReports = useCallback(
     async (
-      storeNumber,
       selectedDate = ""
     ) => {
-      const response = (
-        await fetchNightlyNumbersForm(
-          storeNumber,
-          selectedDate
-        )
-      );
-
-      const nextFields = (
-        response.fields || []
-      );
-
-      const nextValues = {};
-
-      for (const field of nextFields) {
-        nextValues[field.field_key] = (
-          formatFieldValue(field)
-        );
-      }
-
-      setFields(nextFields);
-      setValues(nextValues);
-
-      setSelectedStore(
-        response.store?.store_number
-        || storeNumber
-        || ""
-      );
-
-      setReportDate(
-        response.report_date
-        || ""
-      );
-
-      setBusinessDate(
-        response.business_date
-        || ""
-      );
-
-      setHasExistingReport(
-        Boolean(
-          response.has_existing_report
-        )
-      );
-    },
-    []
-  );
-
-
-  const load = useCallback(
-    async () => {
       setLoading(true);
       setError("");
 
       try {
-        const storeResponse = (
-          await fetchNightlyNumbersStores()
+        const response = (
+          await fetchNightlyNumbersReports(
+            selectedDate
+          )
         );
 
-        const visibleStores = (
-          storeResponse.stores || []
+        setReportPayload(response);
+
+        setReportDate(
+          response.report_date || ""
         );
-
-        setStores(visibleStores);
-
-        if (!storeResponse.can_submit) {
-          setError(
-            "Nightly Numbers submission is available to store managers."
-          );
-          return;
-        }
-
-        const initialStore = (
-          visibleStores[0]?.store_number
-          || ""
-        );
-
-        if (!initialStore) {
-          setError(
-            "No store is assigned to your account."
-          );
-          return;
-        }
-
-        await loadForm(initialStore);
       } catch (loadError) {
         setError(
           loadError.message
@@ -295,192 +338,148 @@ export default function NightlyNumbersScreen({
         setLoading(false);
       }
     },
-    [loadForm]
+    []
   );
 
 
   useEffect(
     () => {
-      load();
+      loadReports();
     },
-    [load]
+    [loadReports]
   );
 
 
-  function updateValue(
-    fieldKey,
-    value
+  async function openReport(
+    reportId
   ) {
-    setValues((current) => ({
-      ...current,
-      [fieldKey]: value,
-    }));
-  }
-
-
-  async function reloadSelectedDate() {
-    if (
-      !selectedStore
-      || !reportDate
-    ) {
-      Alert.alert(
-        "Date required",
-        "Enter a report date in YYYY-MM-DD format."
-      );
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      await loadForm(
-        selectedStore,
-        reportDate
-      );
-    } catch (loadError) {
-      setError(
-        loadError.message
-        || "Could not load that report date."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-
-  async function handleSubmit() {
-    const missing = (
-      requiredFields.filter((field) => {
-        const value = values[field.field_key];
-
-        if (
-          field.field_type === "checkbox"
-        ) {
-          return value !== true;
-        }
-
-        return (
-          String(value ?? "").trim() === ""
-        );
-      })
-    );
-
-    if (missing.length) {
-      Alert.alert(
-        "Required fields",
-        `Complete: ${missing
-          .map(
-            (field) => field.field_label
-          )
-          .join(", ")}`
-      );
-      return;
-    }
-
-    setSaving(true);
+    setDetailLoading(true);
 
     try {
       const response = (
-        await submitNightlyNumbers({
-          store_number: selectedStore,
-          report_date: reportDate,
-          values,
-        })
+        await fetchNightlyNumbersReportDetail(
+          reportId
+        )
       );
 
-      setHasExistingReport(true);
+      setSelectedReport(
+        response.report
+      );
 
-      if (response.email_sent) {
-        Alert.alert(
-          "Nightly Numbers sent",
-          "The report was saved and emailed using the normal TrueOps recipient rules."
-        );
-      } else {
-        Alert.alert(
-          "Saved — email issue",
-          response.email_error
-          || "The report was saved, but the email could not be sent."
-        );
-      }
-    } catch (saveError) {
+      setActiveView("detail");
+    } catch (detailError) {
       Alert.alert(
-        "Could not save",
-        saveError.message
-        || "Nightly Numbers could not be saved."
+        "Could not open report",
+        detailError.message
+        || "The report could not be loaded."
       );
     } finally {
-      setSaving(false);
+      setDetailLoading(false);
     }
   }
 
 
-  if (loading) {
+  if (activeView === "form") {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primarySoft}
-          />
+      <NightlyNumbersFormScreen
+        onBack={async () => {
+          setActiveView(
+            "dashboard"
+          );
 
-          <Text style={styles.loadingText}>
-            Loading Nightly Numbers…
-          </Text>
-        </View>
-      </SafeAreaView>
+          await loadReports(
+            reportDate
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    activeView === "detail"
+    && selectedReport
+  ) {
+    return (
+      <ReportDetail
+        report={selectedReport}
+        onBack={() => {
+          setSelectedReport(null);
+          setActiveView(
+            "dashboard"
+          );
+        }}
+      />
     );
   }
 
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.safe}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={
+          styles.content
         }
       >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={
-            styles.content
-          }
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={onBack}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.backText}>
-                ‹
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onBack}
+          >
+            <Text style={styles.backText}>
+              ‹
+            </Text>
+          </TouchableOpacity>
 
-            <View style={styles.headerCopy}>
-              <Text style={styles.kicker}>
-                TRUEOPS
-              </Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.kicker}>
+              TRUEOPS
+            </Text>
 
-              <Text style={styles.title}>
-                Nightly Numbers
-              </Text>
+            <Text style={styles.title}>
+              Nightly Numbers
+            </Text>
 
-              <Text style={styles.subtitle}>
-                Save the nightly report and send the normal TrueOps email.
-              </Text>
-            </View>
+            <Text style={styles.subtitle}>
+              Review nightly results across
+              your visible stores.
+            </Text>
           </View>
 
+          {
+            reportPayload?.can_submit
+            && (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => (
+                  setActiveView("form")
+                )}
+              >
+                <Text style={styles.addText}>
+                  +
+                </Text>
+              </TouchableOpacity>
+            )
+          }
+        </View>
 
-          {error ? (
+
+        {
+          loading ? (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator
+                color={colors.primarySoft}
+              />
+
+              <Text style={styles.loadingText}>
+                Loading Nightly Numbers…
+              </Text>
+            </View>
+          ) : error ? (
             <View style={styles.errorCard}>
               <Text style={styles.errorTitle}>
-                Nightly Numbers unavailable
+                Could not load reports
               </Text>
 
               <Text style={styles.errorText}>
@@ -492,36 +491,28 @@ export default function NightlyNumbersScreen({
               <View style={styles.summaryCard}>
                 <View style={styles.summaryTop}>
                   <View>
-                    <Text style={styles.summaryKicker}>
-                      Store
+                    <Text style={styles.summaryLabel}>
+                      SUBMISSION STATUS
                     </Text>
 
-                    <Text style={styles.summaryTitle}>
-                      {selectedStore}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.statusPill,
-                      hasExistingReport
-                      && styles.statusPillExisting,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusText,
-                        hasExistingReport
-                        && styles.statusTextExisting,
-                      ]}
-                    >
+                    <Text style={styles.summaryValue}>
                       {
-                        hasExistingReport
-                          ? "Editing saved report"
-                          : "New report"
+                        reportPayload
+                          ?.submitted_count
+                        || 0
+                      }
+                      {" of "}
+                      {
+                        reportPayload
+                          ?.store_count
+                        || 0
                       }
                     </Text>
                   </View>
+
+                  <Text style={styles.percentText}>
+                    {progressPercent}%
+                  </Text>
                 </View>
 
                 <View style={styles.progressTrack}>
@@ -530,126 +521,102 @@ export default function NightlyNumbersScreen({
                       styles.progressFill,
                       {
                         width:
-                          `${completionPercent}%`,
+                          `${progressPercent}%`,
                       },
                     ]}
                   />
                 </View>
-
-                <Text style={styles.progressText}>
-                  {
-                    completedRequiredCount
-                  }
-                  {" of "}
-                  {
-                    requiredFields.length
-                  }
-                  {" required fields complete"}
-                </Text>
               </View>
 
 
               <View style={styles.dateCard}>
-                <Text style={styles.fieldLabel}>
+                <Text style={styles.dateLabel}>
                   Report Date
                 </Text>
 
                 <TextInput
                   value={reportDate}
-                  onChangeText={setReportDate}
-                  autoCapitalize="none"
-                  autoCorrect={false}
+                  onChangeText={
+                    setReportDate
+                  }
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={
                     colors.faint
                   }
-                  style={styles.input}
+                  style={styles.dateInput}
                 />
 
                 <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={
-                    reloadSelectedDate
-                  }
-                  activeOpacity={0.86}
+                  style={styles.loadButton}
+                  onPress={() => (
+                    loadReports(
+                      reportDate
+                    )
+                  )}
                 >
-                  <Text style={styles.secondaryText}>
-                    Load This Date
+                  <Text style={styles.loadText}>
+                    Load Date
                   </Text>
                 </TouchableOpacity>
+              </View>
 
-                <Text style={styles.dateHint}>
-                  Current TrueOps business date:
-                  {" "}
-                  {businessDate}
+
+              {
+                detailLoading
+                && (
+                  <View
+                    style={
+                      styles.detailLoading
+                    }
+                  >
+                    <ActivityIndicator
+                      color={
+                        colors.primarySoft
+                      }
+                    />
+
+                    <Text
+                      style={
+                        styles.loadingText
+                      }
+                    >
+                      Opening report…
+                    </Text>
+                  </View>
+                )
+              }
+
+
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>
+                  Stores
+                </Text>
+
+                <Text style={styles.sectionMeta}>
+                  {rows.length} visible
                 </Text>
               </View>
 
 
-              <View style={styles.formCard}>
-                <View style={styles.formHeader}>
-                  <Text style={styles.formTitle}>
-                    Store Report
-                  </Text>
-
-                  <Text style={styles.formMeta}>
-                    {fields.length} fields
-                  </Text>
-                </View>
-
-                {
-                  fields.map((field) => (
-                    <FieldControl
-                      key={
-                        `${field.id}-${field.field_key}`
-                      }
-                      field={field}
-                      value={
-                        values[field.field_key]
-                      }
-                      onChange={(value) => (
-                        updateValue(
-                          field.field_key,
-                          value
-                        )
-                      )}
-                    />
-                  ))
-                }
-              </View>
-
-
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  saving
-                  && styles.submitButtonDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={saving}
-                activeOpacity={0.88}
-              >
-                {
-                  saving ? (
-                    <ActivityIndicator
-                      color="#ffffff"
-                    />
-                  ) : (
-                    <Text style={styles.submitText}>
-                      Save & Email Nightly Numbers
-                    </Text>
-                  )
-                }
-              </TouchableOpacity>
-
-
-              <Text style={styles.footerNote}>
-                Saving again for the same store and date updates the existing report. Changes appear on TrueOps web immediately.
-              </Text>
+              {
+                rows.map((row) => (
+                  <ReportRow
+                    key={
+                      row.store.store_number
+                    }
+                    row={row}
+                    onPress={() => (
+                      openReport(
+                        row.report.id
+                      )
+                    )}
+                  />
+                ))
+              }
             </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          )
+        }
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -668,20 +635,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 6,
-    paddingBottom: 110,
-  },
-
-  loadingWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.md,
-  },
-
-  loadingText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    fontWeight: "800",
+    paddingBottom: 100,
   },
 
   headerRow: {
@@ -691,11 +645,16 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
+  headerCopy: {
+    flex: 1,
+  },
+
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor:
+      "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -704,11 +663,23 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 32,
     lineHeight: 34,
-    fontWeight: "500",
   },
 
-  headerCopy: {
-    flex: 1,
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor:
+      colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  addText: {
+    color: colors.navy,
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: "900",
   },
 
   kicker: {
@@ -723,7 +694,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: -0.8,
-    marginTop: 1,
   },
 
   subtitle: {
@@ -734,77 +704,62 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
+  loadingCard: {
+    minHeight: 180,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.md,
+  },
+
+  loadingText: {
+    color: "#94a3b8",
+    fontWeight: "800",
+  },
+
   errorCard: {
     backgroundColor: "#fff1f2",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#fecdd3",
     padding: 16,
   },
 
   errorTitle: {
     color: "#9f1239",
-    fontSize: 16,
     fontWeight: "900",
   },
 
   errorText: {
     color: "#be123c",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 19,
     marginTop: 5,
   },
 
   summaryCard: {
     backgroundColor: colors.card,
     borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
     padding: 15,
     marginBottom: 11,
   },
 
   summaryTop: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
   },
 
-  summaryKicker: {
+  summaryLabel: {
     color: colors.muted,
     fontSize: 11,
     fontWeight: "900",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
   },
 
-  summaryTitle: {
+  summaryValue: {
     color: colors.navy,
-    fontSize: 25,
+    fontSize: 28,
     fontWeight: "900",
-    marginTop: 1,
   },
 
-  statusPill: {
-    borderRadius: 999,
-    backgroundColor: colors.primaryTint,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-
-  statusPillExisting: {
-    backgroundColor: "#dcfce7",
-  },
-
-  statusText: {
+  percentText: {
     color: colors.primaryDark,
-    fontSize: 11,
+    fontSize: 22,
     fontWeight: "900",
-  },
-
-  statusTextExisting: {
-    color: "#166534",
   },
 
   progressTrack: {
@@ -812,163 +767,179 @@ const styles = StyleSheet.create({
     backgroundColor: "#e2e8f0",
     borderRadius: 999,
     overflow: "hidden",
-    marginTop: 14,
+    marginTop: 12,
   },
 
   progressFill: {
     height: "100%",
-    borderRadius: 999,
-    backgroundColor: colors.primaryDark,
-  },
-
-  progressText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    marginTop: 7,
+    backgroundColor:
+      colors.primaryDark,
   },
 
   dateCard: {
     backgroundColor: colors.card,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: 15,
-    marginBottom: 11,
-  },
-
-  formCard: {
-    backgroundColor: colors.card,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: 15,
+    borderRadius: 20,
+    padding: 14,
     marginBottom: 12,
   },
 
-  formHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-
-  formTitle: {
+  dateLabel: {
     color: colors.navy,
-    fontSize: 18,
     fontWeight: "900",
+    marginBottom: 6,
   },
 
-  formMeta: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-
-  fieldWrap: {
-    marginTop: 14,
-  },
-
-  fieldLabel: {
-    color: colors.navy,
-    fontSize: 13,
-    fontWeight: "900",
-    marginBottom: 7,
-  },
-
-  input: {
-    minHeight: 48,
-    borderRadius: radius.lg,
+  dateInput: {
+    minHeight: 46,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    backgroundColor: "#f8fafc",
-    color: colors.navy,
-    fontSize: 15,
-    fontWeight: "700",
-    paddingHorizontal: 13,
-  },
-
-  textArea: {
-    minHeight: 104,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-
-  checkboxCard: {
-    minHeight: 66,
-    marginTop: 13,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: "#f8fafc",
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    flexDirection: "row",
+    paddingHorizontal: 12,
+  },
+
+  loadButton: {
+    minHeight: 42,
+    marginTop: 9,
+    backgroundColor:
+      colors.primaryTint,
+    borderRadius: radius.lg,
     alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loadText: {
+    color: colors.primaryDark,
+    fontWeight: "900",
+  },
+
+  sectionRow: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 8,
   },
 
-  checkboxCopy: {
-    flex: 1,
-    paddingRight: 12,
+  sectionTitle: {
+    color: "#ffffff",
+    fontSize: 17,
+    fontWeight: "900",
   },
 
-  checkboxHint: {
-    color: colors.muted,
-    fontSize: 12,
+  sectionMeta: {
+    color: "#94a3b8",
     fontWeight: "800",
   },
 
-  secondaryButton: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.primarySoft,
-    backgroundColor: colors.primaryTint,
-    minHeight: 44,
-    marginTop: 10,
-    alignItems: "center",
-    justifyContent: "center",
+  reportCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 10,
   },
 
-  secondaryText: {
-    color: colors.primaryDark,
-    fontSize: 13,
+  reportTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  storeLabel: {
+    color: colors.muted,
+    fontSize: 10,
     fontWeight: "900",
   },
 
-  dateHint: {
+  storeNumber: {
+    color: colors.navy,
+    fontSize: 23,
+    fontWeight: "900",
+  },
+
+  storeName: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+  },
+
+  statusSubmitted: {
+    backgroundColor: "#dcfce7",
+  },
+
+  statusMissing: {
+    backgroundColor: "#fee2e2",
+  },
+
+  statusText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  statusTextSubmitted: {
+    color: "#166534",
+  },
+
+  statusTextMissing: {
+    color: "#991b1b",
+  },
+
+  managerText: {
+    color: colors.navy,
+    fontWeight: "900",
+    marginTop: 12,
+  },
+
+  metricLine: {
+    color: colors.muted,
+    fontWeight: "800",
+    marginTop: 5,
+  },
+
+  openText: {
+    color: colors.primaryDark,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+
+  missingText: {
+    color: colors.muted,
+    lineHeight: 18,
+    marginTop: 12,
+  },
+
+  detailLoading: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+
+  detailCard: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    padding: 15,
+  },
+
+  detailRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor:
+      colors.borderSoft,
+  },
+
+  detailLabel: {
     color: colors.muted,
     fontSize: 11,
-    fontWeight: "700",
-    marginTop: 9,
-  },
-
-  submitButton: {
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: colors.primaryDark,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-
-  submitButtonDisabled: {
-    opacity: 0.65,
-  },
-
-  submitText: {
-    color: "#ffffff",
-    fontSize: 15,
     fontWeight: "900",
   },
 
-  footerNote: {
-    color: "#94a3b8",
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 12,
-    paddingHorizontal: 10,
+  detailValue: {
+    color: colors.navy,
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 4,
   },
 });
