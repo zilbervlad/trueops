@@ -29,9 +29,10 @@ export default function App() {
         setContext(data.context);
 
         try {
-          await registerForPushNotifications();
-        } catch {
-          // Push is helpful, not required for app startup.
+          const pushToken = await registerForPushNotifications();
+          console.log("Push registration during boot:", pushToken ? "success" : "no token");
+        } catch (error) {
+          console.error("Push registration failed during boot:", error);
         }
       } catch {
         setContext(null);
@@ -68,9 +69,10 @@ export default function App() {
             setContext(nextContext);
 
             try {
-              await registerForPushNotifications();
-            } catch {
-              // Push is helpful, not required for login.
+              const pushToken = await registerForPushNotifications();
+              console.log("Push registration after login:", pushToken ? "success" : "no token");
+            } catch (error) {
+              console.error("Push registration failed after login:", error);
             }
           }}
         />

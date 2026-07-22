@@ -20,7 +20,19 @@ export async function registerForPushNotifications() {
   }
 
   if (!Device.isDevice) {
+    console.warn("Push notifications require a physical device.");
     return null;
+  }
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("messages", {
+      name: "Messages",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      sound: "default",
+      enableVibrate: true,
+      showBadge: true,
+    });
   }
 
   const existing = await Notifications.getPermissionsAsync();
@@ -55,6 +67,12 @@ export async function registerForPushNotifications() {
     Platform.OS,
     Device.deviceName || "TrueOps mobile"
   );
+
+  console.log("Push token registered:", {
+    platform: Platform.OS,
+    deviceName: Device.deviceName || "TrueOps mobile",
+    tokenPreview: `${token.slice(0, 24)}...`,
+  });
 
   return token;
 }

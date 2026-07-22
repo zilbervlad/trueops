@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   createSvrReport,
+  fetchRecentSvrReports,
   fetchSvrStores,
   fetchSvrTemplate,
 } from "../api/client";
@@ -176,6 +179,106 @@ function FieldGroup({ title, fields, values, onChange }) {
   );
 }
 
+
+function PreviousVisitCard({
+  report,
+  expanded,
+  onToggle,
+  onPhotoPress,
+}) {
+  if (!report) {
+    return (
+      <View style={styles.previousCard}>
+        <View style={styles.previousHeader}>
+          <View style={styles.previousHeaderText}>
+            <Text style={styles.previousKicker}>PREVIOUS VISIT</Text>
+            <Text style={styles.previousTitle}>No prior SVR found</Text>
+            <Text style={styles.previousSubtitle}>
+              Prior visit photos will appear here once available.
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const photos = report.photos || [];
+
+  return (
+    <View style={styles.previousCard}>
+      <TouchableOpacity
+        style={styles.previousHeader}
+        onPress={onToggle}
+        activeOpacity={0.85}
+      >
+        <View style={styles.previousHeaderText}>
+          <Text style={styles.previousKicker}>PREVIOUS VISIT</Text>
+          <Text style={styles.previousTitle}>
+            {report.visit_date || "Prior SVR"}
+          </Text>
+          <Text style={styles.previousSubtitle}>
+            {report.supervisor_name || "Supervisor"}
+            {report.manager_on_duty
+              ? ` · Manager: ${report.manager_on_duty}`
+              : ""}
+          </Text>
+        </View>
+
+        <View style={styles.previousBadge}>
+          <Text style={styles.previousBadgeText}>
+            {photos.length} photo{photos.length === 1 ? "" : "s"}
+          </Text>
+          <Text style={styles.previousChevron}>
+            {expanded ? "⌃" : "⌄"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      {expanded ? (
+        <View style={styles.previousBody}>
+          {photos.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.previousPhotoRow}
+            >
+              {photos.map((photo) => (
+                <TouchableOpacity
+                  key={photo.id}
+                  style={styles.previousPhotoButton}
+                  onPress={() => onPhotoPress(photo)}
+                  activeOpacity={0.88}
+                >
+                  <Image
+                    source={{
+                      uri: photo.thumbnail_url || photo.image_url,
+                    }}
+                    style={styles.previousPhoto}
+                    resizeMode="cover"
+                  />
+
+                  {photo.caption ? (
+                    <Text
+                      style={styles.previousPhotoCaption}
+                      numberOfLines={1}
+                    >
+                      {photo.caption}
+                    </Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.previousEmptyText}>
+              This visit did not include photos.
+            </Text>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function SvrScreen({ onBack }) {
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState("");
@@ -186,6 +289,9 @@ export default function SvrScreen({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [canCreateReport, setCanCreateReport] = useState(false);
+  const [recentReports, setRecentReports] = useState([]);
+  const [previousExpanded, setPreviousExpanded] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   const fields = templatePayload?.fields || [];
 
@@ -205,6 +311,15 @@ export default function SvrScreen({ onBack }) {
   const completionPercent = visibleFields.length
     ? Math.round((answeredCount / visibleFields.length) * 100)
     : 0;
+
+  const previousReport = useMemo(
+    () =>
+      recentReports.find(
+        (report) =>
+          String(report.store_number) === String(selectedStore)
+      ) || null,
+    [recentReports, selectedStore]
+  );
 
   const groupedFields = useMemo(() => {
     const used = new Set();
@@ -255,11 +370,17 @@ export default function SvrScreen({ onBack }) {
     setLoading(true);
 
     try {
-      const storeResponse = await fetchSvrStores();
+      const [storeResponse, recentResponse] = await Promise.all([
+        fetchSvrStores(),
+        fetchRecentSvrReports(),
+      ]);
+
       const visibleStores = storeResponse.stores || [];
       setStores(visibleStores);
+      setRecentReports(recentResponse.reports || []);
 
-      const firstStore = selectedStore || visibleStores[0]?.store_number || "";
+      const firstStore =
+        selectedStore || visibleStores[0]?.store_number || "";
       setSelectedStore(firstStore);
 
       if (firstStore) {
@@ -281,6 +402,8 @@ export default function SvrScreen({ onBack }) {
     setStorePickerOpen(false);
     setTemplatePayload(null);
     setValues({});
+    setPreviousExpanded(true);
+    setSelectedPhoto(null);
 
     try {
       await loadTemplate(storeNumber);
@@ -352,7 +475,7 @@ export default function SvrScreen({ onBack }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -405,6 +528,15 @@ export default function SvrScreen({ onBack }) {
             open={storePickerOpen}
             onToggle={() => setStorePickerOpen((value) => !value)}
             onSelect={handleStoreSelect}
+          />
+
+          <PreviousVisitCard
+            report={previousReport}
+            expanded={previousExpanded}
+            onToggle={() =>
+              setPreviousExpanded((value) => !value)
+            }
+            onPhotoPress={setSelectedPhoto}
           />
 
           {!canCreateReport ? (
@@ -470,6 +602,39 @@ export default function SvrScreen({ onBack }) {
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={Boolean(selectedPhoto)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPhoto(null)}
+      >
+        <View style={styles.photoModal}>
+          <TouchableOpacity
+            style={styles.photoModalClose}
+            onPress={() => setSelectedPhoto(null)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.photoModalCloseText}>Close</Text>
+          </TouchableOpacity>
+
+          {selectedPhoto ? (
+            <>
+              <Image
+                source={{ uri: selectedPhoto.image_url }}
+                style={styles.photoModalImage}
+                resizeMode="contain"
+              />
+
+              {selectedPhoto.caption ? (
+                <Text style={styles.photoModalCaption}>
+                  {selectedPhoto.caption}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -847,5 +1012,120 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 30,
+  },,
+
+  previousCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: 22,
+    marginBottom: 12,
+    overflow: "hidden",
   },
+  previousHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: 16,
+  },
+  previousHeaderText: {
+    flex: 1,
+  },
+  previousKicker: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  previousTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  previousSubtitle: {
+    color: colors.muted,
+    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  previousBadge: {
+    alignItems: "flex-end",
+    gap: 3,
+  },
+  previousBadgeText: {
+    color: colors.primary,
+    fontWeight: "900",
+    fontSize: 11,
+  },
+  previousChevron: {
+    color: colors.muted,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  previousBody: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    paddingBottom: 16,
+  },
+  previousPhotoRow: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    gap: 10,
+  },
+  previousPhotoButton: {
+    width: 132,
+  },
+  previousPhoto: {
+    width: 132,
+    height: 104,
+    borderRadius: 14,
+    backgroundColor: colors.bg,
+  },
+  previousPhotoCaption: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 5,
+  },
+  previousEmptyText: {
+    color: colors.muted,
+    fontWeight: "700",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  photoModal: {
+    flex: 1,
+    backgroundColor: "rgba(2, 6, 23, 0.96)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  photoModalClose: {
+    position: "absolute",
+    top: 54,
+    right: 20,
+    zIndex: 2,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: 18,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+  },
+  photoModalCloseText: {
+    color: "#ffffff",
+    fontWeight: "900",
+  },
+  photoModalImage: {
+    width: "100%",
+    height: "76%",
+  },
+  photoModalCaption: {
+    color: "#ffffff",
+    fontWeight: "800",
+    textAlign: "center",
+    marginTop: 14,
+  },
+
 });
