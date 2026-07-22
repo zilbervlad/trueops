@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
-from app.models import Company, Store, SVRReport, SVRReportValue, SVRTemplateField
+from app.models import Company, Store, SVRReport, SVRReportValue, SVRTemplateField, UploadedPhoto
 from app.mobile_api.permissions import mobile_error, mobile_login_required, scoped_store_query_for_user, user_can_access_store_number
 from app.svr.routes import (
     sync_maintenance_from_svr,
@@ -156,8 +156,39 @@ def serialize_field(field):
     }
 
 
+
+def serialize_svr_photo(photo):
+    return {
+        "id": photo.id,
+        "field_key": photo.field_key or "",
+        "caption": photo.caption or "",
+        "image_url": photo.image_url,
+        "thumbnail_url": photo.thumbnail_url or photo.image_url,
+        "original_filename": photo.original_filename or "",
+        "created_at": photo.created_at.isoformat() if photo.created_at else None,
+    }
+
+
 def serialize_report(report):
     values = sorted(report.values, key=lambda value: (value.sort_order, value.id))
+
+    photos = (
+        UploadedPhoto.query
+        .filter_by(
+            module="svr",
+            parent_type="svr_report",
+            parent_id=report.id,
+        )
+        .filter(
+            (UploadedPhoto.company_id == report.company_id)
+            | (UploadedPhoto.company_id.is_(None))
+        )
+        .order_by(
+            UploadedPhoto.created_at.asc(),
+            UploadedPhoto.id.asc(),
+        )
+        .all()
+    )
 
     return {
         "id": report.id,
@@ -180,6 +211,8 @@ def serialize_report(report):
             }
             for value in values
         ],
+        "photos": [serialize_svr_photo(photo) for photo in photos],
+        "photo_count": len(photos),
     }
 
 
