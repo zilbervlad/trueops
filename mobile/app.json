@@ -2,7 +2,7 @@
   "expo": {
     "name": "TrueOps",
     "slug": "trueops-mobile",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "scheme": "trueops",
     "userInterfaceStyle": "automatic",
@@ -11,9 +11,11 @@
       "bundleIdentifier": "com.trueops.mobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationsUsageDescription": "TrueOps sends operations alerts, checklist updates, maintenance updates, and important store messages."
+        "NSUserNotificationsUsageDescription": "TrueOps sends operations alerts, checklist updates, maintenance updates, and important store messages.",
+        "NSCameraUsageDescription": "TrueOps uses the camera to attach store photos to Supervisor Visit Reports.",
+        "NSPhotoLibraryUsageDescription": "TrueOps uses your photo library to attach store photos to Supervisor Visit Reports."
       },
-      "buildNumber": "7",
+      "buildNumber": "8",
       "icon": "./assets/images/icon.png"
     },
     "android": {
@@ -45,6 +47,13 @@
         "expo-notifications",
         {
           "defaultChannel": "messages"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow TrueOps to select photos for Supervisor Visit Reports.",
+          "cameraPermission": "Allow TrueOps to take photos for Supervisor Visit Reports."
         }
       ]
     ],

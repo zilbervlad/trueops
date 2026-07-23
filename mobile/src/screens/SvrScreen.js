@@ -14,12 +14,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 
 import {
   createSvrReport,
   fetchRecentSvrReports,
   fetchSvrStores,
   fetchSvrTemplate,
+  uploadSvrPhotos,
 } from "../api/client";
 import { colors, radius, spacing } from "../styles/theme";
 
@@ -292,6 +294,7 @@ export default function SvrScreen({ onBack }) {
   const [recentReports, setRecentReports] = useState([]);
   const [previousExpanded, setPreviousExpanded] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [pendingPhotos, setPendingPhotos] = useState([]);
 
   const fields = templatePayload?.fields || [];
 
@@ -404,6 +407,7 @@ export default function SvrScreen({ onBack }) {
     setValues({});
     setPreviousExpanded(true);
     setSelectedPhoto(null);
+    setPendingPhotos([]);
 
     try {
       await loadTemplate(storeNumber);
@@ -417,6 +421,75 @@ export default function SvrScreen({ onBack }) {
       ...current,
       [fieldKey]: value,
     }));
+  }
+
+  function appendPendingPhotos(assets) {
+    setPendingPhotos((current) => {
+      const remaining = Math.max(0, 15 - current.length);
+      const additions = (assets || []).slice(0, remaining);
+
+      if ((assets || []).length > remaining) {
+        Alert.alert(
+          "Photo limit",
+          "An SVR can include a maximum of 15 photos."
+        );
+      }
+
+      return [...current, ...additions];
+    });
+  }
+
+  async function takePhoto() {
+    const permission =
+      await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert(
+        "Camera permission",
+        "Camera access is required to take an SVR photo."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.75,
+    });
+
+    if (!result.canceled) {
+      appendPendingPhotos(result.assets);
+    }
+  }
+
+  async function choosePhotos() {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert(
+        "Photo permission",
+        "Photo-library access is required to choose SVR photos."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      selectionLimit: Math.max(1, 15 - pendingPhotos.length),
+      quality: 0.75,
+    });
+
+    if (!result.canceled) {
+      appendPendingPhotos(result.assets);
+    }
+  }
+
+  function removePendingPhoto(indexToRemove) {
+    setPendingPhotos((current) =>
+      current.filter((_, index) => index !== indexToRemove)
+    );
   }
 
   async function handleSubmit() {
@@ -441,13 +514,36 @@ export default function SvrScreen({ onBack }) {
       };
 
       const response = await createSvrReport(payload);
+      const reportId = response.report?.id;
 
-      Alert.alert("SVR saved", `Report #${response.report?.id || ""} was created.`, [
+      let photoMessage = "";
+
+      if (reportId && pendingPhotos.length) {
+        const photoResponse = await uploadSvrPhotos(
+          reportId,
+          pendingPhotos
+        );
+
+        photoMessage =
+          ` ${photoResponse.uploaded_count || 0} photo` +
+          `${photoResponse.uploaded_count === 1 ? "" : "s"} uploaded.`;
+      }
+
+      Alert.alert(
+        "SVR saved",
+        `Report #${reportId || ""} was created.${photoMessage}`,
+        [
         {
           text: "OK",
           onPress: () => {
             setManagerOnDuty("");
+            setPendingPhotos([]);
             loadTemplate(selectedStore);
+            fetchRecentSvrReports()
+              .then((recentResponse) =>
+                setRecentReports(recentResponse.reports || [])
+              )
+              .catch(() => {});
           },
         },
       ]);
@@ -582,6 +678,77 @@ export default function SvrScreen({ onBack }) {
               onChange={updateValue}
             />
           ))}
+
+          <View style={styles.currentPhotoCard}>
+            <View style={styles.currentPhotoHeader}>
+              <View>
+                <Text style={styles.cardTitle}>Visit photos</Text>
+                <Text style={styles.currentPhotoSubtitle}>
+                  {pendingPhotos.length} of 15 selected
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.photoActionRow}>
+              <TouchableOpacity
+                style={styles.photoActionButton}
+                onPress={takePhoto}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.photoActionText}>Take Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoActionButton}
+                onPress={choosePhotos}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.photoActionText}>Choose Photos</Text>
+              </TouchableOpacity>
+            </View>
+
+            {pendingPhotos.length ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.pendingPhotoRow}
+              >
+                {pendingPhotos.map((photo, index) => (
+                  <View
+                    key={`${photo.uri}-${index}`}
+                    style={styles.pendingPhotoWrap}
+                  >
+                    <TouchableOpacity
+                      onPress={() =>
+                        setSelectedPhoto({
+                          image_url: photo.uri,
+                          caption: "New SVR photo",
+                        })
+                      }
+                      activeOpacity={0.88}
+                    >
+                      <Image
+                        source={{ uri: photo.uri }}
+                        style={styles.pendingPhoto}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.removePhotoButton}
+                      onPress={() => removePendingPhoto(index)}
+                    >
+                      <Text style={styles.removePhotoText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.currentPhotoEmpty}>
+                Add photos from the visit before saving the SVR.
+              </Text>
+            )}
+          </View>
 
           <TouchableOpacity
             style={[styles.submitButton, saving && styles.submitButtonDisabled]}
@@ -1012,7 +1179,71 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 30,
-  },,
+  },
+
+  currentPhotoCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  currentPhotoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  currentPhotoSubtitle: {
+    color: colors.muted,
+    marginTop: 4,
+  },
+  photoActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: spacing.md,
+  },
+  photoActionButton: {
+    flex: 1,
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(56, 189, 248, 0.10)",
+    paddingHorizontal: 12,
+  },
+  photoActionText: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  pendingPhotoRow: {
+    gap: 12,
+    paddingTop: spacing.md,
+    paddingRight: spacing.sm,
+  },
+  pendingPhotoWrap: {
+    width: 128,
+  },
+  pendingPhoto: {
+    width: 128,
+    height: 96,
+    borderRadius: radius.md,
+    backgroundColor: colors.navy,
+  },
+  removePhotoButton: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  removePhotoText: {
+    color: "#f87171",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  currentPhotoEmpty: {
+    color: colors.muted,
+    marginTop: spacing.md,
+    lineHeight: 20,
+  },
 
   previousCard: {
     backgroundColor: colors.card,

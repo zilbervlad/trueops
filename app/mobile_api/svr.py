@@ -1,11 +1,20 @@
 from datetime import datetime
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.utils
+
 from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
 from app.models import Company, Store, SVRReport, SVRReportValue, SVRTemplateField, UploadedPhoto
 from app.mobile_api.permissions import mobile_error, mobile_login_required, scoped_store_query_for_user, user_can_access_store_number
 from app.svr.routes import (
+    MAX_SVR_PHOTO_BYTES,
+    MAX_SVR_PHOTOS_TOTAL,
+    allowed_photo_file,
+    configure_cloudinary,
+    get_file_size,
     sync_maintenance_from_svr,
     sync_weekly_focus_from_svr,
     today_et,
@@ -274,6 +283,170 @@ def recent_svr_reports():
         "success": True,
         "reports": [serialize_report(report) for report in reports],
     })
+
+
+@mobile_svr_bp.post("/reports/<int:report_id>/photos")
+@mobile_login_required
+def upload_mobile_svr_photos(report_id):
+    user = g.mobile_user
+
+    report = SVRReport.query.filter_by(
+        id=report_id,
+        company_id=user.company_id,
+    ).first()
+
+    if not report:
+        return mobile_error("SVR report not found.", 404)
+
+    if not user_can_access_store_number(user, Store, report.store_number):
+        return mobile_error("You do not have access to this SVR.", 403)
+
+    if not user_can_create_svr_for_store(user, report.store_number):
+        return mobile_error("Only supervisors and above can upload SVR photos.", 403)
+
+    if not configure_cloudinary():
+        return mobile_error("SVR photo storage is not configured.", 503)
+
+    existing_count = UploadedPhoto.query.filter_by(
+        module="svr",
+        parent_type="svr_report",
+        parent_id=report.id,
+    ).count()
+
+    files = request.files.getlist("photos")
+    field_key = (request.form.get("field_key") or "general_photos").strip()
+    caption = (request.form.get("caption") or "").strip()[:255]
+
+    if not files:
+        return mobile_error("No photos were provided.", 400)
+
+    remaining_slots = max(0, MAX_SVR_PHOTOS_TOTAL - existing_count)
+
+    if remaining_slots <= 0:
+        return mobile_error(
+            f"This SVR already has the maximum of {MAX_SVR_PHOTOS_TOTAL} photos.",
+            400,
+        )
+
+    uploaded = []
+    skipped = []
+
+    for file_storage in files[:remaining_slots]:
+        if not file_storage or not file_storage.filename:
+            continue
+
+        if not allowed_photo_file(file_storage):
+            skipped.append({
+                "filename": file_storage.filename,
+                "reason": "Unsupported photo type.",
+            })
+            continue
+
+        file_size = get_file_size(file_storage)
+
+        if file_size and file_size > MAX_SVR_PHOTO_BYTES:
+            skipped.append({
+                "filename": file_storage.filename,
+                "reason": "Photo exceeds the 5 MB limit.",
+            })
+            continue
+
+        folder = (
+            f"trueops/svr/company_{report.company_id or 'none'}"
+            f"/store_{report.store_number}/report_{report.id}"
+        )
+
+        try:
+            result = cloudinary.uploader.upload(
+                file_storage,
+                folder=folder,
+                resource_type="image",
+                overwrite=False,
+                transformation=[
+                    {
+                        "width": 1600,
+                        "height": 1600,
+                        "crop": "limit",
+                        "quality": "auto",
+                        "fetch_format": "auto",
+                    }
+                ],
+            )
+        except Exception as exc:
+            print(
+                f"Mobile SVR photo upload failed for report "
+                f"{report.id}: {exc}"
+            )
+            skipped.append({
+                "filename": file_storage.filename,
+                "reason": "Upload failed.",
+            })
+            continue
+
+        image_url = result.get("secure_url")
+        public_id = result.get("public_id")
+
+        if not image_url:
+            skipped.append({
+                "filename": file_storage.filename,
+                "reason": "Cloud storage returned no image URL.",
+            })
+            continue
+
+        thumbnail_url = image_url
+
+        if public_id:
+            thumbnail_url = cloudinary.utils.cloudinary_url(
+                public_id,
+                width=320,
+                height=240,
+                crop="fill",
+                quality="auto",
+                fetch_format="auto",
+                secure=True,
+            )[0]
+
+        photo = UploadedPhoto(
+            company_id=report.company_id,
+            store_number=report.store_number,
+            uploaded_by_user_id=user.id,
+            module="svr",
+            parent_type="svr_report",
+            parent_id=report.id,
+            field_key=field_key,
+            caption=caption,
+            image_url=image_url,
+            thumbnail_url=thumbnail_url,
+            storage_key=public_id,
+            original_filename=file_storage.filename,
+            content_type=file_storage.mimetype,
+            file_size=file_size,
+        )
+
+        db.session.add(photo)
+        db.session.flush()
+
+        uploaded.append(serialize_svr_photo(photo))
+
+    db.session.commit()
+
+    if len(files) > remaining_slots:
+        skipped.append({
+            "filename": "",
+            "reason": (
+                f"Only {remaining_slots} additional photo"
+                f"{'' if remaining_slots == 1 else 's'} could be added."
+            ),
+        })
+
+    return jsonify({
+        "success": True,
+        "uploaded": uploaded,
+        "uploaded_count": len(uploaded),
+        "skipped": skipped,
+        "report": serialize_report(report),
+    })
+
 
 
 @mobile_svr_bp.post("/reports")

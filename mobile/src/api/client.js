@@ -218,6 +218,65 @@ export async function fetchRecentSvrReports() {
   return request("/api/mobile/svr/reports/recent");
 }
 
+export async function uploadSvrPhotos(reportId, photos) {
+  const token = await getToken();
+  const formData = new FormData();
+
+  for (let index = 0; index < photos.length; index += 1) {
+    const photo = photos[index];
+    const extension =
+      photo.fileName?.split(".").pop()?.toLowerCase() ||
+      photo.mimeType?.split("/").pop() ||
+      "jpg";
+
+    formData.append("photos", {
+      uri: photo.uri,
+      name: photo.fileName || `svr-photo-${Date.now()}-${index}.${extension}`,
+      type: photo.mimeType || "image/jpeg",
+    });
+  }
+
+  formData.append("field_key", "general_photos");
+
+  const headers = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/mobile/svr/reports/${reportId}/photos`,
+    {
+      method: "POST",
+      headers,
+      body: formData,
+    }
+  );
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = {
+      success: false,
+      error: text || "Invalid server response.",
+    };
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.error || `Photo upload failed with ${response.status}`
+    );
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+}
+
 
 export async function fetchMaintenanceStores() {
   return request("/api/mobile/maintenance/stores");
